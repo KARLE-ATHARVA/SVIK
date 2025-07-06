@@ -111,9 +111,9 @@ export default function Sidebar({ collapsed }) {
           <Link to="/loginHistory" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
           Login History
           </Link>
-          <a href="#" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
+          <Link to="/userActivity" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
             User Activity Log
-          </a>
+          </Link>
           <Link to="/adminActivity" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
             Admin Activity Log
           </Link>
