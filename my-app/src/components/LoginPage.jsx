@@ -1,19 +1,31 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import illustration from '../assets/illustration.jpg';
 
-function LoginPage() {
+export default function LoginPage() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (email && password) {
+      // ✅ Redirect to dashboard after successful input
+      navigate('/dashboard');
+    } else {
+      alert('Please enter both email and password');
+    }
+  };
 
   return (
     <div className="flex min-h-screen">
       {/* Left Side Image + Text */}
       <div className="w-1/2 bg-green-100 flex flex-col items-center justify-center p-10">
-        <img src={illustration} alt="Illustration" className="w-3/4 mb-6" />
+        <img src={illustration} alt="Illustration" className="w-3/4 mb-6 rounded" />
         <h2 className="text-2xl font-bold mb-2">Exam Mastery Hub</h2>
         <p className="text-center text-gray-600 max-w-md">
-          Unleash Your Academic Success with Exam Mastery Hub’s Exam Excellence Platform
+          Unleash Your Academic Success with Exam Mastery Hub’s Exam Excellence Platform.
         </p>
       </div>
 
@@ -23,7 +35,7 @@ function LoginPage() {
           <h1 className="text-3xl font-bold mb-2">Sign In</h1>
           <p className="text-gray-600 mb-6">Welcome back! Log in to your account.</p>
 
-          <form>
+          <form onSubmit={handleLogin}>
             {/* Email */}
             <div className="mb-5">
               <label className="block text-sm font-semibold mb-2">Email Address</label>
@@ -58,16 +70,15 @@ function LoginPage() {
               </div>
             </div>
 
-            {/* Remember + Forgot */}
+            {/* Remember me & Forgot password */}
             <div className="flex justify-between items-center mb-6 text-sm">
               <label className="flex items-center">
                 <input type="checkbox" className="mr-2" />
                 Remember me
               </label>
-                <a href="/forgot-password" className="text-green-700 hover:underline">
+              <a href="#" className="text-green-700 hover:underline">
                 Forgot password?
               </a>
-
             </div>
 
             {/* Sign In Button */}
@@ -98,12 +109,13 @@ function LoginPage() {
 
           {/* Create Account */}
           <p className="text-center text-sm mt-6">
-            Are you new? <a href="#" className="text-green-700 hover:underline">Create an Account</a>
+            Are you new?{' '}
+            <a href="#" className="text-green-700 hover:underline">
+              Create an Account
+            </a>
           </p>
         </div>
       </div>
     </div>
   );
 }
-
-export default LoginPage;

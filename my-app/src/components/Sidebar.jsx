@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { HiOutlineMenuAlt3, HiOutlineX } from 'react-icons/hi';
+// Sidebar.js
+import React from 'react';
 
-export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [isMasterOpen, setIsMasterOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+export default function Sidebar({ collapsed }) {
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [isMasterOpen, setIsMasterOpen] = React.useState(false);
 
   const masterTables = [
     'Tile Master', 'Size Master', 'Application Master', 'Space Master',
@@ -17,107 +16,94 @@ export default function Sidebar() {
   );
 
   return (
-    <div className={`bg-white ${collapsed ? 'w-20' : 'w-72'} h-screen shadow flex flex-col p-4 transition-all duration-300 font-sans`}>
-      {/* Brand + Toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center text-white text-xl font-bold">
-            Ti
-          </div>
-          {!collapsed && (
-            <h1 className="ml-1 text-xl font-bold text-gray-800">Vi</h1>
-          )}
+    <div className={`${collapsed ? 'hidden' : 'w-72'} bg-white h-screen shadow flex flex-col p-4 transition-all duration-300 font-sans`}>
+      {/* Brand */}
+      <div className="flex items-center mb-4">
+        <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center text-white text-xl font-bold">
+          Ti
         </div>
-        <button onClick={() => setCollapsed(!collapsed)} className="text-gray-600 hover:text-green-700 transition">
-          {collapsed ? <HiOutlineMenuAlt3 size={24} /> : <HiOutlineX size={24} />}
-        </button>
+        <h1 className="ml-1 text-xl font-bold text-gray-800">Vi</h1>
       </div>
 
-      {/* Horizontal line */}
       <hr className="border-gray-200 mb-4" />
 
-      {/* Profile */}
-      {!collapsed && (
-        <div className="flex flex-col items-center mb-6">
-          <div className="relative mb-2">
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center shadow-inner">
-              <div className="w-16 h-16 rounded-full bg-gray-300"></div>
-            </div>
-            <span className="absolute bottom-0 right-0 bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full shadow">New</span>
+      {/* Profile - Non-scrollable section */}
+      <div className="flex flex-col items-center mb-6">
+        <div className="relative mb-2">
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center shadow-inner">
+            <div className="w-16 h-16 rounded-full bg-gray-300"></div>
           </div>
-          <h2 className="text-base font-semibold text-gray-800">Emay Walter</h2>
-          <p className="text-xs text-gray-500 mb-3">Human Resources Department</p>
+          <span className="absolute bottom-0 right-0 bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full shadow">New</span>
+        </div>
+        <h2 className="text-base font-semibold text-gray-800">Emay Walter</h2>
+        <p className="text-xs text-gray-500 mb-3">Human Resources Department</p>
 
-          <div className="flex justify-between w-full text-center text-xs">
-            <div className="flex-1">
-              <p className="font-bold">19.8k</p>
-              <p className="text-gray-500">Follow</p>
-            </div>
-            <div className="flex-1">
-              <p className="font-bold">2 yr</p>
-              <p className="text-gray-500">Experience</p>
-            </div>
-            <div className="flex-1">
-              <p className="font-bold">95.2k</p>
-              <p className="text-gray-500">Follower</p>
-            </div>
+        <div className="flex justify-between w-full text-center text-xs">
+          <div className="flex-1">
+            <p className="font-bold">19.8k</p>
+            <p className="text-gray-500">Follow</p>
+          </div>
+          <div className="flex-1">
+            <p className="font-bold">2 yr</p>
+            <p className="text-gray-500">Experience</p>
+          </div>
+          <div className="flex-1">
+            <p className="font-bold">95.2k</p>
+            <p className="text-gray-500">Follower</p>
           </div>
         </div>
-      )}
-
-      {/* Master Tables */}
-      <div className="mb-6">
-        <button
-          onClick={() => setIsMasterOpen(!isMasterOpen)}
-          className={`flex items-center justify-between w-full px-3 py-2 rounded-md transition ${
-            isMasterOpen ? 'bg-green-700 text-white' : 'text-gray-700 hover:bg-green-700 hover:text-white'
-          }`}
-        >
-          {!collapsed && <span>Master Tables</span>}
-          <svg
-            className={`w-4 h-4 ml-auto transition-transform ${isMasterOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {/* Dropdown */}
-        {!collapsed && (
-          <div
-            className={`overflow-hidden transition-all duration-500 ${
-              isMasterOpen ? 'max-h-60 mt-2' : 'max-h-0'
-            }`}
-          >
-            <input
-              type="text"
-              placeholder="Search tables..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 mb-2 border rounded-md text-sm"
-            />
-            <div className="flex flex-col gap-1 overflow-y-auto max-h-40 pr-1">
-              {filteredTables.map((table, idx) => (
-                <a
-                  href="#"
-                  key={idx}
-                  className="block px-3 py-1 rounded hover:bg-green-100 text-gray-700 text-sm"
-                >
-                  {table}
-                </a>
-              ))}
-              {filteredTables.length === 0 && (
-                <p className="text-xs text-gray-400 px-3 py-1">No tables found</p>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Standalone Links */}
-      {!collapsed && (
+      {/* Scrollable section starts here */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Master Tables */}
+        <div className="mb-6">
+          <button
+            onClick={() => setIsMasterOpen(!isMasterOpen)}
+            className={`flex items-center justify-between w-full px-3 py-2 rounded-md transition ${
+              isMasterOpen ? 'bg-green-700 text-white' : 'text-gray-700 hover:bg-green-700 hover:text-white'
+            }`}
+          >
+            <span>Master Tables</span>
+            <svg
+              className={`w-4 h-4 ml-auto transition-transform ${isMasterOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Dropdown */}
+          {isMasterOpen && (
+            <div className="mt-2">
+              <input
+                type="text"
+                placeholder="Search tables..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-2 mb-2 border rounded-md text-sm"
+              />
+              <div className="flex flex-col gap-1">
+                {filteredTables.map((table, idx) => (
+                  <a
+                    href="#"
+                    key={idx}
+                    className="block px-3 py-1 rounded hover:bg-green-100 text-gray-700 text-sm"
+                  >
+                    {table}
+                  </a>
+                ))}
+                {filteredTables.length === 0 && (
+                  <p className="text-xs text-gray-400 px-3 py-1">No tables found</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Standalone Links */}
         <div className="flex flex-col gap-2">
           <a href="#" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
             Login History
@@ -129,7 +115,8 @@ export default function Sidebar() {
             Admin Activity Log
           </a>
         </div>
-      )}
+      </div>
+      {/* Scrollable section ends here */}
     </div>
   );
 }
