@@ -1,5 +1,6 @@
 // Sidebar.js
 import React from 'react';
+import { Link,useNavigate } from 'react-router-dom';
 
 export default function Sidebar({ collapsed }) {
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -20,7 +21,9 @@ export default function Sidebar({ collapsed }) {
       {/* Brand */}
       <div className="flex items-center mb-4">
         <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center text-white text-xl font-bold">
+        <Link to="/dashboard">
           Ti
+        </Link>
         </div>
         <h1 className="ml-1 text-xl font-bold text-gray-800">Vi</h1>
       </div>
@@ -105,15 +108,15 @@ export default function Sidebar({ collapsed }) {
 
         {/* Standalone Links */}
         <div className="flex flex-col gap-2">
-          <a href="#" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
-            Login History
-          </a>
+          <Link to="/loginHistory" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
+          Login History
+          </Link>
           <a href="#" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
             User Activity Log
           </a>
-          <a href="#" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
+          <Link to="/adminActivity" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
             Admin Activity Log
-          </a>
+          </Link>
         </div>
       </div>
       {/* Scrollable section ends here */}

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import MainContent from './LandingPage';
+import MainContent from '../pages/LandingPage';
 
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(false);
