@@ -12,6 +12,8 @@ import ProfileMasterPage from './pages/ProfileMasterPage';
 import ColorMasterPage from './pages/ColorMasterPage';
 import CategoryMasterPage from './pages/CategoryMasterPage';
 import SpaceMasterPage from './pages/SpaceMasterPage';
+import FinishMasterPage from './pages/FinishMasterPage';
+
 export default function App() {
   return (
     <Router>
@@ -28,6 +30,7 @@ export default function App() {
         <Route path="/colorMaster" element={<ColorMasterPage />} />
         <Route path="/categoryMaster" element={<CategoryMasterPage />} />
         <Route path="/spaceMaster" element={<SpaceMasterPage />} />
+        <Route path="/finishMaster" element={<FinishMasterPage />} />
 
       </Routes>
     </Router>

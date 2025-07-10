@@ -23,6 +23,7 @@ export default function Sidebar({ collapsed }) {
   'Profile Master': '/profileMaster',
   'Category Master':'/categoryMaster',
   'Space Master':'/spaceMaster',
+  'Finish Master':'/finishMaster',
   'Color Master':'/colorMaster'
 };
 
