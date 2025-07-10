@@ -11,7 +11,7 @@ export default function LoginPage() {
   const handleLogin = (e) => {
     e.preventDefault();
     if (email && password) {
-      // ✅ Redirect to dashboard after successful input
+      // Redirect to dashboard after successful input
       navigate('/dashboard');
     } else {
       alert('Please enter both email and password');

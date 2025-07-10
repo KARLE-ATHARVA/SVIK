@@ -8,7 +8,10 @@ import UserActivityLog from './pages/UserActivityLog';
 import SizeMasterPage from './pages/SizeMasterPage';
 import ApplicationMasterPage from './pages/ApplicationMasterPage';
 import TileMasterPage from './pages/TileMasterPage';
-
+import ProfileMasterPage from './pages/ProfileMasterPage';
+import ColorMasterPage from './pages/ColorMasterPage';
+import CategoryMasterPage from './pages/CategoryMasterPage';
+import SpaceMasterPage from './pages/SpaceMasterPage';
 export default function App() {
   return (
     <Router>
@@ -21,6 +24,11 @@ export default function App() {
         <Route path="/sizeMaster" element={<SizeMasterPage />} />
         <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
         <Route path="/tileMaster" element={<TileMasterPage />} />
+        <Route path="/profileMaster" element={<ProfileMasterPage />} />
+        <Route path="/colorMaster" element={<ColorMasterPage />} />
+        <Route path="/categoryMaster" element={<CategoryMasterPage />} />
+        <Route path="/spaceMaster" element={<SpaceMasterPage />} />
+
       </Routes>
     </Router>
   );
