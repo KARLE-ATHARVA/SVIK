@@ -1,4 +1,3 @@
-// src/pages/SizeMasterPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
@@ -29,28 +28,26 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
-export default function SizeMasterPage() {
+export default function CompanyMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sizes, setSizes] = useState([
+  const [companies, setCompanies] = useState([
     {
-      size_id: 1,
-      size_name: '12x12',
-      block: true,
+      comp_id: 1,
+      plan_id: 101,
+      comp_name: 'ABC Corp',
+      comp_address: '123 Main St',
+      comp_address1: 'Suite 200',
+      pin_code: 400001,
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      country: 'India',
+      block: false,
       created_by: 101,
       created_date: '2025-07-07T12:34:56',
       modify_by: 101,
       modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      size_id: 2,
-      size_name: '24x24',
-      block: false,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
     },
   ]);
 
@@ -63,20 +60,25 @@ export default function SizeMasterPage() {
   });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
-    size_name: '',
+    plan_id: '',
+    comp_name: '',
+    comp_address: '',
+    comp_address1: '',
+    pin_code: '',
+    city: '',
+    state: '',
+    country: '',
     block: false,
     created_by: '',
   });
 
-  const filteredSizes = sizes.filter(
-    (size) =>
-      size.size_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (size.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
+  const filteredCompanies = companies.filter((comp) =>
+    comp.comp_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const startEditing = (size) => {
-    setEditId(size.size_id);
-    setEditData({ ...size });
+  const startEditing = (comp) => {
+    setEditId(comp.comp_id);
+    setEditData({ ...comp });
   };
 
   const cancelEditing = () => {
@@ -93,14 +95,19 @@ export default function SizeMasterPage() {
       show: true,
       message: 'Are you sure you want to save changes?',
       onConfirm: () => {
-        const updatedSizes = sizes
-          .map((size) =>
-            size.size_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : size
+        const updated = companies
+          .map((comp) =>
+            comp.comp_id === editId
+              ? {
+                  ...editData,
+                  modify_by: 999,
+                  modify_date: new Date().toISOString(),
+                }
+              : comp
           )
-          .sort((a, b) => a.size_id - b.size_id);
-        setSizes(updatedSizes);
+          .sort((a, b) => a.comp_id - b.comp_id);
+
+        setCompanies(updated);
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
@@ -113,7 +120,7 @@ export default function SizeMasterPage() {
       show: true,
       message: 'Are you sure you want to delete this entry?',
       onConfirm: () => {
-        setSizes(sizes.filter((size) => size.size_id !== id));
+        setCompanies(companies.filter((comp) => comp.comp_id !== id));
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -122,7 +129,14 @@ export default function SizeMasterPage() {
   const startAdding = () => {
     setIsAdding(true);
     setNewData({
-      size_name: '',
+      plan_id: '',
+      comp_name: '',
+      comp_address: '',
+      comp_address1: '',
+      pin_code: '',
+      city: '',
+      state: '',
+      country: '',
       block: false,
       created_by: '',
     });
@@ -130,33 +144,36 @@ export default function SizeMasterPage() {
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ size_name: '', block: false, created_by: '' });
   };
 
   const saveAdding = () => {
-    if (!newData.size_name || !newData.created_by) {
+    if (!newData.comp_name || !newData.created_by || !newData.plan_id) {
       alert('Please fill all required fields');
       return;
     }
 
     setConfirmation({
       show: true,
-      message: 'Are you sure you want to save this new size?',
+      message: 'Are you sure you want to save this new company?',
       onConfirm: () => {
         const newEntry = {
           ...newData,
-          size_id: sizes.length ? Math.max(...sizes.map((s) => s.size_id)) + 1 : 1,
+          comp_id: companies.length
+            ? Math.max(...companies.map((c) => c.comp_id)) + 1
+            : 1,
+          plan_id: parseInt(newData.plan_id),
+          pin_code: parseInt(newData.pin_code) || '',
           created_by: parseInt(newData.created_by),
           created_date: new Date().toISOString(),
           modify_by: parseInt(newData.created_by),
           modify_date: new Date().toISOString(),
         };
 
-        const updatedSizes = [...sizes, newEntry].sort((a, b) => a.size_id - b.size_id);
-
-        setSizes(updatedSizes);
+        const updated = [...companies, newEntry].sort(
+          (a, b) => a.comp_id - b.comp_id
+        );
+        setCompanies(updated);
         setIsAdding(false);
-        setNewData({ size_name: '', block: false, created_by: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -169,7 +186,9 @@ export default function SizeMasterPage() {
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Size Master Table</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Company Master Table
+            </h2>
             <div className="flex space-x-2">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -182,7 +201,7 @@ export default function SizeMasterPage() {
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
                   onClick={startAdding}
                 >
-                  <FaPlus className="mr-2" /> Add New Size
+                  <FaPlus className="mr-2" /> Add New Company
                 </button>
               )}
             </div>
@@ -191,7 +210,7 @@ export default function SizeMasterPage() {
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Search by Size Name or Block..."
+              placeholder="Search by Company Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
@@ -202,25 +221,52 @@ export default function SizeMasterPage() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
-                  <th className="px-4 py-3">Size ID</th>
-                  <th className="px-4 py-3">Size Name</th>
-                  <th className="px-4 py-3">Block</th>
+                  <th className="px-4 py-3">Comp ID</th>
+                  <th className="px-4 py-3">Plan ID</th>
+                  <th className="px-4 py-3">Company Name</th>
+                  <th className="px-4 py-3">Address</th>
+                  <th className="px-4 py-3">Address 2</th>
+                  <th className="px-4 py-3">Pin Code</th>
+                  <th className="px-4 py-3">City</th>
+                  <th className="px-4 py-3">State</th>
+                  <th className="px-4 py-3">Country</th>
                   <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modify By</th>
-                  <th className="px-4 py-3">Modify Date</th>
+                  <th className="px-4 py-3">Block</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
                   <tr>
-                    <td className="px-4 py-3">New</td>
+                    {[
+                      'plan_id',
+                      'comp_name',
+                      'comp_address',
+                      'comp_address1',
+                      'pin_code',
+                      'city',
+                      'state',
+                      'country',
+                    ].map((field) => (
+                      <td key={field} className="px-4 py-3">
+                        <input
+                          value={newData[field]}
+                          onChange={(e) =>
+                            setNewData({ ...newData, [field]: e.target.value })
+                          }
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      </td>
+                    ))}
                     <td className="px-4 py-3">
                       <input
-                        value={newData.size_name}
+                        type="number"
+                        value={newData.created_by}
                         onChange={(e) =>
-                          setNewData({ ...newData, size_name: e.target.value })
+                          setNewData({
+                            ...newData,
+                            created_by: e.target.value,
+                          })
                         }
                         className="border rounded px-2 py-1 w-full"
                       />
@@ -234,17 +280,7 @@ export default function SizeMasterPage() {
                         }
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3 space-x-2 flex">
                       <button
                         onClick={saveAdding}
                         className="text-green-600 hover:text-green-800"
@@ -261,24 +297,36 @@ export default function SizeMasterPage() {
                   </tr>
                 )}
 
-                {filteredSizes.map((size) => (
-                  <tr key={size.size_id}>
-                    <td className="px-4 py-3">{size.size_id}</td>
+                {filteredCompanies.map((comp) => (
+                  <tr key={comp.comp_id}>
+                    <td className="px-4 py-3">{comp.comp_id}</td>
+                    {[
+                      'plan_id',
+                      'comp_name',
+                      'comp_address',
+                      'comp_address1',
+                      'pin_code',
+                      'city',
+                      'state',
+                      'country',
+                    ].map((field) => (
+                      <td key={field} className="px-4 py-3">
+                        {editId === comp.comp_id ? (
+                          <input
+                            value={editData[field]}
+                            onChange={(e) =>
+                              handleEditChange(field, e.target.value)
+                            }
+                            className="border rounded px-2 py-1 w-full"
+                          />
+                        ) : (
+                          comp[field]
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3">{comp.created_by}</td>
                     <td className="px-4 py-3">
-                      {editId === size.size_id ? (
-                        <input
-                          value={editData.size_name}
-                          onChange={(e) =>
-                            handleEditChange('size_name', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
-                        />
-                      ) : (
-                        size.size_name
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {editId === size.size_id ? (
+                      {editId === comp.comp_id ? (
                         <input
                           type="checkbox"
                           checked={editData.block}
@@ -286,18 +334,14 @@ export default function SizeMasterPage() {
                             handleEditChange('block', e.target.checked)
                           }
                         />
-                      ) : size.block ? 'Yes' : 'No'}
-                    </td>
-                    <td className="px-4 py-3">{size.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(size.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{size.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(size.modify_date).toLocaleDateString()}
+                      ) : comp.block ? (
+                        'Yes'
+                      ) : (
+                        'No'
+                      )}
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
-                      {editId === size.size_id ? (
+                      {editId === comp.comp_id ? (
                         <>
                           <button
                             onClick={confirmSave}
@@ -315,13 +359,13 @@ export default function SizeMasterPage() {
                       ) : (
                         <>
                           <button
-                            onClick={() => startEditing(size)}
+                            onClick={() => startEditing(comp)}
                             className="text-yellow-500 hover:text-yellow-700"
                           >
                             <FaEdit size={22} />
                           </button>
                           <button
-                            onClick={() => confirmDelete(size.size_id)}
+                            onClick={() => confirmDelete(comp.comp_id)}
                             className="text-red-500 hover:text-red-700"
                           >
                             <FaTrash size={22} />

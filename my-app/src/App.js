@@ -13,6 +13,10 @@ import ColorMasterPage from './pages/ColorMasterPage';
 import CategoryMasterPage from './pages/CategoryMasterPage';
 import SpaceMasterPage from './pages/SpaceMasterPage';
 import FinishMasterPage from './pages/FinishMasterPage';
+import UserMasterPage from './pages/UserMasterPage';
+import CompanyMasterPage from './pages/CompanyMasterPage';
+import LoginMasterPage from './pages/LoginMasterPage';
+import PlanMasterPage from './pages/PlanMasterPage';
 
 export default function App() {
   return (
@@ -31,6 +35,10 @@ export default function App() {
         <Route path="/categoryMaster" element={<CategoryMasterPage />} />
         <Route path="/spaceMaster" element={<SpaceMasterPage />} />
         <Route path="/finishMaster" element={<FinishMasterPage />} />
+        <Route path="/userMaster" element={<UserMasterPage />} />
+        <Route path="/companyMaster" element={<CompanyMasterPage />} />
+        <Route path="/loginMaster" element={<LoginMasterPage />} />
+        <Route path="/planMaster" element={<PlanMasterPage />} />
 
       </Routes>
     </Router>

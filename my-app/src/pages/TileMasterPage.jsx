@@ -148,31 +148,34 @@ export default function TileMasterPage() {
     setEditData({});
   };
 
-  const confirmSave = () => {
-    const emptyFields = validateFields(editData);
-    if (emptyFields.length > 0) {
-      setAlert({
-        show: true,
-        message: `Please fill in the following required fields: ${emptyFields.join(', ')}`,
-      });
-      return;
-    }
-    setConfirmation({
+ const confirmSave = () => {
+  const emptyFields = validateFields(editData);
+  if (emptyFields.length > 0) {
+    setAlert({
       show: true,
-      message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updatedTiles = tiles.map((tile) =>
+      message: `Please fill in the following required fields: ${emptyFields.join(', ')}`,
+    });
+    return;
+  }
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to save changes?',
+    onConfirm: () => {
+      const updatedTiles = tiles
+        .map((tile) =>
           tile.tile_id === editId
             ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
             : tile
-        );
-        setTiles(updatedTiles);
-        setEditId(null);
-        setEditData({});
-        setConfirmation({ ...confirmation, show: false });
-      },
-    });
-  };
+        )
+        .sort((a, b) => a.tile_id - b.tile_id); // ✅ Keep sorted
+      setTiles(updatedTiles);
+      setEditId(null);
+      setEditData({});
+      setConfirmation({ ...confirmation, show: false });
+    },
+  });
+};
+
 
   const confirmDelete = (id) => {
     setConfirmation({
@@ -213,32 +216,34 @@ export default function TileMasterPage() {
   };
 
   const saveAdding = () => {
-    const emptyFields = validateFields(newData);
-    if (emptyFields.length > 0) {
-      setAlert({
-        show: true,
-        message: `Please fill in the following required fields: ${emptyFields.join(', ')}`,
-      });
-      return;
-    }
-    setConfirmation({
+  const emptyFields = validateFields(newData);
+  if (emptyFields.length > 0) {
+    setAlert({
       show: true,
-      message: 'Are you sure you want to save this new tile?',
-      onConfirm: () => {
-        const newTile = {
-          ...newData,
-          tile_id: tiles.length ? Math.max(...tiles.map((t) => t.tile_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by) || 999,
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by) || 999,
-          modify_date: new Date().toISOString(),
-        };
-        setTiles([newTile, ...tiles]);
-        cancelAdding();
-        setConfirmation({ ...confirmation, show: false });
-      },
+      message: `Please fill in the following required fields: ${emptyFields.join(', ')}`,
     });
-  };
+    return;
+  }
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to save this new tile?',
+    onConfirm: () => {
+      const newTile = {
+        ...newData,
+        tile_id: tiles.length ? Math.max(...tiles.map((t) => t.tile_id)) + 1 : 1,
+        created_by: parseInt(newData.created_by) || 999,
+        created_date: new Date().toISOString(),
+        modify_by: parseInt(newData.created_by) || 999,
+        modify_date: new Date().toISOString(),
+      };
+      const updatedTiles = [...tiles, newTile].sort((a, b) => a.tile_id - b.tile_id);
+      setTiles(updatedTiles);
+      cancelAdding();
+      setConfirmation({ ...confirmation, show: false });
+    },
+  });
+};
+
 
   const filteredTiles = tiles.filter(
     (tile) =>

@@ -21,12 +21,15 @@ export default function Sidebar({ collapsed }) {
   'Application Master': '/applicationMaster',
   'Tile Master': '/tileMaster',
   'Profile Master': '/profileMaster',
-  'Category Master':'/categoryMaster',
-  'Space Master':'/spaceMaster',
-  'Finish Master':'/finishMaster',
-  'Color Master':'/colorMaster'
+  'Category Master': '/categoryMaster',
+  'Space Master': '/spaceMaster',
+  'Finish Master': '/finishMaster',
+  'Color Master': '/colorMaster', 
+  'User Master': '/userMaster',  
+  'Company Master': '/companyMaster',
+  'Login Master': '/loginMaster',
+  'Plan Master': '/planMaster',
 };
-
   return (
     <div className={`${collapsed ? 'hidden' : 'w-72'} bg-white h-screen shadow flex flex-col p-4 transition-all duration-300 font-sans`}>
       {/* Brand */}

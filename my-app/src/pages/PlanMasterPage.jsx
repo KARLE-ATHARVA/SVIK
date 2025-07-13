@@ -1,4 +1,3 @@
-// src/pages/SizeMasterPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
@@ -29,28 +28,20 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
-export default function SizeMasterPage() {
+export default function PlanMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sizes, setSizes] = useState([
+  const [plans, setPlans] = useState([
     {
-      size_id: 1,
-      size_name: '12x12',
-      block: true,
+      plan_id: 1,
+      plan_name: 'Basic',
+      total_user_allow: 5,
+      block: false,
       created_by: 101,
       created_date: '2025-07-07T12:34:56',
       modify_by: 101,
       modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      size_id: 2,
-      size_name: '24x24',
-      block: false,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
     },
   ]);
 
@@ -63,20 +54,19 @@ export default function SizeMasterPage() {
   });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
-    size_name: '',
+    plan_name: '',
+    total_user_allow: '',
     block: false,
     created_by: '',
   });
 
-  const filteredSizes = sizes.filter(
-    (size) =>
-      size.size_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (size.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
+  const filteredPlans = plans.filter((plan) =>
+    plan.plan_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const startEditing = (size) => {
-    setEditId(size.size_id);
-    setEditData({ ...size });
+  const startEditing = (plan) => {
+    setEditId(plan.plan_id);
+    setEditData({ ...plan });
   };
 
   const cancelEditing = () => {
@@ -93,14 +83,19 @@ export default function SizeMasterPage() {
       show: true,
       message: 'Are you sure you want to save changes?',
       onConfirm: () => {
-        const updatedSizes = sizes
-          .map((size) =>
-            size.size_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : size
+        const updated = plans
+          .map((plan) =>
+            plan.plan_id === editId
+              ? {
+                  ...editData,
+                  modify_by: 999,
+                  modify_date: new Date().toISOString(),
+                }
+              : plan
           )
-          .sort((a, b) => a.size_id - b.size_id);
-        setSizes(updatedSizes);
+          .sort((a, b) => a.plan_id - b.plan_id);
+
+        setPlans(updated);
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
@@ -113,7 +108,7 @@ export default function SizeMasterPage() {
       show: true,
       message: 'Are you sure you want to delete this entry?',
       onConfirm: () => {
-        setSizes(sizes.filter((size) => size.size_id !== id));
+        setPlans(plans.filter((plan) => plan.plan_id !== id));
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -122,7 +117,8 @@ export default function SizeMasterPage() {
   const startAdding = () => {
     setIsAdding(true);
     setNewData({
-      size_name: '',
+      plan_name: '',
+      total_user_allow: '',
       block: false,
       created_by: '',
     });
@@ -130,33 +126,35 @@ export default function SizeMasterPage() {
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ size_name: '', block: false, created_by: '' });
   };
 
   const saveAdding = () => {
-    if (!newData.size_name || !newData.created_by) {
+    if (!newData.plan_name || !newData.created_by || !newData.total_user_allow) {
       alert('Please fill all required fields');
       return;
     }
 
     setConfirmation({
       show: true,
-      message: 'Are you sure you want to save this new size?',
+      message: 'Are you sure you want to save this new plan?',
       onConfirm: () => {
         const newEntry = {
           ...newData,
-          size_id: sizes.length ? Math.max(...sizes.map((s) => s.size_id)) + 1 : 1,
+          plan_id: plans.length
+            ? Math.max(...plans.map((p) => p.plan_id)) + 1
+            : 1,
+          total_user_allow: parseInt(newData.total_user_allow),
           created_by: parseInt(newData.created_by),
           created_date: new Date().toISOString(),
           modify_by: parseInt(newData.created_by),
           modify_date: new Date().toISOString(),
         };
 
-        const updatedSizes = [...sizes, newEntry].sort((a, b) => a.size_id - b.size_id);
-
-        setSizes(updatedSizes);
+        const updated = [...plans, newEntry].sort(
+          (a, b) => a.plan_id - b.plan_id
+        );
+        setPlans(updated);
         setIsAdding(false);
-        setNewData({ size_name: '', block: false, created_by: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -169,7 +167,9 @@ export default function SizeMasterPage() {
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Size Master Table</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Plan Master Table
+            </h2>
             <div className="flex space-x-2">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -182,7 +182,7 @@ export default function SizeMasterPage() {
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
                   onClick={startAdding}
                 >
-                  <FaPlus className="mr-2" /> Add New Size
+                  <FaPlus className="mr-2" /> Add New Plan
                 </button>
               )}
             </div>
@@ -191,7 +191,7 @@ export default function SizeMasterPage() {
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Search by Size Name or Block..."
+              placeholder="Search by Plan Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
@@ -202,13 +202,11 @@ export default function SizeMasterPage() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
-                  <th className="px-4 py-3">Size ID</th>
-                  <th className="px-4 py-3">Size Name</th>
-                  <th className="px-4 py-3">Block</th>
+                  <th className="px-4 py-3">Plan ID</th>
+                  <th className="px-4 py-3">Plan Name</th>
+                  <th className="px-4 py-3">Total Users Allowed</th>
                   <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modify By</th>
-                  <th className="px-4 py-3">Modify Date</th>
+                  <th className="px-4 py-3">Block</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -218,9 +216,38 @@ export default function SizeMasterPage() {
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
                       <input
-                        value={newData.size_name}
+                        value={newData.plan_name}
                         onChange={(e) =>
-                          setNewData({ ...newData, size_name: e.target.value })
+                          setNewData({
+                            ...newData,
+                            plan_name: e.target.value,
+                          })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="number"
+                        value={newData.total_user_allow}
+                        onChange={(e) =>
+                          setNewData({
+                            ...newData,
+                            total_user_allow: e.target.value,
+                          })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="number"
+                        value={newData.created_by}
+                        onChange={(e) =>
+                          setNewData({
+                            ...newData,
+                            created_by: e.target.value,
+                          })
                         }
                         className="border rounded px-2 py-1 w-full"
                       />
@@ -230,21 +257,14 @@ export default function SizeMasterPage() {
                         type="checkbox"
                         checked={newData.block}
                         onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
+                          setNewData({
+                            ...newData,
+                            block: e.target.checked,
+                          })
                         }
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3 space-x-2 flex">
                       <button
                         onClick={saveAdding}
                         className="text-green-600 hover:text-green-800"
@@ -261,24 +281,39 @@ export default function SizeMasterPage() {
                   </tr>
                 )}
 
-                {filteredSizes.map((size) => (
-                  <tr key={size.size_id}>
-                    <td className="px-4 py-3">{size.size_id}</td>
+                {filteredPlans.map((plan) => (
+                  <tr key={plan.plan_id}>
+                    <td className="px-4 py-3">{plan.plan_id}</td>
                     <td className="px-4 py-3">
-                      {editId === size.size_id ? (
+                      {editId === plan.plan_id ? (
                         <input
-                          value={editData.size_name}
+                          value={editData.plan_name}
                           onChange={(e) =>
-                            handleEditChange('size_name', e.target.value)
+                            handleEditChange('plan_name', e.target.value)
                           }
                           className="border rounded px-2 py-1 w-full"
                         />
                       ) : (
-                        size.size_name
+                        plan.plan_name
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {editId === size.size_id ? (
+                      {editId === plan.plan_id ? (
+                        <input
+                          type="number"
+                          value={editData.total_user_allow}
+                          onChange={(e) =>
+                            handleEditChange('total_user_allow', e.target.value)
+                          }
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        plan.total_user_allow
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{plan.created_by}</td>
+                    <td className="px-4 py-3">
+                      {editId === plan.plan_id ? (
                         <input
                           type="checkbox"
                           checked={editData.block}
@@ -286,18 +321,14 @@ export default function SizeMasterPage() {
                             handleEditChange('block', e.target.checked)
                           }
                         />
-                      ) : size.block ? 'Yes' : 'No'}
-                    </td>
-                    <td className="px-4 py-3">{size.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(size.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{size.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(size.modify_date).toLocaleDateString()}
+                      ) : plan.block ? (
+                        'Yes'
+                      ) : (
+                        'No'
+                      )}
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
-                      {editId === size.size_id ? (
+                      {editId === plan.plan_id ? (
                         <>
                           <button
                             onClick={confirmSave}
@@ -315,13 +346,13 @@ export default function SizeMasterPage() {
                       ) : (
                         <>
                           <button
-                            onClick={() => startEditing(size)}
+                            onClick={() => startEditing(plan)}
                             className="text-yellow-500 hover:text-yellow-700"
                           >
                             <FaEdit size={22} />
                           </button>
                           <button
-                            onClick={() => confirmDelete(size.size_id)}
+                            onClick={() => confirmDelete(plan.plan_id)}
                             className="text-red-500 hover:text-red-700"
                           >
                             <FaTrash size={22} />

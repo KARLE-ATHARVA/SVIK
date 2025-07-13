@@ -102,11 +102,13 @@ export default function ApplicationMasterPage() {
       show: true,
       message: 'Are you sure you want to save changes?',
       onConfirm: () => {
-        const updatedApps = apps.map((app) =>
-          app.app_id === editId
-            ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-            : app
-        );
+        const updatedApps = apps
+          .map((app) =>
+            app.app_id === editId
+              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
+              : app
+          )
+          .sort((a, b) => a.app_id - b.app_id);
         setApps(updatedApps);
         setEditId(null);
         setEditData({});
@@ -159,7 +161,9 @@ export default function ApplicationMasterPage() {
           modify_date: new Date().toISOString(),
         };
 
-        setApps([newEntry, ...apps]);
+        const updatedApps = [...apps, newEntry].sort((a, b) => a.app_id - b.app_id);
+
+        setApps(updatedApps);
         setIsAdding(false);
         setNewData({ app_name: '', block: false, created_by: '' });
         setConfirmation({ ...confirmation, show: false });

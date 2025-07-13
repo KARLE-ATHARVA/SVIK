@@ -1,4 +1,3 @@
-// src/pages/CategoryMasterPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
@@ -36,7 +35,7 @@ export default function CategoryMasterPage() {
   const [categories, setCategories] = useState([
     {
       cat_id: 1,
-      cat_name: 'Living Room',
+      cat_name: 'Ceramic',
       block: false,
       created_by: 101,
       created_date: '2025-07-07T12:34:56',
@@ -45,7 +44,7 @@ export default function CategoryMasterPage() {
     },
     {
       cat_id: 2,
-      cat_name: 'Bathroom',
+      cat_name: 'Vetrified',
       block: true,
       created_by: 102,
       created_date: '2025-07-06T09:30:00',
