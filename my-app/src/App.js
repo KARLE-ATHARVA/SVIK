@@ -8,6 +8,15 @@ import UserActivityLog from './pages/UserActivityLog';
 import SizeMasterPage from './pages/SizeMasterPage';
 import ApplicationMasterPage from './pages/ApplicationMasterPage';
 import TileMasterPage from './pages/TileMasterPage';
+import ProfileMasterPage from './pages/ProfileMasterPage';
+import ColorMasterPage from './pages/ColorMasterPage';
+import CategoryMasterPage from './pages/CategoryMasterPage';
+import SpaceMasterPage from './pages/SpaceMasterPage';
+import FinishMasterPage from './pages/FinishMasterPage';
+import UserMasterPage from './pages/UserMasterPage';
+import CompanyMasterPage from './pages/CompanyMasterPage';
+import LoginMasterPage from './pages/LoginMasterPage';
+import PlanMasterPage from './pages/PlanMasterPage';
 
 export default function App() {
   return (
@@ -21,6 +30,16 @@ export default function App() {
         <Route path="/sizeMaster" element={<SizeMasterPage />} />
         <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
         <Route path="/tileMaster" element={<TileMasterPage />} />
+        <Route path="/profileMaster" element={<ProfileMasterPage />} />
+        <Route path="/colorMaster" element={<ColorMasterPage />} />
+        <Route path="/categoryMaster" element={<CategoryMasterPage />} />
+        <Route path="/spaceMaster" element={<SpaceMasterPage />} />
+        <Route path="/finishMaster" element={<FinishMasterPage />} />
+        <Route path="/userMaster" element={<UserMasterPage />} />
+        <Route path="/companyMaster" element={<CompanyMasterPage />} />
+        <Route path="/loginMaster" element={<LoginMasterPage />} />
+        <Route path="/planMaster" element={<PlanMasterPage />} />
+
       </Routes>
     </Router>
   );
