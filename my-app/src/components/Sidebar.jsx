@@ -20,9 +20,16 @@ export default function Sidebar({ collapsed }) {
   'Size Master': '/sizeMaster',
   'Application Master': '/applicationMaster',
   'Tile Master': '/tileMaster',
-  // Add others here later if needed
+  'Profile Master': '/profileMaster',
+  'Category Master': '/categoryMaster',
+  'Space Master': '/spaceMaster',
+  'Finish Master': '/finishMaster',
+  'Color Master': '/colorMaster', 
+  'User Master': '/userMaster',  
+    'Company Master': '/companyMaster',
+    'Login Master': '/loginMaster',
+    'Plan Master': '/planMaster',
 };
-
   return (
     <div className={`${collapsed ? 'hidden' : 'w-72'} bg-white h-screen shadow flex flex-col p-4 transition-all duration-300 font-sans`}>
       {/* Brand */}
@@ -97,14 +104,14 @@ export default function Sidebar({ collapsed }) {
               />
               <div className="flex flex-col gap-1">
                 {filteredTables.map((table, idx) => (
-  <Link
-    to={tableRoutes[table] || '#'}
-    key={idx}
-    className="block px-3 py-1 rounded hover:bg-green-100 text-gray-700 text-sm"
-  >
-    {table}
-  </Link>
-))}
+              <Link
+                to={tableRoutes[table] || '#'}
+                key={idx}
+                className="block px-3 py-1 rounded hover:bg-green-100 text-gray-700 text-sm"
+              >
+              {table}
+            </Link>
+          ))}
 
                 {filteredTables.length === 0 && (
                   <p className="text-xs text-gray-400 px-3 py-1">No tables found</p>
@@ -114,7 +121,7 @@ export default function Sidebar({ collapsed }) {
           )}
         </div>
 
-        {/* Standalone Links */}
+        {/*  Links */}
         <div className="flex flex-col gap-2">
           <Link to="/loginHistory" className="block px-3 py-2 rounded hover:bg-green-100 text-gray-700 text-sm">
           Login History
@@ -127,7 +134,7 @@ export default function Sidebar({ collapsed }) {
           </Link>
         </div>
       </div>
-      {/* Scrollable section ends here */}
+     
     </div>
   );
 }
