@@ -168,12 +168,12 @@ export default function ColorMasterPage() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Color Master Table</h2>
             <div className="flex space-x-2">
-              <button
+              {/* <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 onClick={() => navigate('/dashboard')}
               >
                 Return to Dashboard
-              </button>
+              </button> */}
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"

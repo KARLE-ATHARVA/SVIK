@@ -17,9 +17,15 @@ import UserMasterPage from './pages/UserMasterPage';
 import CompanyMasterPage from './pages/CompanyMasterPage';
 import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
+//import IconSidebarPage from './pages/IconSidebarPage';
+import MasterTablesPage from './pages/MasterTablesPage';
+
+
+
 
 export default function App() {
   return (
+    
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
@@ -39,8 +45,12 @@ export default function App() {
         <Route path="/companyMaster" element={<CompanyMasterPage />} />
         <Route path="/loginMaster" element={<LoginMasterPage />} />
         <Route path="/planMaster" element={<PlanMasterPage />} />
+        {/* <Route path="/iconSidebar" element={<IconSidebarPage />} /> */}
+        <Route path="/masterTables" element={<MasterTablesPage />} />
+
 
       </Routes>
     </Router>
+    
   );
 }
