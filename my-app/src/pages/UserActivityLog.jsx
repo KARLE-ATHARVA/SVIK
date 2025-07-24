@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
+import Breadcrumb from '../components/Breadcrumb';
 
 export default function UserActivityLog() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
   const [fadeIn, setFadeIn] = useState(false);
 
   useEffect(() => {
@@ -17,113 +21,127 @@ export default function UserActivityLog() {
     { id: 4, xsource: 'Mobile', ip: '192.168.0.4', url: '/login', tileId: 104, created: '2024-07-02 14:00', block: 0 },
     { id: 5, xsource: 'Web', ip: '192.168.0.5', url: '/contact', tileId: 105, created: '2024-07-03 12:45', block: 1 },
     { id: 6, xsource: 'API', ip: '192.168.0.6', url: '/api/user', tileId: 106, created: '2024-07-03 15:30', block: 0 },
+    { id: 7, xsource: 'API', ip: '192.168.0.7', url: '/api/admin', tileId: 107, created: '2024-07-04 11:00', block: 1 },
+    { id: 8, xsource: 'Web', ip: '192.168.0.8', url: '/dashboard', tileId: 108, created: '2024-07-05 09:30', block: 0 },
+    { id: 9, xsource: 'Mobile', ip: '192.168.0.9', url: '/profile', tileId: 109, created: '2024-07-06 16:20', block: 1 },
+    { id: 10, xsource: 'API', ip: '192.168.0.10', url: '/api/settings', tileId: 110, created: '2024-07-07 12:10', block: 1 },
+    { id: 11, xsource: 'Web', ip: '192.168.0.11', url: '/support', tileId: 111, created: '2024-07-08 10:45', block: 0 },
+    { id: 12, xsource: 'API', ip: '192.168.0.12', url: '/api/help', tileId: 112, created: '2024-07-09 14:15', block: 1 },
+    { id: 13, xsource: 'Mobile', ip: '192.168.0.13', url: '/mobile/home', tileId: 113, created: '2024-07-10 08:30', block: 0 },
+    { id: 14, xsource: 'Web', ip: '192.168.0.14', url: '/news', tileId: 114, created: '2024-07-11 17:00', block: 1 },
+    { id: 15, xsource: 'API', ip: '192.168.0.15', url: '/api/newuser', tileId: 115, created: '2024-07-12 19:25', block: 0 },
   ];
 
-  const filtered = userLogs.filter(
+ const filtered = userLogs.filter(
     (log) =>
+      log.xsource.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.url.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalHits = userLogs.length;
-  const blockedHits = userLogs.filter((log) => log.block === 0).length;
+  const sorted = React.useMemo(() => {
+    let sortableItems = [...filtered];
+    if (sortConfig.key !== '') {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filtered, sortConfig]);
+
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentLogs = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       <Sidebar />
-      <div className="relative flex flex-col flex-1 overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-600"></div>
-
+      <div className="flex flex-col flex-1 ml-60">
         <Topbar />
-
-        <div
-          className={`flex flex-col flex-1 p-6 bg-gray-50 transform transition-all duration-700 ${
-            fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-green-800 mb-3">
-                User Activity Log
-              </h1>
-
-              <input
-                type="text"
-                placeholder="Search by IP or URL..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-md w-full md:w-[400px] focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-
-            <div className="flex flex-row gap-4">
-              <div className="relative flex items-center justify-between px-6 py-4 bg-green-700 rounded-lg text-white shadow-md overflow-hidden w-52">
-                <div className="z-10">
-                  <h2 className="text-sm font-medium">Total Hits</h2>
-                  <p className="text-2xl font-bold">{totalHits}</p>
-                </div>
-                <div className="absolute right-0 -bottom-4 w-24 h-24 bg-green-600/30 rounded-full"></div>
-              </div>
-
-              <div className="relative flex items-center justify-between px-6 py-4 bg-emerald-700 rounded-lg text-white shadow-md overflow-hidden w-52">
-                <div className="z-10">
-                  <h2 className="text-sm font-medium">Blocked Hits</h2>
-                  <p className="text-2xl font-bold">{blockedHits}</p>
-                </div>
-                <div className="absolute right-0 -bottom-4 w-24 h-24 bg-emerald-600/30 rounded-full"></div>
-              </div>
-            </div>
+        <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex justify-between mb-4">
+            <h1 className="text-2xl font-bold text-green-800">User Activity Log</h1>
+            <Breadcrumb />
           </div>
 
-          <div className="flex-1 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-100 text-green-900 text-xs uppercase sticky top-0 z-10">
+          <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
+            <div className="flex items-center gap-2">
+              <span>Show</span>
+              <select
+                className="border border-gray-300 rounded px-2 py-1"
+                value={entriesPerPage}
+                onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              >
+                {[10, 25, 50].map(num => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+              <span>entries</span>
+            </div>
+            <input
+              type="text"
+              placeholder="Search Source, IP, URL..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded"
+            />
+          </div>
+
+          <div className="overflow-y-auto rounded border border-gray-200 bg-white shadow" style={{ maxHeight: '500px' }}>
+            <table className="min-w-full text-sm">
+              <thead className="bg-green-100 sticky top-0">
                 <tr>
-                  <th className="px-6 py-4 font-semibold">Hit ID</th>
-                  <th className="px-6 py-4 font-semibold">Source</th>
-                  <th className="px-6 py-4 font-semibold">IP Address</th>
-                  <th className="px-6 py-4 font-semibold">URL</th>
-                  <th className="px-6 py-4 font-semibold">Tile ID</th>
-                  <th className="px-6 py-4 font-semibold">Created Date</th>
-                  <th className="px-6 py-4 font-semibold">Block</th>
+                  {['id', 'xsource', 'ip', 'url', 'tileId', 'created'].map((key) => (
+                    <th key={key} className="px-4 py-2 font-semibold cursor-pointer" onClick={() => handleSort(key)}>
+                      {key.toUpperCase()}
+                    </th>
+                  ))}
+                  <th className="px-4 py-2 font-semibold">Block</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="7"
-                      className="px-6 py-6 text-center text-gray-500 italic"
-                    >
-                      No records found.
+                {currentLogs.map((log) => (
+                  <tr key={log.id} className="border-b hover:bg-green-50">
+                    <td className="px-4 py-2">{log.id}</td>
+                    <td className="px-4 py-2">{log.xsource}</td>
+                    <td className="px-4 py-2">{log.ip}</td>
+                    <td className="px-4 py-2">{log.url}</td>
+                    <td className="px-4 py-2">{log.tileId}</td>
+                    <td className="px-4 py-2">{log.created}</td>
+                    <td className="px-4 py-2">
+                      <span className={`inline-block w-3 h-3 rounded-full ${log.block ? 'bg-green-600' : 'bg-red-500'}`}></span>
                     </td>
                   </tr>
-                ) : (
-                  filtered.map((log) => (
-                    <tr
-                      key={log.id}
-                      className="border-b hover:bg-green-50 transition-colors duration-200"
-                    >
-                      <td className="px-6 py-4">{log.id}</td>
-                      <td className="px-6 py-4">{log.xsource}</td>
-                      <td className="px-6 py-4">{log.ip}</td>
-                      <td className="px-6 py-4">{log.url}</td>
-                      <td className="px-6 py-4">{log.tileId}</td>
-                      <td className="px-6 py-4">{log.created}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-block w-3 h-3 rounded-full ${
-                            log.block === 0 ? 'bg-red-500' : 'bg-green-600'
-                          }`}
-                        ></span>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
 
+          <div className="flex justify-between mt-4 text-xs">
+            <span>Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries</span>
+            <div className="flex gap-1">
+              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">Previous</button>
+              {[...Array(totalPages).keys()].map(num => (
+                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>{num + 1}</button>
+              ))}
+              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">Next</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

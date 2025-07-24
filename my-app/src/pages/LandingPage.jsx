@@ -47,7 +47,7 @@ export default function MainContent() {
         </div>
         <p className="mt-2 text-sm text-gray-600">70% Completed</p>
       </div>
-
+        
       <footer className="mt-auto py-4 text-center text-sm text-gray-500">
         © 2025 TiVi Dashboard. All rights reserved.
       </footer>
