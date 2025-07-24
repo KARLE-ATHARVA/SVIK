@@ -31,10 +31,11 @@ export default function Sidebar({ collapsed }) {
   'Plan Master': '/planMaster',
 };
   return (
-    <div className={`${collapsed ? 'hidden' : 'w-72'} bg-white h-screen shadow flex flex-col p-4 transition-all duration-300 font-sans`}>
+    <div className={`${collapsed ? 'hidden' : 'w-60'} bg-white h-screen shadow flex flex-col p-4 transition-all duration-300 font-sans`}>
+
       {/* Brand */}
       <div className="flex items-center mb-4">
-        <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center text-white text-xl font-bold">
+        <div className="w-10 h-10 bg-green-700 border-b rounded-full flex items-center justify-center text-white text-xl font-bold shadow z-10">
         <Link to="/dashboard">
           Ti
         </Link>
@@ -42,7 +43,7 @@ export default function Sidebar({ collapsed }) {
         <h1 className="ml-1 text-xl font-bold text-gray-800">Vi</h1>
       </div>
 
-      <hr className="border-gray-200 mb-4" />
+
 
       {/* Profile - Non-scrollable section */}
       <div className="flex flex-col items-center mb-6">

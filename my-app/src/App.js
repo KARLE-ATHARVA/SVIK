@@ -17,12 +17,14 @@ import UserMasterPage from './pages/UserMasterPage';
 import CompanyMasterPage from './pages/CompanyMasterPage';
 import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
+import RegisterPage from './pages/RegisterPage';
 
 export default function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/loginHistory" element={<LoginHistory/>}/>
         <Route path="/adminActivity" element={<AdminActivityLog/>}/>
