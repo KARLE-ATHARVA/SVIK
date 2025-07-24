@@ -3,12 +3,14 @@ import {
   FiLogOut,
   FiBell,
   FiMessageSquare,
-  FiMoon,
+  FiMoon, // Keep FiMoon for the outlined version
   FiStar,
   FiMaximize2,
+  FiMinimize2,
   FiArrowLeft
 } from 'react-icons/fi';
 import { MdLanguage } from 'react-icons/md';
+import { FaMoon } from 'react-icons/fa'; // Import FaMoon for the filled version
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 export default function Topbar() {
@@ -20,6 +22,10 @@ export default function Topbar() {
   );
   const [language, setLanguage] = useState("EN");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [starred, setStarred] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -27,11 +33,11 @@ export default function Topbar() {
     } else {
       document.documentElement.classList.remove("dark");
     }
+    // Also store the theme preference in localStorage
+    localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
-  const logout = () => {
-    navigate('/');
-  };
+  const logout = () => navigate('/');
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -44,47 +50,69 @@ export default function Topbar() {
   };
 
   const toggleLanguage = () => {
-    setLanguage(prev => (prev === "EN" ? "FR" : "EN"));
-    alert(`Language switched to ${language === "EN" ? "French" : "English"}`);
+    const nextLang = language === "EN" ? "FR" : "EN";
+    setLanguage(nextLang);
+    alert(`Language switched to ${nextLang === "EN" ? "English" : "French"}`);
   };
 
   const toggleDarkMode = () => {
-    setDarkMode(prev => {
-      const newMode = !prev;
-      localStorage.setItem("theme", newMode ? "dark" : "light");
-      return newMode;
-    });
+    setDarkMode(prev => !prev); // Simply toggle the state, useEffect handles class and localStorage
   };
 
-  const handleStarClick = () => alert("You clicked on Star!");
-  const handleNotifications = () => alert("No new notifications!");
-  const handleMessages = () => alert("No new messages!");
+  const toggleStar = () => {
+    setStarred(prev => !prev);
+    setShowBookmarks(prev => !prev);
+    setShowMessages(false);
+    setShowNotifications(false);
+  };
+
+  const toggleMessages = () => {
+    setShowMessages(prev => !prev);
+    setShowBookmarks(false);
+    setShowNotifications(false);
+  };
+
+  const toggleNotifications = () => {
+    setShowNotifications(prev => !prev);
+    setShowMessages(false);
+    setShowBookmarks(false);
+  };
 
   return (
-    <div className="flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm px-6 py-3">
-      
-      
-      <div className="flex items-center">
+    <div className="flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm px-6 py-3 relative z-50">
+
+      {/* Return to Dashboard */}
+      <div>
         {location.pathname !== '/dashboard' && (
           <Link
-  to="/dashboard"
-  className="flex items-center gap-2 bg-green-50 text-green-800 px-4 py-2 rounded-md border border-green-200 hover:bg-green-100 transition text-sm font-medium"
->
-  <FiArrowLeft className="w-5 h-5" />
-  Return to Dashboard
-</Link>
-
+            to="/dashboard"
+            className="flex items-center gap-2 bg-green-50 text-green-800 px-4 py-2 rounded-md border border-green-200 hover:bg-green-100 transition text-sm font-medium"
+          >
+            <FiArrowLeft className="w-5 h-5" />
+            Return to Dashboard
+          </Link>
         )}
       </div>
 
-      {/* Right Section: Controls */}
-      <div className="flex items-center space-x-5 text-gray-700 dark:text-gray-200">
-        <FiMaximize2
-          onClick={toggleFullscreen}
-          className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
-          title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-        />
+      {/* Right-side controls */}
+      <div className="flex items-center space-x-5 text-gray-700 dark:text-gray-200 relative">
 
+        {/* Fullscreen */}
+        {isFullscreen ? (
+          <FiMinimize2
+            onClick={toggleFullscreen}
+            className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
+            title="Exit Fullscreen"
+          />
+        ) : (
+          <FiMaximize2
+            onClick={toggleFullscreen}
+            className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
+            title="Enter Fullscreen"
+          />
+        )}
+
+        {/* Language */}
         <div
           onClick={toggleLanguage}
           className="flex items-center gap-1 cursor-pointer hover:text-green-700 transition"
@@ -94,36 +122,87 @@ export default function Topbar() {
           <span className="text-sm">{language}</span>
         </div>
 
-        <FiStar
-          onClick={handleStarClick}
-          className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
-          title="Star"
-        />
-
-        <div
-          className="relative cursor-pointer"
-          onClick={handleNotifications}
-          title="Notifications"
-        >
-          <FiBell className="w-5 h-5 hover:text-green-700 transition" />
-          <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+        {/* Bookmarks */}
+        <div className="relative">
+          <FiStar
+            onClick={toggleStar}
+            className={`w-5 h-5 cursor-pointer transition ${
+              starred ? 'text-yellow-500' : 'hover:text-green-700'
+            }`}
+            title="Bookmarks"
+          />
+          {showBookmarks && (
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50 p-3 text-sm">
+              <p className="mb-2 font-semibold text-gray-800 dark:text-white">📁 Bookmarks</p>
+              <ul className="space-y-1 text-gray-700 dark:text-gray-200">
+                <li>📧 Email</li>
+                <li>📦 Widgets</li>
+                <li>📊 Reports</li>
+              </ul>
+            </div>
+          )}
         </div>
 
-        <FiMoon
-          onClick={toggleDarkMode}
-          className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
-          title="Toggle Dark Mode"
-        />
+        {/* Notifications */}
+        <div className="relative">
+          <FiBell
+            onClick={toggleNotifications}
+            className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
+            title="Notifications"
+          />
+          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500"></span>
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50 p-3 text-sm">
+              <p className="mb-2 font-semibold text-gray-800 dark:text-white">🔔 Notifications</p>
+              <ul className="space-y-1 text-gray-700 dark:text-gray-200">
+                <li>🚚 Delivery pending</li>
+                <li>💬 New comment on report</li>
+                <li>📥 You have a new file</li>
+              </ul>
+            </div>
+          )}
+        </div>
 
-        <FiMessageSquare
-          onClick={handleMessages}
-          className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
-          title="Messages"
-        />
+        {/* Dark Mode Toggle - Conditional Rendering */}
+        {darkMode ? (
+          // Render FaMoon (filled) with white color when dark mode is ON
+          <FaMoon
+            onClick={toggleDarkMode}
+            className="w-5 h-5 cursor-pointer text-white hover:text-green-700 transition"
+            title="Toggle Dark Mode"
+          />
+        ) : (
+          // Render FiMoon (outlined) with default color when dark mode is OFF
+          <FiMoon
+            onClick={toggleDarkMode}
+            className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
+            title="Toggle Dark Mode"
+          />
+        )}
 
+        {/* Messages */}
+        <div className="relative">
+          <FiMessageSquare
+            onClick={toggleMessages}
+            className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
+            title="Messages"
+          />
+          {showMessages && (
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50 p-3 text-sm">
+              <p className="mb-2 font-semibold text-gray-800 dark:text-white">📨 Messages</p>
+              <ul className="space-y-1 text-gray-700 dark:text-gray-200">
+                <li>📌 Hi, your report is ready.</li>
+                <li>📌 Can we talk later?</li>
+                <li>📌 Reminder: Client follow-up</li>
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Logout */}
         <button
           onClick={logout}
-          className="flex items-center gap-2 bg-green-50 text-green-800 px-4 py-2 rounded-md border border-green-200 hover:bg-green-100 transition"
+          className="flex items-center gap-2 bg-green-50 text-green-800 px-4 py-2 rounded-md border border-green-200 hover:bg-green-100 transition text-sm"
         >
           <FiLogOut className="w-5 h-5" />
           Log out

@@ -7,11 +7,11 @@ import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-100">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 dark:bg-gray-700 dark:text-white text-gray-800 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-600"
             onClick={onCancel}
           >
             Cancel
@@ -161,31 +161,21 @@ export default function PlanMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden text-gray-800 dark:text-white">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Plan Master Table
-            </h2>
-            <div className="flex space-x-2">
-              {/* <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
+            <h2 className="text-2xl font-bold">Plan Master Table</h2>
+            {!isAdding && (
+              <button
+                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                onClick={startAdding}
               >
-                Return to Dashboard
-              </button> */}
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Plan
-                </button>
-              )}
-            </div>
+                <FaPlus className="mr-2" /> Add New Plan
+              </button>
+            )}
           </div>
 
           <div className="mb-4">
@@ -194,14 +184,17 @@ export default function PlanMasterPage() {
               placeholder="Search by Plan Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          {/* This div now contains the outer border */}
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-600">
+            {/* Removed border-collapse from the table */}
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
+                  {/* Removed individual cell border classes from th */}
                   <th className="px-4 py-3">Plan ID</th>
                   <th className="px-4 py-3">Plan Name</th>
                   <th className="px-4 py-3">Total Users Allowed</th>
@@ -210,9 +203,10 @@ export default function PlanMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {isAdding && (
                   <tr>
+                    {/* Removed individual cell border classes from td in add row */}
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
                       <input
@@ -223,7 +217,7 @@ export default function PlanMasterPage() {
                             plan_name: e.target.value,
                           })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -236,7 +230,7 @@ export default function PlanMasterPage() {
                             total_user_allow: e.target.value,
                           })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -249,7 +243,7 @@ export default function PlanMasterPage() {
                             created_by: e.target.value,
                           })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -283,6 +277,7 @@ export default function PlanMasterPage() {
 
                 {filteredPlans.map((plan) => (
                   <tr key={plan.plan_id}>
+                    {/* Removed individual cell border classes from td in existing rows */}
                     <td className="px-4 py-3">{plan.plan_id}</td>
                     <td className="px-4 py-3">
                       {editId === plan.plan_id ? (
@@ -291,7 +286,7 @@ export default function PlanMasterPage() {
                           onChange={(e) =>
                             handleEditChange('plan_name', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-2 py-1 w-full"
                         />
                       ) : (
                         plan.plan_name
@@ -305,7 +300,7 @@ export default function PlanMasterPage() {
                           onChange={(e) =>
                             handleEditChange('total_user_allow', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-2 py-1 w-full"
                         />
                       ) : (
                         plan.total_user_allow

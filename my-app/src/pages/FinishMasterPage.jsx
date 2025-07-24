@@ -7,11 +7,11 @@ import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-100">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
@@ -159,21 +159,15 @@ export default function FinishMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Finish Master Table</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Finish Master Table</h2>
             <div className="flex space-x-2">
-              {/* <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button> */}
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
@@ -191,14 +185,17 @@ export default function FinishMasterPage() {
               placeholder="Search by Finish Name or Block..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          {/* Adjusted this div to have the border around the entire table */}
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-600">
+            {/* Removed border-collapse from the table */}
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600 text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
+                  {/* Removed border classes from th elements */}
                   <th className="px-4 py-3">Finish ID</th>
                   <th className="px-4 py-3">Finish Name</th>
                   <th className="px-4 py-3">Block</th>
@@ -209,9 +206,10 @@ export default function FinishMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {isAdding && (
                   <tr>
+                    {/* Removed border classes from td elements in the add row */}
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
                       <input
@@ -219,7 +217,7 @@ export default function FinishMasterPage() {
                         onChange={(e) =>
                           setNewData({ ...newData, finish_name: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -238,10 +236,13 @@ export default function FinishMasterPage() {
                         onChange={(e) =>
                           setNewData({ ...newData, created_by: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3"></td> {/* Placeholder for Created Date */}
+                    <td className="px-4 py-3"></td> {/* Placeholder for Modified By */}
+                    <td className="px-4 py-3"></td> {/* Placeholder for Modified Date */}
+                    <td className="px-4 py-3 space-x-2 flex">
                       <button
                         onClick={saveAdding}
                         className="text-green-600 hover:text-green-800"
@@ -260,6 +261,7 @@ export default function FinishMasterPage() {
 
                 {filteredFinishes.map((finish) => (
                   <tr key={finish.finish_id}>
+                    {/* Removed border classes from td elements in existing rows */}
                     <td className="px-4 py-3">{finish.finish_id}</td>
                     <td className="px-4 py-3">
                       {editId === finish.finish_id ? (
@@ -268,7 +270,7 @@ export default function FinishMasterPage() {
                           onChange={(e) =>
                             handleEditChange('finish_name', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded px-2 py-1 w-full"
                         />
                       ) : (
                         finish.finish_name

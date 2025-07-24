@@ -7,11 +7,11 @@ import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-[400px]">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-[400px]"> {/* Added dark:bg-gray-800 here */}
+        <p className="mb-4 text-gray-800 dark:text-white">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-white px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-600"
             onClick={onCancel}
           >
             Cancel
@@ -165,22 +165,16 @@ export default function UserMasterPage() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
               User Master Table
             </h2>
             <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
@@ -198,36 +192,40 @@ export default function UserMasterPage() {
               placeholder="Search by User Name or Email ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          {/* Main table container with border */}
+          <div className="overflow-x-auto rounded-lg shadow border border-gray-400 dark:border-gray-600">
+            {/* Removed divide-y from table as we'll handle row borders explicitly */}
+            <table className="min-w-full text-sm">
               <thead className="bg-green-700 text-white">
-                <tr>
-                  <th className="px-4 py-3">User ID</th>
-                  <th className="px-4 py-3">Company ID</th>
-                  <th className="px-4 py-3">User Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Contact Number</th>
-                  <th className="px-4 py-3">Profile ID</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Actions</th>
+                {/* Added border-b to thead's tr for the horizontal line below header */}
+                <tr className="border-b border-gray-400 dark:border-gray-600">
+                  <th className="px-4 py-3 text-left">User ID</th>
+                  <th className="px-4 py-3 text-left">Company ID</th>
+                  <th className="px-4 py-3 text-left">User Name</th>
+                  <th className="px-4 py-3 text-left">Email</th>
+                  <th className="px-4 py-3 text-left">Contact Number</th>
+                  <th className="px-4 py-3 text-left">Profile ID</th>
+                  <th className="px-4 py-3 text-left">Block</th>
+                  <th className="px-4 py-3 text-left">Created By</th>
+                  <th className="px-4 py-3 text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              {/* Removed divide-y from tbody as we'll handle row borders explicitly */}
+              <tbody className="bg-white dark:bg-gray-900">
                 {isAdding && (
-                  <tr>
-                    <td className="px-4 py-3">New</td>
+                  <tr className="border-b border-gray-200 dark:border-gray-700"> {/* Bottom border for the "add new" row */}
+                    <td className="px-4 py-3 text-gray-800 dark:text-white">New</td>
                     <td className="px-4 py-3">
                       <input
                         value={newData.comp_id}
                         onChange={(e) =>
                           setNewData({ ...newData, comp_id: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -236,7 +234,7 @@ export default function UserMasterPage() {
                         onChange={(e) =>
                           setNewData({ ...newData, user_name: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -245,7 +243,7 @@ export default function UserMasterPage() {
                         onChange={(e) =>
                           setNewData({ ...newData, email_id: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -257,7 +255,7 @@ export default function UserMasterPage() {
                             cont_number: e.target.value,
                           })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -269,10 +267,10 @@ export default function UserMasterPage() {
                             profile_id: e.target.value,
                           })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center"> {/* Centered checkbox */}
                       <input
                         type="checkbox"
                         checked={newData.block}
@@ -291,10 +289,10 @@ export default function UserMasterPage() {
                             created_by: e.target.value,
                           })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white" 
                       />
                     </td>
-                    <td className="px-4 py-3 flex space-x-2">
+                    <td className="px-4 py-3 flex space-x-2 items-center justify-center"> {/* Centered actions */}
                       <button
                         onClick={saveAdding}
                         className="text-green-600 hover:text-green-800"
@@ -311,8 +309,16 @@ export default function UserMasterPage() {
                   </tr>
                 )}
 
-                {filteredUsers.map((user) => (
-                  <tr key={user.user_id}>
+                {filteredUsers.map((user, index) => (
+                  // Conditional border-b: apply only if it's not the last row
+                  <tr
+                    key={user.user_id}
+                    className={`${
+                      index === filteredUsers.length - 1
+                        ? ''
+                        : 'border-b border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
                     <td className="px-4 py-3">{user.user_id}</td>
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
@@ -321,7 +327,7 @@ export default function UserMasterPage() {
                           onChange={(e) =>
                             handleEditChange('comp_id', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                         />
                       ) : (
                         user.comp_id
@@ -334,7 +340,7 @@ export default function UserMasterPage() {
                           onChange={(e) =>
                             handleEditChange('user_name', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                         />
                       ) : (
                         user.user_name
@@ -347,7 +353,7 @@ export default function UserMasterPage() {
                           onChange={(e) =>
                             handleEditChange('email_id', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                         />
                       ) : (
                         user.email_id
@@ -360,7 +366,7 @@ export default function UserMasterPage() {
                           onChange={(e) =>
                             handleEditChange('cont_number', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                         />
                       ) : (
                         user.cont_number
@@ -373,13 +379,13 @@ export default function UserMasterPage() {
                           onChange={(e) =>
                             handleEditChange('profile_id', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                         />
                       ) : (
                         user.profile_id
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center"> {/* Centered checkbox */}
                       {editId === user.user_id ? (
                         <input
                           type="checkbox"
@@ -395,7 +401,7 @@ export default function UserMasterPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">{user.created_by}</td>
-                    <td className="px-4 py-3 flex space-x-2">
+                    <td className="px-4 py-3 flex space-x-2 items-center justify-center"> {/* Centered actions */}
                       {editId === user.user_id ? (
                         <>
                           <button

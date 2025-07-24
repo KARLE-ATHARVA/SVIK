@@ -7,11 +7,14 @@ import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      {/* Changed dark:bg-gray-800 to dark:bg-gray-900 for modal background consistency */}
+      <div className="bg-white dark:bg-gray-900 p-6 rounded shadow-lg w-96">
+        {/* Ensured text is consistent with the main app's dark text color */}
+        <p className="mb-4 text-gray-800 dark:text-gray-100">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            // Standardized dark mode background and text for secondary button
+            className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
@@ -159,21 +162,19 @@ export default function CategoryMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    // Added global dark:text-gray-100 for consistent text color
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Category Master Table</h2>
+            {/* Changed dark:text-white to dark:text-gray-100 for consistent heading color */}
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+              Category Master Table
+            </h2>
             <div className="flex space-x-2">
-              {/* <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button> */}
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
@@ -191,12 +192,15 @@ export default function CategoryMasterPage() {
               placeholder="Search by Category Name or Block..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              // Text color changed from gray-800 dark:text-white to rely on global dark:text-gray-100
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          {/* Changed dark:bg-gray-800 to dark:bg-gray-900 for consistent table wrapper background */}
+          <div className="overflow-x-auto bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-600">
+            {/* Changed dark:divide-gray-600 to dark:divide-gray-600 (already consistent) */}
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600 text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
                   <th className="px-4 py-3">Cat ID</th>
@@ -209,17 +213,20 @@ export default function CategoryMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              {/* Changed dark:divide-gray-700 to dark:divide-gray-600 */}
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-600">
                 {isAdding && (
-                  <tr>
-                    <td className="px-4 py-3">New</td>
+                  <tr className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    {/* Removed explicit dark:text-white, relying on global */}
+                    <td className="px-4 py-3 text-gray-800 dark:text-gray-100">New</td>
                     <td className="px-4 py-3">
                       <input
                         value={newData.cat_name}
                         onChange={(e) =>
                           setNewData({ ...newData, cat_name: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        // Removed explicit dark:text-white, relying on global
+                        className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -238,7 +245,8 @@ export default function CategoryMasterPage() {
                         onChange={(e) =>
                           setNewData({ ...newData, created_by: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        // Removed explicit dark:text-white, relying on global
+                        className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td colSpan="4" className="px-4 py-3 space-x-2 flex">
@@ -259,8 +267,10 @@ export default function CategoryMasterPage() {
                 )}
 
                 {filteredCategories.map((cat) => (
-                  <tr key={cat.cat_id}>
-                    <td className="px-4 py-3">{cat.cat_id}</td>
+                  // Added consistent hover effect
+                  <tr key={cat.cat_id} className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    {/* Removed explicit dark:text-white, relying on global */}
+                    <td className="px-4 py-3 text-gray-800 dark:text-gray-100">{cat.cat_id}</td>
                     <td className="px-4 py-3">
                       {editId === cat.cat_id ? (
                         <input
@@ -268,13 +278,16 @@ export default function CategoryMasterPage() {
                           onChange={(e) =>
                             handleEditChange('cat_name', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          // Removed explicit dark:text-white, relying on global
+                          className="border dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-2 py-1 w-full"
                         />
                       ) : (
-                        cat.cat_name
+                        // Removed explicit dark:text-white, relying on global
+                        <span className="text-gray-800 dark:text-gray-100">{cat.cat_name}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    {/* Removed explicit dark:text-white from these cells, relying on global */}
+                    <td className="px-4 py-3 text-gray-800 dark:text-gray-100">
                       {editId === cat.cat_id ? (
                         <input
                           type="checkbox"
@@ -285,12 +298,12 @@ export default function CategoryMasterPage() {
                         />
                       ) : cat.block ? 'Yes' : 'No'}
                     </td>
-                    <td className="px-4 py-3">{cat.created_by}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-gray-800 dark:text-gray-100">{cat.created_by}</td>
+                    <td className="px-4 py-3 text-gray-800 dark:text-gray-100">
                       {new Date(cat.created_date).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3">{cat.modify_by}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-gray-800 dark:text-gray-100">{cat.modify_by}</td>
+                    <td className="px-4 py-3 text-gray-800 dark:text-gray-100">
                       {new Date(cat.modify_date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">

@@ -8,11 +8,13 @@ import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        {/* Changed dark:text-white to dark:text-gray-100 */}
+        <p className="mb-4 text-gray-800 dark:text-gray-100">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            // Changed dark:text-white to dark:text-gray-100
+            className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
@@ -56,17 +58,9 @@ export default function SizeMasterPage() {
 
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({
-    size_name: '',
-    block: false,
-    created_by: '',
-  });
+  const [newData, setNewData] = useState({ size_name: '', block: false, created_by: '' });
 
   const filteredSizes = sizes.filter(
     (size) =>
@@ -93,13 +87,11 @@ export default function SizeMasterPage() {
       show: true,
       message: 'Are you sure you want to save changes?',
       onConfirm: () => {
-        const updatedSizes = sizes
-          .map((size) =>
-            size.size_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : size
-          )
-          .sort((a, b) => a.size_id - b.size_id);
+        const updatedSizes = sizes.map((size) =>
+          size.size_id === editId
+            ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
+            : size
+        );
         setSizes(updatedSizes);
         setEditId(null);
         setEditData({});
@@ -121,11 +113,7 @@ export default function SizeMasterPage() {
 
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({
-      size_name: '',
-      block: false,
-      created_by: '',
-    });
+    setNewData({ size_name: '', block: false, created_by: '' });
   };
 
   const cancelAdding = () => {
@@ -151,10 +139,7 @@ export default function SizeMasterPage() {
           modify_by: parseInt(newData.created_by),
           modify_date: new Date().toISOString(),
         };
-
-        const updatedSizes = [...sizes, newEntry].sort((a, b) => a.size_id - b.size_id);
-
-        setSizes(updatedSizes);
+        setSizes([...sizes, newEntry]);
         setIsAdding(false);
         setNewData({ size_name: '', block: false, created_by: '' });
         setConfirmation({ ...confirmation, show: false });
@@ -163,29 +148,23 @@ export default function SizeMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    // Changed dark:text-white to dark:text-gray-100
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Size Master Table</h2>
-            <div className="flex space-x-2">
-              {/* <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
+            {/* Changed dark:text-white to dark:text-gray-100 */}
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Size Master Table</h2>
+            {!isAdding && (
+              <button
+                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                onClick={startAdding}
               >
-                Return to Dashboard
-              </button> */}
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Size
-                </button>
-              )}
-            </div>
+                <FaPlus className="mr-2" /> Add New Size
+              </button>
+            )}
           </div>
 
           <div className="mb-4">
@@ -194,12 +173,13 @@ export default function SizeMasterPage() {
               placeholder="Search by Size Name or Block..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 bg-white dark:bg-gray-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          {/* Changed dark:bg-gray-800 to dark:bg-gray-900 */}
+          <div className="overflow-x-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg shadow">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600 text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
                   <th className="px-4 py-3">Size ID</th>
@@ -212,55 +192,45 @@ export default function SizeMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              {/* Changed dark:bg-gray-800 to dark:bg-gray-900 */}
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-600">
                 {isAdding && (
                   <tr>
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
                       <input
                         value={newData.size_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, size_name: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
+                        onChange={(e) => setNewData({ ...newData, size_name: e.target.value })}
+                        // Changed dark:bg-gray-700 to dark:bg-gray-800
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-black dark:text-white"
                       />
                     </td>
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
                         checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
+                        onChange={(e) => setNewData({ ...newData, block: e.target.checked })}
                       />
                     </td>
                     <td className="px-4 py-3">
                       <input
                         type="number"
                         value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
+                        onChange={(e) => setNewData({ ...newData, created_by: e.target.value })}
+                        // Changed dark:bg-gray-700 to dark:bg-gray-800
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-black dark:text-white"
                       />
                     </td>
                     <td colSpan="4" className="px-4 py-3 space-x-2 flex">
-                      <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
-                      >
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
                         <FaSave size={22} />
                       </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
                         <FaTimes size={22} />
                       </button>
                     </td>
                   </tr>
                 )}
-
                 {filteredSizes.map((size) => (
                   <tr key={size.size_id}>
                     <td className="px-4 py-3">{size.size_id}</td>
@@ -268,10 +238,9 @@ export default function SizeMasterPage() {
                       {editId === size.size_id ? (
                         <input
                           value={editData.size_name}
-                          onChange={(e) =>
-                            handleEditChange('size_name', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
+                          onChange={(e) => handleEditChange('size_name', e.target.value)}
+                          // Changed dark:bg-gray-700 to dark:bg-gray-800
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-800 text-black dark:text-white"
                         />
                       ) : (
                         size.size_name
@@ -282,9 +251,7 @@ export default function SizeMasterPage() {
                         <input
                           type="checkbox"
                           checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
+                          onChange={(e) => handleEditChange('block', e.target.checked)}
                         />
                       ) : size.block ? 'Yes' : 'No'}
                     </td>
@@ -299,31 +266,19 @@ export default function SizeMasterPage() {
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === size.size_id ? (
                         <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
-                          >
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
                             <FaSave size={22} />
                           </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
                             <FaTimes size={22} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={() => startEditing(size)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
+                          <button onClick={() => startEditing(size)} className="text-yellow-500 hover:text-yellow-700">
                             <FaEdit size={22} />
                           </button>
-                          <button
-                            onClick={() => confirmDelete(size.size_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
+                          <button onClick={() => confirmDelete(size.size_id)} className="text-red-500 hover:text-red-700">
                             <FaTrash size={22} />
                           </button>
                         </>

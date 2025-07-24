@@ -7,11 +7,12 @@ import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      {/* Changed dark:bg-gray-800 to dark:bg-gray-900 for modal background consistency */}
+      <div className="bg-white dark:bg-gray-900 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-100">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
@@ -159,21 +160,15 @@ export default function ColorMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Color Master Table</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Color Master Table</h2>
             <div className="flex space-x-2">
-              {/* <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button> */}
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
@@ -191,12 +186,15 @@ export default function ColorMasterPage() {
               placeholder="Search by Color Name or Block..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              // Changed dark:bg-gray-700 to dark:bg-gray-800
+              // Changed text-black dark:text-white to text-gray-900 dark:text-gray-100
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          {/* Changed dark:bg-gray-800 to dark:bg-gray-900 for consistent table wrapper background */}
+          <div className="overflow-x-auto bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-600">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600 text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
                   <th className="px-4 py-3">Color ID</th>
@@ -209,9 +207,11 @@ export default function ColorMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              {/* Changed dark:divide-gray-700 to dark:divide-gray-600 */}
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-600">
                 {isAdding && (
-                  <tr>
+                  <tr className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    {/* Removed explicit text-color, relying on global dark:text-gray-100 */}
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
                       <input
@@ -219,7 +219,8 @@ export default function ColorMasterPage() {
                         onChange={(e) =>
                           setNewData({ ...newData, color_name: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        // Changed text-black dark:text-white to text-gray-900 dark:text-gray-100
+                        className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -238,7 +239,8 @@ export default function ColorMasterPage() {
                         onChange={(e) =>
                           setNewData({ ...newData, created_by: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        // Changed text-black dark:text-white to text-gray-900 dark:text-gray-100
+                        className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td colSpan="4" className="px-4 py-3 space-x-2 flex">
@@ -259,7 +261,9 @@ export default function ColorMasterPage() {
                 )}
 
                 {filteredColors.map((color) => (
-                  <tr key={color.color_id}>
+                  // Added consistent hover effect
+                  <tr key={color.color_id} className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    {/* Removed explicit text-color, relying on global dark:text-gray-100 */}
                     <td className="px-4 py-3">{color.color_id}</td>
                     <td className="px-4 py-3">
                       {editId === color.color_id ? (
@@ -268,7 +272,8 @@ export default function ColorMasterPage() {
                           onChange={(e) =>
                             handleEditChange('color_name', e.target.value)
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          // Changed text-black dark:text-white to text-gray-900 dark:text-gray-100
+                          className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded px-2 py-1 w-full"
                         />
                       ) : (
                         color.color_name
@@ -285,6 +290,7 @@ export default function ColorMasterPage() {
                         />
                       ) : color.block ? 'Yes' : 'No'}
                     </td>
+                    {/* Removed explicit text-color from these cells, relying on global dark:text-gray-100 */}
                     <td className="px-4 py-3">{color.created_by}</td>
                     <td className="px-4 py-3">
                       {new Date(color.created_date).toLocaleDateString()}

@@ -29,7 +29,8 @@ export default function UserActivityLog() {
   const blockedHits = userLogs.filter((log) => log.block === 0).length;
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    // Changed dark:text-white to dark:text-gray-100 for global text color consistency
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-100 overflow-hidden">
       <Sidebar />
       <div className="relative flex flex-col flex-1 overflow-hidden">
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-600"></div>
@@ -37,13 +38,17 @@ export default function UserActivityLog() {
         <Topbar />
 
         <div
-          className={`flex flex-col flex-1 p-6 bg-gray-50 transform transition-all duration-700 ${
+          // Changed dark:bg-gray-800 to dark:bg-gray-900 for consistent main content area background
+          className={`flex flex-col flex-1 p-6 transform transition-all duration-700 ${
             fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
+          } bg-gray-50 dark:bg-gray-900`}
         >
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-green-800 mb-3">
+              <h1
+                // Changed dark:text-green-400 to dark:text-gray-100 for consistent heading color
+                className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3"
+              >
                 User Activity Log
               </h1>
 
@@ -52,7 +57,8 @@ export default function UserActivityLog() {
                 placeholder="Search by IP or URL..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-md w-full md:w-[400px] focus:outline-none focus:ring-2 focus:ring-green-500"
+                // Changed dark:bg-gray-700 to dark:bg-gray-800 for consistent search input background
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white rounded-md w-full md:w-[400px] focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
 
@@ -75,9 +81,17 @@ export default function UserActivityLog() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-100 text-green-900 text-xs uppercase sticky top-0 z-10">
+          <div
+            // Changed dark:border-gray-700 to dark:border-gray-600 for consistent table border color
+            className="flex-1 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 shadow"
+          >
+            {/* Removed text-gray-800 as global dark:text-gray-100 is applied, kept dark:text-gray-100 */}
+            <table className="min-w-full text-sm text-left text-black dark:text-gray-100">
+              <thead
+                // Removed dark:bg-green-900 to use light mode green-700 for consistency
+                // Changed dark:text-green-300 to text-white for consistent header text color
+                className="bg-green-700 text-white text-xs uppercase sticky top-0 z-10"
+              >
                 <tr>
                   <th className="px-6 py-4 font-semibold">Hit ID</th>
                   <th className="px-6 py-4 font-semibold">Source</th>
@@ -93,7 +107,7 @@ export default function UserActivityLog() {
                   <tr>
                     <td
                       colSpan="7"
-                      className="px-6 py-6 text-center text-gray-500 italic"
+                      className="px-6 py-6 text-center text-gray-500 dark:text-gray-400 italic"
                     >
                       No records found.
                     </td>
@@ -102,7 +116,9 @@ export default function UserActivityLog() {
                   filtered.map((log) => (
                     <tr
                       key={log.id}
-                      className="border-b hover:bg-green-50 transition-colors duration-200"
+                      // Changed dark:border-gray-700 to dark:border-gray-600 for consistent row border color
+                      // Changed dark:hover:bg-green-900 to dark:hover:bg-gray-700 for consistent row hover background
+                      className="border-b border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
                     >
                       <td className="px-6 py-4">{log.id}</td>
                       <td className="px-6 py-4">{log.xsource}</td>
@@ -123,7 +139,6 @@ export default function UserActivityLog() {
               </tbody>
             </table>
           </div>
-
         </div>
       </div>
     </div>
