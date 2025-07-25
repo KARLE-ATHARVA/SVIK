@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
+import { FaSortUp, FaSortDown } from 'react-icons/fa';
+import Breadcrumb from '../components/Breadcrumb';
 
-export default function AdminActivityLog() {
+export default function UserActivityLog() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [fadeIn, setFadeIn] = useState(false);
-
-  useEffect(() => {
-    setFadeIn(true);
-  }, []);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
 
   const activityLogs = [
     { id: 1, name: 'Admin John', action: 'Created User', logDate: '2024-07-01 09:00' },
@@ -16,92 +16,128 @@ export default function AdminActivityLog() {
     { id: 3, name: 'Admin Alice', action: 'Updated Settings', logDate: '2024-07-02 11:45' },
     { id: 4, name: 'Admin Bob', action: 'Viewed Reports', logDate: '2024-07-03 12:15' },
     { id: 5, name: 'Admin Charlie', action: 'Approved Order', logDate: '2024-07-03 14:20' },
+    { id: 6, name: 'Admin John', action: 'Created User', logDate: '2024-07-01 09:00' },
+    { id: 7, name: 'Admin Jane', action: 'Deleted Product', logDate: '2024-07-02 10:30' },
+    { id: 8, name: 'Admin Alice', action: 'Updated Settings', logDate: '2024-07-02 11:45' },
+    { id: 9, name: 'Admin Bob', action: 'Viewed Reports', logDate: '2024-07-03 12:15' },
+    { id: 10, name: 'Admin Charlie', action: 'Approved Order', logDate: '2024-07-03 14:20' },
+    { id: 11, name: 'Admin John', action: 'Created User', logDate: '2024-07-01 09:00' },
+    { id: 12, name: 'Admin Jane', action: 'Deleted Product', logDate: '2024-07-02 10:30' },
+    { id: 13, name: 'Admin Alice', action: 'Updated Settings', logDate: '2024-07-02 11:45' },
+    { id: 14, name: 'Admin Bob', action: 'Viewed Reports', logDate: '2024-07-03 12:15' },
+    { id: 15, name: 'Admin Charlie', action: 'Approved Order', logDate: '2024-07-03 14:20' },
   ];
 
-  const filtered = activityLogs.filter((log) =>
-    log.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const headers = [
+    { key: 'id', label: 'ID' },
+    { key: 'name', label: 'Source' },
+    { key: 'action', label: 'Action' },
+    { key: 'logDate', label: 'Log Date' },
+  ];
+
+  const filtered = activityLogs.filter(
+    (log) =>
+      log.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.logDate.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalActions = activityLogs.length;
-  const uniqueUsers = [...new Set(activityLogs.map((log) => log.name))].length;
+  const sorted = useMemo(() => {
+    let sortableItems = [...filtered];
+    if (sortConfig.key !== '') {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filtered, sortConfig]);
+
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentLogs = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-100 overflow-hidden">
       <Sidebar />
-      <div className="relative flex flex-col flex-1 overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-600"></div>
-
+      <div className="flex flex-col flex-1">
         <Topbar />
-
-        <div
-          className={`flex flex-col flex-1 p-6 bg-gray-50 transform transition-all duration-700 ${
-            fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-green-800 mb-3">
-                Admin Activity Log
-              </h1>
-
-              <input
-                type="text"
-                placeholder="Search by admin name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-md w-full md:w-[400px] focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-
-            <div className="flex flex-row gap-4">
-              <div className="relative flex items-center justify-between px-6 py-4 bg-green-700 rounded-lg text-white shadow-md overflow-hidden w-52">
-                <div className="z-10">
-                  <h2 className="text-sm font-medium">Total Actions</h2>
-                  <p className="text-2xl font-bold">{totalActions}</p>
-                </div>
-                <div className="absolute right-0 -bottom-4 w-24 h-24 bg-green-600/30 rounded-full"></div>
-              </div>
-
-              <div className="relative flex items-center justify-between px-6 py-4 bg-emerald-700 rounded-lg text-white shadow-md overflow-hidden w-52">
-                <div className="z-10">
-                  <h2 className="text-sm font-medium">Unique Users</h2>
-                  <p className="text-2xl font-bold">{uniqueUsers}</p>
-                </div>
-                <div className="absolute right-0 -bottom-4 w-24 h-24 bg-emerald-600/30 rounded-full"></div>
-              </div>
-            </div>
+        <div className="flex flex-col flex-1 overflow-y-auto p-6">
+          <div className="flex justify-between mb-4 items-center">
+            <h1 className="text-2xl font-bold text-green-800 dark:text-gray-100">Admin Activity Log</h1>
+            <Breadcrumb />
           </div>
 
-          <div className="flex-1 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow">
+          <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
+            <div className="flex items-center gap-2">
+              <span>Show</span>
+              <select
+                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-2 py-1"
+                value={entriesPerPage}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                {[10, 25, 50, 100].map((num) => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+              <span>entries</span>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Search Name, Action, Date..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded w-full max-w-xs"
+            />
+          </div>
+
+          <div className="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow">
             <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-100 text-green-900 text-xs uppercase sticky top-0 z-10">
+              <thead className="bg-green-700 text-white text-xs uppercase sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-4 font-semibold">Log ID</th>
-                  <th className="px-6 py-4 font-semibold">Name</th>
-                  <th className="px-6 py-4 font-semibold">Action</th>
-                  <th className="px-6 py-4 font-semibold">Log Date</th>
+                  {headers.map(({ key, label }) => (
+                    <th
+                      key={key}
+                      className="px-4 py-3 font-semibold cursor-pointer"
+                      onClick={() => handleSort(key)}
+                    >
+                      <div className="flex items-center gap-1">
+                        {label}
+                        {sortConfig.key === key &&
+                          (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {currentLogs.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan="4"
-                      className="px-6 py-6 text-center text-gray-500 italic"
-                    >
+                    <td colSpan={headers.length} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 italic">
                       No records found.
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((log) => (
-                    <tr
-                      key={log.id}
-                      className="border-b hover:bg-green-50 transition-colors duration-200"
-                    >
-                      <td className="px-6 py-4">{log.id}</td>
-                      <td className="px-6 py-4">{log.name}</td>
-                      <td className="px-6 py-4">{log.action}</td>
-                      <td className="px-6 py-4">{log.logDate}</td>
+                  currentLogs.map((log) => (
+                    <tr key={log.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <td className="px-4 py-3">{log.id}</td>
+                      <td className="px-4 py-3">{log.name}</td>
+                      <td className="px-4 py-3">{log.action}</td>
+                      <td className="px-4 py-3">{log.logDate}</td>
                     </tr>
                   ))
                 )}
@@ -109,6 +145,38 @@ export default function AdminActivityLog() {
             </table>
           </div>
 
+          <div className="flex justify-between mt-4 text-sm items-center">
+            <span>
+              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+            </span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              {[...Array(totalPages).keys()].map((num) => (
+                <button
+                  key={num + 1}
+                  onClick={() => setCurrentPage(num + 1)}
+                  className={`px-3 py-1 border border-gray-300 dark:border-gray-600 rounded ${
+                    currentPage === num + 1 ? 'bg-green-600 text-white' : ''
+                  }`}
+                >
+                  {num + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
