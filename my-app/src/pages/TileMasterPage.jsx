@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import Breadcrumbs from '../components/Breadcrumbs';
+import Breadcrumbs from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
 
 const initialFormState = {
@@ -342,7 +342,7 @@ function TileMasterPage() {
           </div>
 
           <div className="overflow-auto max-h-[70vh]">
-            <table className="min-w-full bg-white border border-gray-200">
+            <table className="min-w-full bg-white border border-gray-50">
               <thead className="bg-green-200">
                 <tr>
                   {columns.map(({ key, label }) => (
