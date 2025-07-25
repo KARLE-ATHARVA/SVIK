@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HiDatabase, HiOutlineCube, HiOutlineChat, HiOutlineUserAdd } from 'react-icons/hi';
 import StatsSection from '../components/StatsSection';
+//import Breadcrumbs from '../components/Breadcrumb';
 
 export default function MainContent() {
   const [fadeIn, setFadeIn] = useState(false);
