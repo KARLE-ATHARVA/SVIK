@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import Breadcrumb from '../components/Breadcrumb';
+
 import { FaSortUp, FaSortDown } from 'react-icons/fa';
+import Breadcrumb from '../components/Breadcrumb';
 
 export default function UserActivityLog() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,7 +83,7 @@ export default function UserActivityLog() {
         <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
           <div className="flex justify-between mb-4 items-center">
             <h1 className="text-2xl font-bold text-green-800">User Activity Log</h1>
-            <Breadcrumb />
+            <Breadcrumb/>
           </div>
 
           <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
@@ -93,7 +94,7 @@ export default function UserActivityLog() {
                 value={entriesPerPage}
                 onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
               >
-                {[10, 25, 50].map(num => (
+                {[10, 25, 50, 100].map(num => (
                   <option key={num} value={num}>{num}</option>
                 ))}
               </select>
