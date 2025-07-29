@@ -93,11 +93,13 @@ export default function SizeMasterPage() {
       show: true,
       message: 'Are you sure you want to save changes?',
       onConfirm: () => {
-        const updatedSizes = sizes.map((size) =>
-          size.size_id === editId
-            ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-            : size
-        );
+        const updatedSizes = sizes
+          .map((size) =>
+            size.size_id === editId
+              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
+              : size
+          )
+          .sort((a, b) => a.size_id - b.size_id);
         setSizes(updatedSizes);
         setEditId(null);
         setEditData({});
@@ -132,32 +134,33 @@ export default function SizeMasterPage() {
   };
 
   const saveAdding = () => {
-  if (!newData.size_name || !newData.created_by) {
-    alert('Please fill all required fields');
-    return;
-  }
+    if (!newData.size_name || !newData.created_by) {
+      alert('Please fill all required fields');
+      return;
+    }
 
-  setConfirmation({
-    show: true,
-    message: 'Are you sure you want to save this new size?',
-    onConfirm: () => {
-      const newEntry = {
-        ...newData,
-        size_id: sizes.length ? Math.max(...sizes.map((s) => s.size_id)) + 1 : 1,
-        created_by: parseInt(newData.created_by),
-        created_date: new Date().toISOString(),
-        modify_by: parseInt(newData.created_by),
-        modify_date: new Date().toISOString(),
-      };
+    setConfirmation({
+      show: true,
+      message: 'Are you sure you want to save this new size?',
+      onConfirm: () => {
+        const newEntry = {
+          ...newData,
+          size_id: sizes.length ? Math.max(...sizes.map((s) => s.size_id)) + 1 : 1,
+          created_by: parseInt(newData.created_by),
+          created_date: new Date().toISOString(),
+          modify_by: parseInt(newData.created_by),
+          modify_date: new Date().toISOString(),
+        };
 
-      setSizes([newEntry, ...sizes]);
-      setIsAdding(false);
-      setNewData({ size_name: '', block: false, created_by: '' });
-      setConfirmation({ ...confirmation, show: false });
-    },
-  });
-};
+        const updatedSizes = [...sizes, newEntry].sort((a, b) => a.size_id - b.size_id);
 
+        setSizes(updatedSizes);
+        setIsAdding(false);
+        setNewData({ size_name: '', block: false, created_by: '' });
+        setConfirmation({ ...confirmation, show: false });
+      },
+    });
+  };
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
