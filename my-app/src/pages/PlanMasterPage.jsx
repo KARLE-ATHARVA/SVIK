@@ -10,10 +10,16 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
       <div className="bg-white p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400" onClick={onCancel}>
+          <button
+            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            onClick={onCancel}
+          >
             Cancel
           </button>
-          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>
+          <button
+            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
+            onClick={onConfirm}
+          >
             Yes
           </button>
         </div>
@@ -41,7 +47,11 @@ export default function PlanMasterPage() {
 
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
+  const [confirmation, setConfirmation] = useState({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
     plan_name: '',
@@ -76,7 +86,11 @@ export default function PlanMasterPage() {
         const updated = plans
           .map((plan) =>
             plan.plan_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
+              ? {
+                  ...editData,
+                  modify_by: 999,
+                  modify_date: new Date().toISOString(),
+                }
               : plan
           )
           .sort((a, b) => a.plan_id - b.plan_id);
@@ -126,7 +140,9 @@ export default function PlanMasterPage() {
       onConfirm: () => {
         const newEntry = {
           ...newData,
-          plan_id: plans.length ? Math.max(...plans.map((p) => p.plan_id)) + 1 : 1,
+          plan_id: plans.length
+            ? Math.max(...plans.map((p) => p.plan_id)) + 1
+            : 1,
           total_user_allow: parseInt(newData.total_user_allow),
           created_by: parseInt(newData.created_by),
           created_date: new Date().toISOString(),
@@ -134,7 +150,9 @@ export default function PlanMasterPage() {
           modify_date: new Date().toISOString(),
         };
 
-        const updated = [...plans, newEntry].sort((a, b) => a.plan_id - b.plan_id);
+        const updated = [...plans, newEntry].sort(
+          (a, b) => a.plan_id - b.plan_id
+        );
         setPlans(updated);
         setIsAdding(false);
         setConfirmation({ ...confirmation, show: false });
@@ -149,7 +167,9 @@ export default function PlanMasterPage() {
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Plan Master Table</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Plan Master Table
+            </h2>
             <div className="flex space-x-2">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -185,6 +205,7 @@ export default function PlanMasterPage() {
                   <th className="px-4 py-3">Plan ID</th>
                   <th className="px-4 py-3">Plan Name</th>
                   <th className="px-4 py-3">Total Users Allowed</th>
+                  <th className="px-4 py-3">Created By</th>
                   <th className="px-4 py-3">Block</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
@@ -196,7 +217,12 @@ export default function PlanMasterPage() {
                     <td className="px-4 py-3">
                       <input
                         value={newData.plan_name}
-                        onChange={(e) => setNewData({ ...newData, plan_name: e.target.value })}
+                        onChange={(e) =>
+                          setNewData({
+                            ...newData,
+                            plan_name: e.target.value,
+                          })
+                        }
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
@@ -204,7 +230,25 @@ export default function PlanMasterPage() {
                       <input
                         type="number"
                         value={newData.total_user_allow}
-                        onChange={(e) => setNewData({ ...newData, total_user_allow: e.target.value })}
+                        onChange={(e) =>
+                          setNewData({
+                            ...newData,
+                            total_user_allow: e.target.value,
+                          })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="number"
+                        value={newData.created_by}
+                        onChange={(e) =>
+                          setNewData({
+                            ...newData,
+                            created_by: e.target.value,
+                          })
+                        }
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
@@ -212,14 +256,25 @@ export default function PlanMasterPage() {
                       <input
                         type="checkbox"
                         checked={newData.block}
-                        onChange={(e) => setNewData({ ...newData, block: e.target.checked })}
+                        onChange={(e) =>
+                          setNewData({
+                            ...newData,
+                            block: e.target.checked,
+                          })
+                        }
                       />
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
+                      <button
+                        onClick={saveAdding}
+                        className="text-green-600 hover:text-green-800"
+                      >
                         <FaSave size={22} />
                       </button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
+                      <button
+                        onClick={cancelAdding}
+                        className="text-gray-600 hover:text-gray-800"
+                      >
                         <FaTimes size={22} />
                       </button>
                     </td>
@@ -233,7 +288,9 @@ export default function PlanMasterPage() {
                       {editId === plan.plan_id ? (
                         <input
                           value={editData.plan_name}
-                          onChange={(e) => handleEditChange('plan_name', e.target.value)}
+                          onChange={(e) =>
+                            handleEditChange('plan_name', e.target.value)
+                          }
                           className="border rounded px-2 py-1 w-full"
                         />
                       ) : (
@@ -245,29 +302,44 @@ export default function PlanMasterPage() {
                         <input
                           type="number"
                           value={editData.total_user_allow}
-                          onChange={(e) => handleEditChange('total_user_allow', e.target.value)}
+                          onChange={(e) =>
+                            handleEditChange('total_user_allow', e.target.value)
+                          }
                           className="border rounded px-2 py-1 w-full"
                         />
                       ) : (
                         plan.total_user_allow
                       )}
                     </td>
+                    <td className="px-4 py-3">{plan.created_by}</td>
                     <td className="px-4 py-3">
                       {editId === plan.plan_id ? (
                         <input
                           type="checkbox"
                           checked={editData.block}
-                          onChange={(e) => handleEditChange('block', e.target.checked)}
+                          onChange={(e) =>
+                            handleEditChange('block', e.target.checked)
+                          }
                         />
-                      ) : plan.block ? 'Yes' : 'No'}
+                      ) : plan.block ? (
+                        'Yes'
+                      ) : (
+                        'No'
+                      )}
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === plan.plan_id ? (
                         <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
+                          <button
+                            onClick={confirmSave}
+                            className="text-green-600 hover:text-green-800"
+                          >
                             <FaSave size={22} />
                           </button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
+                          <button
+                            onClick={cancelEditing}
+                            className="text-gray-600 hover:text-gray-800"
+                          >
                             <FaTimes size={22} />
                           </button>
                         </>
