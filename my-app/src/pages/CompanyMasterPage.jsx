@@ -10,10 +10,16 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
       <div className="bg-white p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400" onClick={onCancel}>
+          <button
+            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            onClick={onCancel}
+          >
             Cancel
           </button>
-          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>
+          <button
+            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
+            onClick={onConfirm}
+          >
             Yes
           </button>
         </div>
@@ -47,7 +53,11 @@ export default function CompanyMasterPage() {
 
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
+  const [confirmation, setConfirmation] = useState({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
     plan_id: '',
@@ -88,7 +98,11 @@ export default function CompanyMasterPage() {
         const updated = companies
           .map((comp) =>
             comp.comp_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
+              ? {
+                  ...editData,
+                  modify_by: 999,
+                  modify_date: new Date().toISOString(),
+                }
               : comp
           )
           .sort((a, b) => a.comp_id - b.comp_id);
@@ -144,7 +158,9 @@ export default function CompanyMasterPage() {
       onConfirm: () => {
         const newEntry = {
           ...newData,
-          comp_id: companies.length ? Math.max(...companies.map((c) => c.comp_id)) + 1 : 1,
+          comp_id: companies.length
+            ? Math.max(...companies.map((c) => c.comp_id)) + 1
+            : 1,
           plan_id: parseInt(newData.plan_id),
           pin_code: parseInt(newData.pin_code) || '',
           created_by: parseInt(newData.created_by),
@@ -153,7 +169,9 @@ export default function CompanyMasterPage() {
           modify_date: new Date().toISOString(),
         };
 
-        const updated = [...companies, newEntry].sort((a, b) => a.comp_id - b.comp_id);
+        const updated = [...companies, newEntry].sort(
+          (a, b) => a.comp_id - b.comp_id
+        );
         setCompanies(updated);
         setIsAdding(false);
         setConfirmation({ ...confirmation, show: false });
@@ -168,7 +186,9 @@ export default function CompanyMasterPage() {
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Company Master Table</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Company Master Table
+            </h2>
             <div className="flex space-x-2">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -210,6 +230,7 @@ export default function CompanyMasterPage() {
                   <th className="px-4 py-3">City</th>
                   <th className="px-4 py-3">State</th>
                   <th className="px-4 py-3">Country</th>
+                  <th className="px-4 py-3">Created By</th>
                   <th className="px-4 py-3">Block</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
@@ -239,6 +260,19 @@ export default function CompanyMasterPage() {
                     ))}
                     <td className="px-4 py-3">
                       <input
+                        type="number"
+                        value={newData.created_by}
+                        onChange={(e) =>
+                          setNewData({
+                            ...newData,
+                            created_by: e.target.value,
+                          })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
                         type="checkbox"
                         checked={newData.block}
                         onChange={(e) =>
@@ -247,10 +281,16 @@ export default function CompanyMasterPage() {
                       />
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
+                      <button
+                        onClick={saveAdding}
+                        className="text-green-600 hover:text-green-800"
+                      >
                         <FaSave size={22} />
                       </button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
+                      <button
+                        onClick={cancelAdding}
+                        className="text-gray-600 hover:text-gray-800"
+                      >
                         <FaTimes size={22} />
                       </button>
                     </td>
@@ -274,7 +314,9 @@ export default function CompanyMasterPage() {
                         {editId === comp.comp_id ? (
                           <input
                             value={editData[field]}
-                            onChange={(e) => handleEditChange(field, e.target.value)}
+                            onChange={(e) =>
+                              handleEditChange(field, e.target.value)
+                            }
                             className="border rounded px-2 py-1 w-full"
                           />
                         ) : (
@@ -282,22 +324,35 @@ export default function CompanyMasterPage() {
                         )}
                       </td>
                     ))}
+                    <td className="px-4 py-3">{comp.created_by}</td>
                     <td className="px-4 py-3">
                       {editId === comp.comp_id ? (
                         <input
                           type="checkbox"
                           checked={editData.block}
-                          onChange={(e) => handleEditChange('block', e.target.checked)}
+                          onChange={(e) =>
+                            handleEditChange('block', e.target.checked)
+                          }
                         />
-                      ) : comp.block ? 'Yes' : 'No'}
+                      ) : comp.block ? (
+                        'Yes'
+                      ) : (
+                        'No'
+                      )}
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === comp.comp_id ? (
                         <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
+                          <button
+                            onClick={confirmSave}
+                            className="text-green-600 hover:text-green-800"
+                          >
                             <FaSave size={22} />
                           </button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
+                          <button
+                            onClick={cancelEditing}
+                            className="text-gray-600 hover:text-gray-800"
+                          >
                             <FaTimes size={22} />
                           </button>
                         </>
