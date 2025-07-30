@@ -3,23 +3,25 @@ import {
   FiLogOut,
   FiBell,
   FiMessageSquare,
-  FiMoon, // Keep FiMoon for the outlined version
+  FiMoon,
   FiStar,
   FiMaximize2,
   FiMinimize2,
   FiArrowLeft
 } from 'react-icons/fi';
 import { MdLanguage } from 'react-icons/md';
-import { FaMoon } from 'react-icons/fa'; // Import FaMoon for the filled version
+import { FaMoon } from 'react-icons/fa';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 
-export default function Topbar() {
+export default function Topbar({
+  darkMode,
+  toggleDarkMode,
+  toggleSidebar = () => {}, // ✅ fallback function
+  sidebarCollapsed = false
+}) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [darkMode, setDarkMode] = useState(() =>
-    localStorage.getItem("theme") === "dark"
-  );
   const [language, setLanguage] = useState("EN");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [starred, setStarred] = useState(false);
@@ -33,7 +35,6 @@ export default function Topbar() {
     } else {
       document.body.classList.remove('dark');
     }
-    // Also store the theme preference in localStorage
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
@@ -53,10 +54,6 @@ export default function Topbar() {
     const nextLang = language === "EN" ? "FR" : "EN";
     setLanguage(nextLang);
     alert(`Language switched to ${nextLang === "EN" ? "English" : "French"}`);
-  };
-
-  const toggleDarkMode = () => {
-    setDarkMode(prev => !prev); // Simply toggle the state, useEffect handles class and localStorage
   };
 
   const toggleStar = () => {
@@ -80,9 +77,7 @@ export default function Topbar() {
 
   return (
     <div className="flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm px-6 py-3 relative z-50">
-
-      {/* Return to Dashboard */}
-      <div>
+      <div className="flex items-center space-x-4">
         {location.pathname !== '/dashboard' && (
           <Link
             to="/dashboard"
@@ -93,11 +88,7 @@ export default function Topbar() {
           </Link>
         )}
       </div>
-
-      {/* Right-side controls */}
       <div className="flex items-center space-x-5 text-gray-700 dark:text-gray-200 relative">
-
-        {/* Fullscreen */}
         {isFullscreen ? (
           <FiMinimize2
             onClick={toggleFullscreen}
@@ -111,8 +102,6 @@ export default function Topbar() {
             title="Enter Fullscreen"
           />
         )}
-
-        {/* Language */}
         <div
           onClick={toggleLanguage}
           className="flex items-center gap-1 cursor-pointer hover:text-green-700 transition"
@@ -121,8 +110,6 @@ export default function Topbar() {
           <MdLanguage className="w-5 h-5" />
           <span className="text-sm">{language}</span>
         </div>
-
-        {/* Bookmarks */}
         <div className="relative">
           <FiStar
             onClick={toggleStar}
@@ -142,8 +129,6 @@ export default function Topbar() {
             </div>
           )}
         </div>
-
-        {/* Notifications */}
         <div className="relative">
           <FiBell
             onClick={toggleNotifications}
@@ -162,25 +147,19 @@ export default function Topbar() {
             </div>
           )}
         </div>
-
-        {/* Dark Mode Toggle - Conditional Rendering */}
         {darkMode ? (
-          // Render FaMoon (filled) with white color when dark mode is ON
           <FaMoon
             onClick={toggleDarkMode}
             className="w-5 h-5 cursor-pointer text-white hover:text-green-700 transition"
             title="Toggle Dark Mode"
           />
         ) : (
-          // Render FiMoon (outlined) with default color when dark mode is OFF
           <FiMoon
             onClick={toggleDarkMode}
             className="w-5 h-5 cursor-pointer hover:text-green-700 transition"
             title="Toggle Dark Mode"
           />
         )}
-
-        {/* Messages */}
         <div className="relative">
           <FiMessageSquare
             onClick={toggleMessages}
@@ -198,8 +177,6 @@ export default function Topbar() {
             </div>
           )}
         </div>
-
-        {/* Logout */}
         <button
           onClick={logout}
           className="flex items-center gap-2 bg-green-50 text-green-800 px-4 py-2 rounded-md border border-green-200 hover:bg-green-100 transition text-sm"
