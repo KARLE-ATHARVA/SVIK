@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
+
+import { FaSortUp, FaSortDown } from 'react-icons/fa';
 import Breadcrumb from '../components/Breadcrumb';
 
 export default function UserActivityLog() {
@@ -32,6 +34,15 @@ export default function UserActivityLog() {
     { id: 15, xsource: 'API', ip: '192.168.0.15', url: '/api/newuser', tileId: 115, created: '2024-07-12 19:25', block: 0 },
   ];
 
+  const headers = [
+    { key: 'id', label: 'ID' },
+    { key: 'xsource', label: 'Source' },
+    { key: 'ip', label: 'IP Address' },
+    { key: 'url', label: 'URL' },
+    { key: 'tileId', label: 'Tile ID' },
+    { key: 'created', label: 'Created At' },
+  ];
+
  const filtered = userLogs.filter(
     (log) =>
       log.xsource.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,12 +54,8 @@ export default function UserActivityLog() {
     let sortableItems = [...filtered];
     if (sortConfig.key !== '') {
       sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
         return 0;
       });
     }
@@ -71,12 +78,12 @@ export default function UserActivityLog() {
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-1 ml-60">
+      <div className="flex flex-col flex-1 ml-70">
         <Topbar />
         <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="flex justify-between mb-4">
+          <div className="flex justify-between mb-4 items-center">
             <h1 className="text-2xl font-bold text-green-800">User Activity Log</h1>
-            <Breadcrumb />
+            <Breadcrumb/>
           </div>
 
           <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
@@ -87,7 +94,7 @@ export default function UserActivityLog() {
                 value={entriesPerPage}
                 onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
               >
-                {[10, 25, 50].map(num => (
+                {[10, 25, 50, 100].map(num => (
                   <option key={num} value={num}>{num}</option>
                 ))}
               </select>
@@ -98,25 +105,30 @@ export default function UserActivityLog() {
               placeholder="Search Source, IP, URL..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-3 py-1 border border-gray-300 rounded"
+              className="px-3 py-2 border border-gray-300 rounded w-full max-w-xs"
             />
           </div>
 
-          <div className="overflow-y-auto rounded border border-gray-200 bg-white shadow" style={{ maxHeight: '500px' }}>
-            <table className="min-w-full text-sm">
-              <thead className="bg-green-100 sticky top-0">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-md">
+            <table className="min-w-full text-sm text-gray-800">
+              <thead className="bg-green-100 sticky top-0 z-10">
                 <tr>
-                  {['id', 'xsource', 'ip', 'url', 'tileId', 'created'].map((key) => (
-                    <th key={key} className="px-4 py-2 font-semibold cursor-pointer" onClick={() => handleSort(key)}>
-                      {key.toUpperCase()}
+                  {headers.map(({ key, label }) => (
+                    <th key={key} className="px-4 py-2 font-semibold cursor-pointer text-left" onClick={() => handleSort(key)}>
+                      <div className="flex items-center gap-1">
+                        {label}
+                        {sortConfig.key === key && (
+                          sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />
+                        )}
+                      </div>
                     </th>
                   ))}
-                  <th className="px-4 py-2 font-semibold">Block</th>
+                  <th className="px-4 py-2 font-semibold text-left">Block</th>
                 </tr>
               </thead>
               <tbody>
                 {currentLogs.map((log) => (
-                  <tr key={log.id} className="border-b hover:bg-green-50">
+                  <tr key={log.id} className="border-b hover:bg-green-50 transition duration-150">
                     <td className="px-4 py-2">{log.id}</td>
                     <td className="px-4 py-2">{log.xsource}</td>
                     <td className="px-4 py-2">{log.ip}</td>
@@ -124,7 +136,10 @@ export default function UserActivityLog() {
                     <td className="px-4 py-2">{log.tileId}</td>
                     <td className="px-4 py-2">{log.created}</td>
                     <td className="px-4 py-2">
-                      <span className={`inline-block w-3 h-3 rounded-full ${log.block ? 'bg-green-600' : 'bg-red-500'}`}></span>
+                      <span className="inline-flex items-center gap-2">
+                        <span className={`w-3 h-3 rounded-full ${log.block ? 'bg-green-600' : 'bg-red-500'}`}></span>
+                        {log.block ? 'Active' : 'Blocked'}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -132,14 +147,22 @@ export default function UserActivityLog() {
             </table>
           </div>
 
-          <div className="flex justify-between mt-4 text-xs">
-            <span>Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries</span>
+          <div className="flex justify-between mt-4 text-sm items-center">
+            <span>
+              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+            </span>
             <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">Previous</button>
+              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
+                Previous
+              </button>
               {[...Array(totalPages).keys()].map(num => (
-                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>{num + 1}</button>
+                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
+                  {num + 1}
+                </button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">Next</button>
+              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">
+                Next
+              </button>
             </div>
           </div>
         </div>

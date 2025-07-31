@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import axios from 'axios';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -32,40 +35,27 @@ export default function SpaceMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [spaces, setSpaces] = useState([
-    {
-      space_id: 1,
-      space_name: 'Living Room',
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      space_id: 2,
-      space_name: 'Bedroom',
-      block: true,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
-    },
-  ]);
-
+  const [spaces, setSpaces] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({
-    space_name: '',
-    block: false,
-    created_by: '',
-  });
+  const [newData, setNewData] = useState({ space_name: '', created_by: '' });
+
+  const userId = localStorage.getItem('userid'); // Get user ID from local storage
+
+  const fetchSpaces = async () => {
+    try {
+      const res = await axios.get(`${baseURL}/GetSpaceList`);
+      setSpaces(res.data);
+    } catch (error) {
+      console.error('Error fetching spaces:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSpaces();
+  }, []);
 
   const filteredSpaces = spaces.filter(
     (space) =>
@@ -91,16 +81,19 @@ export default function SpaceMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = spaces
-          .map((space) =>
-            space.space_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : space
-          )
-          .sort((a, b) => a.space_id - b.space_id);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('SpaceId', editData.space_id);
+          formData.append('SpaceName', editData.space_name);
+          formData.append('RequestBy', userId); // ✅ Real user ID
 
-        setSpaces(updated);
+          await axios.post(`${baseURL}/EditSpace`, formData);
+          fetchSpaces();
+        } catch (err) {
+          console.error(err);
+        }
+
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
@@ -108,25 +101,40 @@ export default function SpaceMasterPage() {
     });
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (spaceId) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setSpaces(spaces.filter((space) => space.space_id !== id));
+      onConfirm: async () => {
+        try {
+          await axios.get(`${baseURL}/BlockSpace/${userId}/${spaceId}/1`); // ✅ Real user ID
+          fetchSpaces();
+        } catch (err) {
+          console.error(err);
+        }
+
         setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
+  const toggleBlock = async (space) => {
+    try {
+      await axios.get(`${baseURL}/BlockSpace/${userId}/${space.space_id}/${space.block ? 0 : 1}`); // ✅ Real user ID
+      fetchSpaces();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ space_name: '', block: false, created_by: '' });
+    setNewData({ space_name: '', created_by: userId }); // ✅ Pre-fill with real user ID
   };
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ space_name: '', block: false, created_by: '' });
+    setNewData({ space_name: '', created_by: '' });
   };
 
   const saveAdding = () => {
@@ -138,21 +146,19 @@ export default function SpaceMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new space?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          space_id: spaces.length ? Math.max(...spaces.map((s) => s.space_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
-
-        const updated = [...spaces, newEntry].sort((a, b) => a.space_id - b.space_id);
-        setSpaces(updated);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('SpaceName', newData.space_name);
+          formData.append('RequestBy', newData.created_by);
+          await axios.post(`${baseURL}/AddSpace`, formData);
+          fetchSpaces();
+        } catch (err) {
+          console.error(err);
+        }
 
         setIsAdding(false);
-        setNewData({ space_name: '', block: false, created_by: '' });
+        setNewData({ space_name: '', created_by: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -202,10 +208,8 @@ export default function SpaceMasterPage() {
                   <th className="px-4 py-3">Space ID</th>
                   <th className="px-4 py-3">Space Name</th>
                   <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modified By</th>
-                  <th className="px-4 py-3">Modified Date</th>
+                  <th className="px-4 py-3">Updated By</th>
+                  <th className="px-4 py-3">Updated Date</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -216,42 +220,18 @@ export default function SpaceMasterPage() {
                     <td className="px-4 py-3">
                       <input
                         value={newData.space_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, space_name: e.target.value })
-                        }
+                        onChange={(e) => setNewData({ ...newData, space_name: e.target.value })}
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
-                      <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
-                      >
+                    <td className="px-4 py-3">—</td>
+                    <td className="px-4 py-3">{userId}</td>
+                    <td className="px-4 py-3">—</td>
+                    <td className="px-4 py-3 space-x-2 flex">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
                         <FaSave size={22} />
                       </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
                         <FaTimes size={22} />
                       </button>
                     </td>
@@ -265,9 +245,7 @@ export default function SpaceMasterPage() {
                       {editId === space.space_id ? (
                         <input
                           value={editData.space_name}
-                          onChange={(e) =>
-                            handleEditChange('space_name', e.target.value)
-                          }
+                          onChange={(e) => handleEditChange('space_name', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
                       ) : (
@@ -275,52 +253,30 @@ export default function SpaceMasterPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {editId === space.space_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : space.block ? 'Yes' : 'No'}
+                      <input
+                        type="checkbox"
+                        checked={space.block}
+                        onChange={() => toggleBlock(space)}
+                      />
                     </td>
-                    <td className="px-4 py-3">{space.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(space.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{space.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(space.modify_date).toLocaleDateString()}
-                    </td>
+                    <td className="px-4 py-3">{space.updated_by}</td>
+                    <td className="px-4 py-3">{new Date(space.updated_date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === space.space_id ? (
                         <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
-                          >
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
                             <FaSave size={22} />
                           </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
                             <FaTimes size={22} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={() => startEditing(space)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
+                          <button onClick={() => startEditing(space)} className="text-yellow-500 hover:text-yellow-700">
                             <FaEdit size={22} />
                           </button>
-                          <button
-                            onClick={() => confirmDelete(space.space_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
+                          <button onClick={() => confirmDelete(space.space_id)} className="text-red-500 hover:text-red-700">
                             <FaTrash size={22} />
                           </button>
                         </>

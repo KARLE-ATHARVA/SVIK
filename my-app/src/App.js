@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { SidebarProvider } from './context/SidebarContext';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './components/Dashboard';
+import MasterTablesPage from './pages/MasterTablesPage';
 import LoginHistory from './pages/LoginHistory';
 import AdminActivityLog from './pages/AdminActivityLog';
 import UserActivityLog from './pages/UserActivityLog';
@@ -21,11 +23,13 @@ import RegisterPage from './pages/RegisterPage';
 
 export default function App() {
   return (
+  <SidebarProvider>
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage/>} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/masterTables" element={<MasterTablesPage />} />
         <Route path="/loginHistory" element={<LoginHistory/>}/>
         <Route path="/adminActivity" element={<AdminActivityLog/>}/>
         <Route path="/userActivity" element={<UserActivityLog/>}/>
@@ -41,8 +45,10 @@ export default function App() {
         <Route path="/companyMaster" element={<CompanyMasterPage />} />
         <Route path="/loginMaster" element={<LoginMasterPage />} />
         <Route path="/planMaster" element={<PlanMasterPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
       </Routes>
     </Router>
+  </SidebarProvider>
   );
 }

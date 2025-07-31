@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import axios from 'axios';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -32,26 +35,7 @@ export default function ColorMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [colors, setColors] = useState([
-    {
-      color_id: 1,
-      color_name: 'Red',
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      color_id: 2,
-      color_name: 'Blue',
-      block: true,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
-    },
-  ]);
+  const [colors, setColors] = useState([]);
 
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -63,9 +47,23 @@ export default function ColorMasterPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
     color_name: '',
-    block: false,
     created_by: '',
   });
+
+  const userId = localStorage.getItem('userid');
+
+  const fetchColors = async () => {
+    try {
+      const res = await axios.get(`${baseURL}/GetColorList`);
+      setColors(res.data);
+    } catch (error) {
+      console.error('Error fetching colors:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchColors();
+  }, []);
 
   const filteredColors = colors.filter(
     (color) =>
@@ -91,16 +89,27 @@ export default function ColorMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = colors
-          .map((color) =>
-            color.color_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : color
-          )
-          .sort((a, b) => a.color_id - b.color_id);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('ColorId', editData.color_id);
+          formData.append('ColorName', editData.color_name);
+          formData.append('RequestBy', userId);
 
-        setColors(updated);
+          const res = await axios.post(`${baseURL}/EditColor`, formData);
+
+          if (res.data === 'alreadyexists') {
+            alert('Color already exists!');
+            return;
+          } else if (res.data === 'success') {
+            fetchColors();
+          } else {
+            alert(`Failed to update color: ${res.data}`);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
@@ -108,25 +117,40 @@ export default function ColorMasterPage() {
     });
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (colorId) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setColors(colors.filter((color) => color.color_id !== id));
+      onConfirm: async () => {
+        try {
+          await axios.get(`${baseURL}/BlockColor/${userId}/${colorId}/1`);
+          fetchColors();
+        } catch (err) {
+          console.error(err);
+        }
+
         setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
+  const toggleBlock = async (color) => {
+    try {
+      await axios.get(`${baseURL}/BlockColor/${userId}/${color.color_id}/${color.block ? 0 : 1}`);
+      fetchColors();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ color_name: '', block: false, created_by: '' });
+    setNewData({ color_name: '', created_by: userId });
   };
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ color_name: '', block: false, created_by: '' });
+    setNewData({ color_name: '', created_by: '' });
   };
 
   const saveAdding = () => {
@@ -138,21 +162,28 @@ export default function ColorMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new color?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          color_id: colors.length ? Math.max(...colors.map((c) => c.color_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('ColorName', newData.color_name);
+          formData.append('RequestBy', newData.created_by);
 
-        const updated = [...colors, newEntry].sort((a, b) => a.color_id - b.color_id);
-        setColors(updated);
+          const res = await axios.post(`${baseURL}/AddColor`, formData);
+
+          if (res.data === 'alreadyexists') {
+            alert('Color already exists!');
+            return;
+          } else if (res.data === 'success') {
+            fetchColors();
+          } else {
+            alert(`Failed to add color: ${res.data}`);
+          }
+        } catch (err) {
+          console.error(err);
+        }
 
         setIsAdding(false);
-        setNewData({ color_name: '', block: false, created_by: '' });
+        setNewData({ color_name: '', created_by: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -202,10 +233,9 @@ export default function ColorMasterPage() {
                   <th className="px-4 py-3">Color ID</th>
                   <th className="px-4 py-3">Color Name</th>
                   <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modify By</th>
-                  <th className="px-4 py-3">Modify Date</th>
+
+                  <th className="px-4 py-3">Updated By</th>
+                  <th className="px-4 py-3">Updated Date</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -275,23 +305,16 @@ export default function ColorMasterPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {editId === color.color_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : color.block ? 'Yes' : 'No'}
+                      <input
+                        type="checkbox"
+                        checked={color.block}
+                        onChange={() => toggleBlock(color)}
+                      />
                     </td>
-                    <td className="px-4 py-3">{color.created_by}</td>
+
+                    <td className="px-4 py-3">{color.updated_by}</td>
                     <td className="px-4 py-3">
-                      {new Date(color.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{color.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(color.modify_date).toLocaleDateString()}
+                      {new Date(color.updated_date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === color.color_id ? (

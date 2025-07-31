@@ -7,8 +7,8 @@ import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-100">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
             className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
@@ -48,6 +48,54 @@ export default function CompanyMasterPage() {
       created_date: '2025-07-07T12:34:56',
       modify_by: 101,
       modify_date: '2025-07-07T12:34:56',
+    },
+    {
+      comp_id: 2,
+      plan_id: 102,
+      comp_name: 'XYZ Solutions',
+      comp_address: '456 Tech Park',
+      comp_address1: 'Building A',
+      pin_code: 560001,
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      country: 'India',
+      block: true,
+      created_by: 102,
+      created_date: '2025-07-06T10:00:00',
+      modify_by: 102,
+      modify_date: '2025-07-06T10:00:00',
+    },
+    {
+      comp_id: 3,
+      plan_id: 103,
+      comp_name: 'PQR Innovations',
+      comp_address: '789 Business Rd',
+      comp_address1: '',
+      pin_code: 110001,
+      city: 'Delhi',
+      state: 'Delhi',
+      country: 'India',
+      block: false,
+      created_by: 103,
+      created_date: '2025-07-05T09:15:00',
+      modify_by: 103,
+      modify_date: '2025-07-05T09:15:00',
+    },
+    {
+      comp_id: 4,
+      plan_id: 104,
+      comp_name: 'LMN Enterprises',
+      comp_address: '101 Industrial Area',
+      comp_address1: 'Phase 3',
+      pin_code: 600001,
+      city: 'Chennai',
+      state: 'Tamil Nadu',
+      country: 'India',
+      block: false,
+      created_by: 104,
+      created_date: '2025-07-04T14:30:00',
+      modify_by: 104,
+      modify_date: '2025-07-04T14:30:00',
     },
   ]);
 
@@ -180,7 +228,7 @@ export default function CompanyMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
@@ -190,12 +238,6 @@ export default function CompanyMasterPage() {
               Company Master Table
             </h2>
             <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
@@ -213,12 +255,12 @@ export default function CompanyMasterPage() {
               placeholder="Search by Company Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <div className="overflow-x-auto rounded-lg shadow border border-gray-400 dark:border-gray-600"> {/* Main table border */}
+            <table className="min-w-full text-sm"> {/* Removed divide-y and divide-gray classes from table */}
               <thead className="bg-green-700 text-white">
                 <tr>
                   <th className="px-4 py-3">Comp ID</th>
@@ -235,9 +277,10 @@ export default function CompanyMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-900"> {/* Removed divide-y and divide-gray classes from tbody */}
                 {isAdding && (
-                  <tr>
+                  <tr className="border-b border-gray-200 dark:border-gray-700"> {/* Row divider for the adding row */}
+                    <td className="px-4 py-3"></td> {/* Empty cell for Comp ID */}
                     {[
                       'plan_id',
                       'comp_name',
@@ -254,7 +297,7 @@ export default function CompanyMasterPage() {
                           onChange={(e) =>
                             setNewData({ ...newData, [field]: e.target.value })
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded px-2 py-1 w-full"
                         />
                       </td>
                     ))}
@@ -297,8 +340,8 @@ export default function CompanyMasterPage() {
                   </tr>
                 )}
 
-                {filteredCompanies.map((comp) => (
-                  <tr key={comp.comp_id}>
+                {filteredCompanies.map((comp, index) => (
+                  <tr key={comp.comp_id} className={`${index === filteredCompanies.length - 1 ? '' : 'border-b border-gray-200 dark:border-gray-700'}`}> {/* Row divider for data rows */}
                     <td className="px-4 py-3">{comp.comp_id}</td>
                     {[
                       'plan_id',
@@ -340,7 +383,7 @@ export default function CompanyMasterPage() {
                         'No'
                       )}
                     </td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3 space-x-2 flex items-center justify-center">
                       {editId === comp.comp_id ? (
                         <>
                           <button

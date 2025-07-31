@@ -1,10 +1,9 @@
-// src/pages/ApplicationMasterPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import Breadcrumb from '../components/Breadcrumb';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -120,7 +119,9 @@ export default function ApplicationMasterPage() {
 
   const confirmDelete = (id) => {
     setConfirmation({
-      show: true,
+      show: true
+
+,
       message: 'Are you sure you want to delete this entry?',
       onConfirm: () => {
         setApps(apps.filter((app) => app.app_id !== id));
@@ -177,17 +178,11 @@ export default function ApplicationMasterPage() {
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+        <Breadcrumb />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Application Master Table</h2>
-           
             <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"

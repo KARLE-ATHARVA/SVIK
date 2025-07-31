@@ -17,7 +17,7 @@ export default function Breadcrumb() {
     <ol className="flex flex-wrap items-center space-x-1 text-gray-500 text-sm">
       <li
         className="cursor-pointer hover:underline text-emerald-700"
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/dashboard')}
       >
         Home
       </li>
