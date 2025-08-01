@@ -1,9 +1,12 @@
-// src/pages/SizeMasterPage.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import Breadcrumb from '../components/Breadcrumb';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
+import axios from 'axios';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -33,27 +36,7 @@ export default function SizeMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sizes, setSizes] = useState([
-    {
-      size_id: 1,
-      size_name: '12x12',
-      block: true,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      size_id: 2,
-      size_name: '24x24',
-      block: false,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
-    },
-  ]);
-
+  const [sizes, setSizes] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [confirmation, setConfirmation] = useState({
@@ -64,15 +47,68 @@ export default function SizeMasterPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
     size_name: '',
-    block: false,
     created_by: '',
   });
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
+  const [fadeIn, setFadeIn] = useState(false);
 
-  const filteredSizes = sizes.filter(
+  const userId = localStorage.getItem('userid');
+
+  const fetchSizes = async () => {
+    try {
+      const res = await axios.get(`${baseURL}/GetSizeList`);
+      setSizes(res.data);
+    } catch (error) {
+      console.error('Error fetching sizes:', error);
+    }
+  };
+
+  useEffect(() => {
+    setFadeIn(true);
+    fetchSizes();
+  }, []);
+
+  const headers = [
+    { key: 'size_id', label: 'Size ID' },
+    { key: 'size_name', label: 'Size Name' },
+    { key: 'block', label: 'Block' },
+    { key: 'updated_by', label: 'Updated By' },
+    { key: 'updated_date', label: 'Updated Date' },
+  ];
+
+  const filtered = sizes.filter(
     (size) =>
       size.size_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (size.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
+      (size.block ? 'yes' : 'no').includes(searchTerm.toLowerCase()) ||
+      (size.updated_by && size.updated_by.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const sorted = React.useMemo(() => {
+    let sortableItems = [...filtered];
+    if (sortConfig.key !== '') {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filtered, sortConfig]);
+
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentSizes = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   const startEditing = (size) => {
     setEditId(size.size_id);
@@ -92,15 +128,28 @@ export default function SizeMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updatedSizes = sizes
-          .map((size) =>
-            size.size_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : size
-          )
-          .sort((a, b) => a.size_id - b.size_id);
-        setSizes(updatedSizes);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('SizeId', editData.size_id);
+          formData.append('SizeName', editData.size_name);
+          formData.append('RequestBy', userId);
+
+          const res = await axios.post(`${baseURL}/EditSize`, formData);
+
+          if (res.data === 'alreadyexists') {
+            alert('Size already exists!');
+            return;
+          } else if (res.data === 'success') {
+            fetchSizes();
+          } else {
+            alert(`Failed to update size: ${res.data}`);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error updating size');
+        }
+
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
@@ -108,55 +157,78 @@ export default function SizeMasterPage() {
     });
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (sizeId) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setSizes(sizes.filter((size) => size.size_id !== id));
+      onConfirm: async () => {
+        try {
+          await axios.get(`${baseURL}/BlockSize/${userId}/${sizeId}/1`);
+          fetchSizes();
+        } catch (err) {
+          console.error(err);
+          alert('Error deleting size');
+        }
         setConfirmation({ ...confirmation, show: false });
       },
     });
+  };
+
+  const toggleBlock = async (size) => {
+    try {
+      await axios.get(`${baseURL}/BlockSize/${userId}/${size.size_id}/${size.block ? 0 : 1}`);
+      fetchSizes();
+    } catch (err) {
+      console.error(err);
+      alert('Error toggling block status');
+    }
   };
 
   const startAdding = () => {
     setIsAdding(true);
     setNewData({
       size_name: '',
-      block: false,
-      created_by: '',
+      created_by: userId,
     });
   };
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ size_name: '', block: false, created_by: '' });
+    setNewData({ size_name: '', created_by: '' });
   };
 
   const saveAdding = () => {
-    if (!newData.size_name || !newData.created_by) {
-      alert('Please fill all required fields');
+    if (!newData.size_name) {
+      alert('Please enter size name');
       return;
     }
 
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new size?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          size_id: sizes.length ? Math.max(...sizes.map((s) => s.size_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('SizeName', newData.size_name);
+          formData.append('RequestBy', newData.created_by);
 
-        const updatedSizes = [...sizes, newEntry].sort((a, b) => a.size_id - b.size_id);
+          const res = await axios.post(`${baseURL}/AddSize`, formData);
 
-        setSizes(updatedSizes);
+          if (res.data === 'alreadyexists') {
+            alert('Size already exists!');
+            return;
+          } else if (res.data === 'success') {
+            fetchSizes();
+          } else {
+            alert(`Failed to add size: ${res.data}`);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error adding size');
+        }
+
         setIsAdding(false);
-        setNewData({ size_name: '', block: false, created_by: '' });
+        setNewData({ size_name: '', created_by: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -164,12 +236,12 @@ export default function SizeMasterPage() {
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar collapsed={collapsed} />
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <div className="flex flex-col flex-1 ml-70">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="flex flex-col flex-1 p-6 overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Size Master Table</h2>
+        <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex justify-between mb-4 items-center">
+            <h1 className="text-2xl font-bold text-green-800">Size Master</h1>
             <div className="flex space-x-2">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -182,149 +254,106 @@ export default function SizeMasterPage() {
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
                   onClick={startAdding}
                 >
-                  <FaPlus className="mr-2" /> Add New Size
+                  <FaPlus className="mr-2" /> Add New Color
                 </button>
               )}
             </div>
           </div>
 
-          <div className="mb-4">
+                    <div className="mb-4">
             <input
               type="text"
-              placeholder="Search by Size Name or Block..."
+              placeholder="Search by Color Name or Block..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-700 text-white">
+
+
+          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-md">
+            <table className="min-w-full text-sm text-gray-800">
+              <thead className="bg-green-100 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3">Size ID</th>
-                  <th className="px-4 py-3">Size Name</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modify By</th>
-                  <th className="px-4 py-3">Modify Date</th>
-                  <th className="px-4 py-3">Actions</th>
+                  {headers.map(({ key, label }) => (
+                    <th key={key} className="px-4 py-2 font-semibold cursor-pointer text-left" onClick={() => handleSort(key)}>
+                      <div className="flex items-center gap-1">
+                        {label}
+                        {sortConfig.key === key && (
+                          sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />
+                        )}
+                      </div>
+                    </th>
+                  ))}
+                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {isAdding && (
-                  <tr>
-                    <td className="px-4 py-3">New</td>
-                    <td className="px-4 py-3">
+                  <tr className="border-b hover:bg-green-50 transition duration-150">
+                    <td className="px-4 py-2">New</td>
+                    <td className="px-4 py-2">
                       <input
                         value={newData.size_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, size_name: e.target.value })
-                        }
+                        onChange={(e) => setNewData({ ...newData, size_name: e.target.value })}
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
-                      <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <FaSave size={22} />
+                    <td className="px-4 py-2">—</td>
+                    <td className="px-4 py-2">{userId}</td>
+                    <td className="px-4 py-2">—</td>
+                    <td className="px-4 py-2 space-x-2 flex">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
+                        <FaSave size={18} />
                       </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        <FaTimes size={22} />
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
+                        <FaTimes size={18} />
                       </button>
                     </td>
                   </tr>
                 )}
 
-                {filteredSizes.map((size) => (
-                  <tr key={size.size_id}>
-                    <td className="px-4 py-3">{size.size_id}</td>
-                    <td className="px-4 py-3">
+                {currentSizes.map((size) => (
+                  <tr key={size.size_id} className="border-b hover:bg-green-50 transition duration-150">
+                    <td className="px-4 py-2">{size.size_id}</td>
+                    <td className="px-4 py-2">
                       {editId === size.size_id ? (
                         <input
                           value={editData.size_name}
-                          onChange={(e) =>
-                            handleEditChange('size_name', e.target.value)
-                          }
+                          onChange={(e) => handleEditChange('size_name', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
                       ) : (
                         size.size_name
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      {editId === size.size_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : size.block ? 'Yes' : 'No'}
+                    <td className="px-4 py-2">
+                      <input
+                        type="checkbox"
+                        checked={size.block}
+                        onChange={() => toggleBlock(size)}
+                      />
                     </td>
-                    <td className="px-4 py-3">{size.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(size.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{size.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(size.modify_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-2">{size.updated_by}</td>
+                    <td className="px-4 py-2">{new Date(size.updated_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 space-x-2 flex">
                       {editId === size.size_id ? (
                         <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            <FaSave size={22} />
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
+                            <FaSave size={18} />
                           </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
-                            <FaTimes size={22} />
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
+                            <FaTimes size={18} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={() => startEditing(size)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
-                            <FaEdit size={22} />
+                          <button onClick={() => startEditing(size)} className="text-yellow-500 hover:text-yellow-700">
+                            <FaEdit size={18} />
                           </button>
-                          <button
-                            onClick={() => confirmDelete(size.size_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash size={22} />
+                          <button onClick={() => confirmDelete(size.size_id)} className="text-red-500 hover:text-red-700">
+                            <FaTrash size={18} />
                           </button>
                         </>
                       )}
@@ -333,6 +362,37 @@ export default function SizeMasterPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex justify-between mt-4 text-sm items-center">
+            <span>
+              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+            </span>
+            <div className="flex gap-1">
+              <button 
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} 
+                disabled={currentPage === 1} 
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              {[...Array(totalPages).keys()].map(num => (
+                <button 
+                  key={num + 1} 
+                  onClick={() => setCurrentPage(num + 1)} 
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                >
+                  {num + 1}
+                </button>
+              ))}
+              <button 
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} 
+                disabled={currentPage === totalPages} 
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>
