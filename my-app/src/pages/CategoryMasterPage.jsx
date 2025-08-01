@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import axios from 'axios';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -29,44 +32,32 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
+  const userId = localStorage.getItem('userid');
+
+
 export default function CategoryMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categories, setCategories] = useState([
-    {
-      cat_id: 1,
-      cat_name: 'Ceramic',
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      cat_id: 2,
-      cat_name: 'Vetrified',
-      block: true,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
-    },
-  ]);
-
+  const [categories, setCategories] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({
-    cat_name: '',
-    block: false,
-    created_by: '',
-  });
+  const [newData, setNewData] = useState({ cat_name: '', created_by: '' });
+
+  const fetchCategories = async () => {
+    try {
+      const res = await axios.get(`${baseURL}/GetCategoryList`);
+      setCategories(res.data);
+    } catch (err) {
+      console.error('Error fetching categories', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   const filteredCategories = categories.filter(
     (cat) =>
@@ -92,18 +83,23 @@ export default function CategoryMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = categories
-          .map((cat) =>
-            cat.cat_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : cat
-          )
-          .sort((a, b) => a.cat_id - b.cat_id);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('CatId', editData.cat_id);
+          formData.append('CatName', editData.cat_name);
+          formData.append('RequestBy', userId); // hardcoded user
 
-        setCategories(updated);
-        setEditId(null);
-        setEditData({});
+          const res = await axios.post(`${baseURL}/EditCategory`, formData);
+          if (res.data === 'success') {
+            fetchCategories();
+            cancelEditing();
+          } else {
+            alert(res.data);
+          }
+        } catch (err) {
+          console.error('Edit failed', err);
+        }
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -113,21 +109,37 @@ export default function CategoryMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setCategories(categories.filter((cat) => cat.cat_id !== id));
+      onConfirm: async () => {
+        try {
+ 
+          const res = await axios.get(`${baseURL}/BlockCategory/${userId}/${id}/1`);
+          if (res.data === 'success') fetchCategories();
+        } catch (err) {
+          console.error('Delete failed', err);
+        }
         setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
+  const toggleBlock = async (cat) => {
+
+    try {
+      const res = await axios.get(`${baseURL}/BlockCategory/${userId}/${cat.cat_id}/${cat.block ? 0 : 1}`);
+      if (res.data === 'success') fetchCategories();
+    } catch (err) {
+      console.error('Block toggle failed', err);
+    }
+  };
+
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ cat_name: '', block: false, created_by: '' });
+    setNewData({ cat_name: '', created_by: userId});
   };
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ cat_name: '', block: false, created_by: '' });
+    setNewData({ cat_name: '', created_by: '' });
   };
 
   const saveAdding = () => {
@@ -139,21 +151,22 @@ export default function CategoryMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new category?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          cat_id: categories.length ? Math.max(...categories.map((c) => c.cat_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('CatName', newData.cat_name);
+          formData.append('RequestBy', newData.created_by);
 
-        const updated = [...categories, newEntry].sort((a, b) => a.cat_id - b.cat_id);
-        setCategories(updated);
-
-        setIsAdding(false);
-        setNewData({ cat_name: '', block: false, created_by: '' });
+          const res = await axios.post(`${baseURL}/AddCategory`, formData);
+          if (res.data === 'success') {
+            fetchCategories();
+            cancelAdding();
+          } else {
+            alert(res.data);
+          }
+        } catch (err) {
+          console.error('Add failed', err);
+        }
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -164,7 +177,7 @@ export default function CategoryMasterPage() {
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <Breadcrumb />
+
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Category Master Table</h2>
@@ -203,10 +216,8 @@ export default function CategoryMasterPage() {
                   <th className="px-4 py-3">Cat ID</th>
                   <th className="px-4 py-3">Cat Name</th>
                   <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modify By</th>
-                  <th className="px-4 py-3">Modify Date</th>
+                  <th className="px-4 py-3">Updated By</th>
+                  <th className="px-4 py-3">Updated Date</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -217,42 +228,24 @@ export default function CategoryMasterPage() {
                     <td className="px-4 py-3">
                       <input
                         value={newData.cat_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, cat_name: e.target.value })
-                        }
+                        onChange={(e) => setNewData({ ...newData, cat_name: e.target.value })}
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                      />
-                    </td>
+                    <td className="px-4 py-3">No</td>
                     <td className="px-4 py-3">
                       <input
                         type="number"
                         value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
+                        onChange={(e) => setNewData({ ...newData, created_by: e.target.value })}
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
-                      <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
-                      >
+                    <td colSpan="2" className="px-4 py-3 space-x-2 flex">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
                         <FaSave size={22} />
                       </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
                         <FaTimes size={22} />
                       </button>
                     </td>
@@ -266,9 +259,7 @@ export default function CategoryMasterPage() {
                       {editId === cat.cat_id ? (
                         <input
                           value={editData.cat_name}
-                          onChange={(e) =>
-                            handleEditChange('cat_name', e.target.value)
-                          }
+                          onChange={(e) => handleEditChange('cat_name', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
                       ) : (
@@ -276,52 +267,30 @@ export default function CategoryMasterPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {editId === cat.cat_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : cat.block ? 'Yes' : 'No'}
+                      <input
+                        type="checkbox"
+                        checked={cat.block}
+                        onChange={() => toggleBlock(cat)}
+                      />
                     </td>
-                    <td className="px-4 py-3">{cat.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(cat.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{cat.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(cat.modify_date).toLocaleDateString()}
-                    </td>
+                    <td className="px-4 py-3">{cat.updated_by}</td>
+                    <td className="px-4 py-3">{new Date(cat.updated_date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === cat.cat_id ? (
                         <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
-                          >
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
                             <FaSave size={22} />
                           </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
                             <FaTimes size={22} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={() => startEditing(cat)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
+                          <button onClick={() => startEditing(cat)} className="text-yellow-500 hover:text-yellow-700">
                             <FaEdit size={22} />
                           </button>
-                          <button
-                            onClick={() => confirmDelete(cat.cat_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
+                          <button onClick={() => confirmDelete(cat.cat_id)} className="text-red-500 hover:text-red-700">
                             <FaTrash size={22} />
                           </button>
                         </>
