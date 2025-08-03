@@ -331,7 +331,7 @@ export default function TileMasterPage() {
               <h1 className="text-3xl font-bold text-gray-800">Tile Master</h1>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex items-center"
+                className="bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex items-center"
                 disabled={isLoading}
               >
                 <FaPlus className="mr-2" /> Add Tile
@@ -472,7 +472,7 @@ export default function TileMasterPage() {
                     <button
                       key={number}
                       onClick={() => paginate(number)}
-                      className={`px-3 py-1 rounded ${currentPage === number ? 'bg-blue-600 text-white' : 'bg-gray-300'}`}
+                      className={`px-3 py-1 rounded ${currentPage === number ? 'bg-green-600 text-white' : 'bg-gray-300'}`}
                     >
                       {number}
                     </button>
