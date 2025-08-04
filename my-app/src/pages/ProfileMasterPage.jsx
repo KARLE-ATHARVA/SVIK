@@ -1,10 +1,7 @@
-// ✅ Updated React component with working Edit, Add, and Block Toggle functionality
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import Breadcrumb from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import axios from 'axios';
 
@@ -12,21 +9,21 @@ const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
         <p className="mb-4 text-gray-800">{message}</p>
-        <div className="flex justify-end space-x-2">
+        <div className="flex justify-end gap-3">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="px-4 py-2 rounded bg-gray-300 text-gray-800 hover:bg-gray-400"
             onClick={onCancel}
           >
             Cancel
           </button>
           <button
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
+            className="px-4 py-2 rounded bg-green-700 text-white hover:bg-green-800"
             onClick={onConfirm}
           >
-            Yes
+            Confirm
           </button>
         </div>
       </div>
@@ -47,6 +44,10 @@ export default function ProfileMasterPage() {
 
   const userId = localStorage.getItem('userid');
 
+  useEffect(() => {
+    fetchProfiles();
+  }, []);
+
   const fetchProfiles = async () => {
     try {
       const res = await axios.get(`${baseURL}/GetProfileList`);
@@ -55,10 +56,6 @@ export default function ProfileMasterPage() {
       console.error('Error fetching profiles:', error);
     }
   };
-
-  useEffect(() => {
-    fetchProfiles();
-  }, []);
 
   const startEditing = (profile) => {
     setEditId(profile.profile_id);
@@ -89,7 +86,6 @@ export default function ProfileMasterPage() {
 
           if (res.data === 'alreadyexists') {
             alert('Profile already exists!');
-            return;
           } else if (res.data === 'success') {
             fetchProfiles();
           } else {
@@ -99,7 +95,6 @@ export default function ProfileMasterPage() {
           console.error(err);
           alert('Error updating profile');
         }
-
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
@@ -110,7 +105,7 @@ export default function ProfileMasterPage() {
   const confirmDelete = (profileId) => {
     setConfirmation({
       show: true,
-      message: 'Are you sure you want to delete this entry?',
+      message: 'Are you sure you want to delete this profile?',
       onConfirm: async () => {
         try {
           await axios.get(`${baseURL}/BlockProfile/${userId}/${profileId}/1`);
@@ -152,7 +147,7 @@ export default function ProfileMasterPage() {
 
     setConfirmation({
       show: true,
-      message: 'Are you sure you want to save this new profile?',
+      message: 'Are you sure you want to add this profile?',
       onConfirm: async () => {
         try {
           const formData = new FormData();
@@ -163,7 +158,6 @@ export default function ProfileMasterPage() {
 
           if (res.data === 'alreadyexists') {
             alert('Profile already exists!');
-            return;
           } else if (res.data === 'success') {
             fetchProfiles();
           } else {
@@ -181,45 +175,46 @@ export default function ProfileMasterPage() {
     });
   };
 
-  return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar collapsed={collapsed} />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+  const filteredProfiles = profiles.filter(profile =>
+    profile.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-        <div className="flex flex-col flex-1 p-6 overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Profile Master Table</h2>
-            <div className="flex space-x-2">
+  return (
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar collapsed={collapsed} />
+      <div className="flex flex-col flex-1">
+        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+        <div className="p-6 overflow-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-semibold text-gray-800">Profile Master</h1>
+            <div className="flex gap-3">
               <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 onClick={() => navigate('/dashboard')}
               >
-                Return to Dashboard
+                Back to Dashboard
               </button>
               {!isAdding && (
                 <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                  className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 flex items-center"
                   onClick={startAdding}
                 >
-                  <FaPlus className="mr-2" /> Add New Profile
+                  <FaPlus className="mr-2" /> Add Profile
                 </button>
               )}
             </div>
           </div>
 
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Search by Profile Name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
-            />
-          </div>
+          <input
+            type="text"
+            placeholder="Search by Profile Name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="mb-4 w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+          />
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
+            <table className="min-w-full text-sm text-left">
               <thead className="bg-green-700 text-white">
                 <tr>
                   <th className="px-4 py-3">ID</th>
@@ -230,40 +225,40 @@ export default function ProfileMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200">
                 {isAdding && (
-                  <tr>
+                  <tr className="bg-green-50">
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
                       <input
                         value={newData.name}
                         onChange={(e) => setNewData({ ...newData, name: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border border-gray-300 rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">N/A</td>
+                    <td className="px-4 py-3">—</td>
                     <td className="px-4 py-3">{userId}</td>
-                    <td className="px-4 py-3">-</td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3">—</td>
+                    <td className="px-4 py-3 flex gap-2">
                       <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
-                        <FaSave size={22} />
+                        <FaSave size={20} />
                       </button>
                       <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
-                        <FaTimes size={22} />
+                        <FaTimes size={20} />
                       </button>
                     </td>
                   </tr>
                 )}
 
-                {profiles.map((profile) => (
-                  <tr key={profile.profile_id}>
+                {filteredProfiles.map((profile) => (
+                  <tr key={profile.profile_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">{profile.profile_id}</td>
                     <td className="px-4 py-3">
                       {editId === profile.profile_id ? (
                         <input
                           value={editData.name}
                           onChange={(e) => handleEditChange('name', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border border-gray-300 rounded px-2 py-1 w-full"
                         />
                       ) : (
                         profile.name
@@ -278,23 +273,23 @@ export default function ProfileMasterPage() {
                     </td>
                     <td className="px-4 py-3">{profile.updated_by}</td>
                     <td className="px-4 py-3">{new Date(profile.updated_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3 flex gap-2">
                       {editId === profile.profile_id ? (
                         <>
                           <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
-                            <FaSave size={22} />
+                            <FaSave size={20} />
                           </button>
                           <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
-                            <FaTimes size={22} />
+                            <FaTimes size={20} />
                           </button>
                         </>
                       ) : (
                         <>
                           <button onClick={() => startEditing(profile)} className="text-yellow-500 hover:text-yellow-700">
-                            <FaEdit size={22} />
+                            <FaEdit size={20} />
                           </button>
                           <button onClick={() => confirmDelete(profile.profile_id)} className="text-red-500 hover:text-red-700">
-                            <FaTrash size={22} />
+                            <FaTrash size={20} />
                           </button>
                         </>
                       )}

@@ -7,6 +7,8 @@ import axios from 'axios';
 import { FaPlus, FaEdit, FaBan, FaCheck, FaSortUp, FaSortDown, FaAngleLeft, FaAngleRight, FaSearch } from 'react-icons/fa';
 import TileModal from '../components/TileModal';
 
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+
 export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
   const [message, setMessage] = useState('');
@@ -43,8 +45,9 @@ export default function TileMasterPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
-  const API_BASE = 'https://svikinfotech.com/clients/visualizer/api';
-  const USER_ID = 1;
+
+  const userId = localStorage.getItem('userid');
+
 
   useEffect(() => {
     fetchTiles();
@@ -54,7 +57,7 @@ export default function TileMasterPage() {
   const fetchTiles = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/GetTileList`);
+      const res = await axios.get(`${baseURL}/GetTileList`);
       setTiles(res.data);
     } catch (err) {
       console.error('Fetch Error:', err);
@@ -68,12 +71,12 @@ export default function TileMasterPage() {
     setIsLoading(true);
     try {
       const [categories, applications, spaces, sizes, finishes, colors] = await Promise.all([
-        axios.get(`${API_BASE}/GetCategoryList`),
-        axios.get(`${API_BASE}/GetApplicationList`),
-        axios.get(`${API_BASE}/GetSpaceList`),
-        axios.get(`${API_BASE}/GetSizeList`),
-        axios.get(`${API_BASE}/GetFinishList`),
-        axios.get(`${API_BASE}/GetColorList`)
+        axios.get(`${baseURL}/GetCategoryList`),
+        axios.get(`${baseURL}/GetApplicationList`),
+        axios.get(`${baseURL}/GetSpaceList`),
+        axios.get(`${baseURL}/GetSizeList`),
+        axios.get(`${baseURL}/GetFinishList`),
+        axios.get(`${baseURL}/GetColorList`)
       ]);
       setReferenceData({
         categories: categories.data,
@@ -123,10 +126,10 @@ export default function TileMasterPage() {
       payload.append('FinishName', data.FinishName);
       payload.append('ColorId', getIdFromName(referenceData.colors, data.ColorName, 'color_id', 'color_name'));
       payload.append('ColorName', data.ColorName);
-      payload.append('RequestBy', USER_ID);
+      payload.append('RequestBy', userId);
 
       setIsLoading(true);
-      const res = await axios.post(`${API_BASE}/AddTile`, payload);
+      const res = await axios.post(`${baseURL}/AddTile`, payload);
       const responseText = res.data;
 
       if (responseText === 'success') {
@@ -184,10 +187,10 @@ export default function TileMasterPage() {
       payload.append('FinishName', data.FinishName);
       payload.append('ColorId', getIdFromName(referenceData.colors, data.ColorName, 'color_id', 'color_name'));
       payload.append('ColorName', data.ColorName);
-      payload.append('RequestBy', USER_ID);
+      payload.append('RequestBy', userId);
 
       setIsLoading(true);
-      const res = await axios.post(`${API_BASE}/EditTile`, payload);
+      const res = await axios.post(`${baseURL}/EditTile`, payload);
       const responseText = res.data;
 
       if (responseText === 'success') {
@@ -216,7 +219,7 @@ export default function TileMasterPage() {
     setConfirmAction(() => async () => {
       try {
         setIsLoading(true);
-        const res = await axios.get(`${API_BASE}/BlockTile/${USER_ID}/${tileId}/${currentStatus ? 0 : 1}`);
+        const res = await axios.get(`${baseURL}/BlockTile/${userId}/${tileId}/${currentStatus ? 0 : 1}`);
         if (res.data === 'success') {
           setAlertMessage(`Tile ${currentStatus ? 'unblocked' : 'blocked'} successfully.`);
           setShowAlert(true);

@@ -5,6 +5,8 @@ import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
@@ -55,7 +57,6 @@ export default function CompanyMasterPage() {
   });
   const [error, setError] = useState('');
 
-  const API_BASE_URL = 'https://svikinfotech.com/clients/visualizer/api/';
 
   // Current timestamp in IST (2025-08-03T14:08:00+05:30)
   const currentDateTime = '2025-08-03T14:08:00+05:30';
@@ -63,7 +64,7 @@ export default function CompanyMasterPage() {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/GetCompanyList`, {
+        const response = await fetch(`${baseURL}/GetCompanyList`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ export default function CompanyMasterPage() {
     formData.append('RequestBy', editData.modify_by);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/EditCompany`, {
+      const response = await fetch(`${baseURL}/EditCompany`, {
         method: 'POST',
         body: formData,
       });
@@ -211,7 +212,7 @@ export default function CompanyMasterPage() {
     formData.append('RequestBy', newData.RequestBy);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/AddCompany`, {
+      const response = await fetch(`${baseURL}/AddCompany`, {
         method: 'POST',
         body: formData,
       });
@@ -250,7 +251,7 @@ export default function CompanyMasterPage() {
     const status = comp.block ? 0 : 1;
     try {
       const response = await fetch(
-        `${API_BASE_URL}/BlockCompany/${comp.modify_by}/${comp.comp_id}/${status}`,
+        `${baseURL}/BlockCompany/${comp.modify_by}/${comp.comp_id}/${status}`,
         {
           method: 'GET',
         }

@@ -5,6 +5,8 @@ import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
@@ -52,7 +54,7 @@ export default function UserMasterPage() {
   });
   const [error, setError] = useState('');
 
-  const API_BASE_URL = 'https://svikinfotech.com/clients/visualizer/api/';
+ 
 
   // Current timestamp in IST (2025-08-03T15:30:00+05:30)
   const currentDateTime = '2025-08-03T15:30:00+05:30';
@@ -60,7 +62,7 @@ export default function UserMasterPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/GetUserList`, {
+        const response = await fetch(`${baseURL}/GetUserList`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -124,7 +126,7 @@ export default function UserMasterPage() {
     });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/EditUser`, {
+      const response = await fetch(`${baseURL}/EditUser`, {
         method: 'POST',
         body: formData,
       });
@@ -204,7 +206,7 @@ export default function UserMasterPage() {
     });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/AddUser`, {
+      const response = await fetch(`${baseURL}/AddUser`, {
         method: 'POST',
         body: formData,
       });
@@ -250,7 +252,7 @@ export default function UserMasterPage() {
     const status = user.block ? 0 : 1;
     try {
       const response = await fetch(
-        `${API_BASE_URL}/BlockUser/${user.modify_by || 0}/${user.user_id}/${status}`,
+        `${baseURL}/BlockUser/${user.modify_by || 0}/${user.user_id}/${status}`,
         {
           method: 'GET',
         }

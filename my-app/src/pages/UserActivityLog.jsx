@@ -5,6 +5,8 @@ import Topbar from '../components/Topbar';
 import { FaSortUp, FaSortDown } from 'react-icons/fa';
 import Breadcrumb from '../components/Breadcrumb';
 
+
+
 export default function UserActivityLog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
