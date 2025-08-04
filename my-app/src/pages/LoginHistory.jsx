@@ -3,6 +3,9 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import { FaSortUp, FaSortDown } from 'react-icons/fa';
+import axios from 'axios';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 export default function LoginHistory() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -10,41 +13,67 @@ export default function LoginHistory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
   const [fadeIn, setFadeIn] = useState(false);
+  const [loginHistory, setLoginHistory] = useState([]);
+
+  const userId = localStorage.getItem('userid');
+  const userName = localStorage.getItem('username');
 
   useEffect(() => {
     setFadeIn(true);
+    fetchLoginHistory();
   }, []);
 
-  const loginHistory = [
-    { id: 1, name: 'John Doe', loginDate: '2024-07-01 09:00', logoutDate: '2024-07-01 17:00' },
-    { id: 2, name: 'Jane Smith', loginDate: '2024-07-02 08:45', logoutDate: '' },
-    { id: 3, name: 'Alice Johnson', loginDate: '2024-07-02 09:15', logoutDate: '2024-07-02 18:00' },
-    { id: 4, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
-    { id: 5, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
-    { id: 6, name: 'Jane Smith', loginDate: '2024-07-02 08:45', logoutDate: '' },
-    { id: 7, name: 'Alice Johnson', loginDate: '2024-07-02 09:15', logoutDate: '2024-07-02 18:00' },
-    { id: 8, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
-    { id: 9, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
-    { id: 10, name: 'John Doe', loginDate: '2024-07-01 09:00', logoutDate: '2024-07-01 17:00' },
-    { id: 11, name: 'Jane Smith', loginDate: '2024-07-02 08:45', logoutDate: '' },
-    { id: 12, name: 'Alice Johnson', loginDate: '2024-07-02 09:15', logoutDate: '2024-07-02 18:00' },
-    { id: 13, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
-    { id: 14, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
-  ];
+  const fetchLoginHistory = async () => {
+    try {
+      const response = await axios.post(`${baseURL}/GetLoginHistory`, {
+        userId: parseInt(userId),
+      });
+
+      const history = response.data.map((entry) => ({
+        loginDate: entry.login_date,
+        logoutDate: entry.logout_date && typeof entry.logout_date === 'string' && entry.logout_date.trim() !== ''
+          ? entry.logout_date
+          : null,
+        name: userName,
+      }));
+
+      setLoginHistory(history);
+    } catch (error) {
+      console.error('Failed to fetch login history:', error.response?.data || error.message);
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+};
+
 
   const filtered = loginHistory.filter(
     (log) =>
       log.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.loginDate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.logoutDate.toLowerCase().includes(searchTerm.toLowerCase())
+      (log.loginDate || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.logoutDate || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const sorted = React.useMemo(() => {
     let sortableItems = [...filtered];
     if (sortConfig.key !== '') {
       sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+        const aVal = a[sortConfig.key] || '';
+        const bVal = b[sortConfig.key] || '';
+        if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
         return 0;
       });
     }
@@ -81,10 +110,15 @@ export default function LoginHistory() {
               <select
                 className="border border-gray-300 rounded px-2 py-1"
                 value={entriesPerPage}
-                onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
               >
-                {[10, 25, 50, 100].map(num => (
-                  <option key={num} value={num}>{num}</option>
+                {[10, 25, 50, 100].map((num) => (
+                  <option key={num} value={num}>
+                    {num}
+                  </option>
                 ))}
               </select>
               <span>entries</span>
@@ -102,9 +136,6 @@ export default function LoginHistory() {
             <table className="min-w-full text-sm text-left">
               <thead className="bg-green-100 text-green-900 text-xs uppercase sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('id')}>
-                    ID {sortConfig.key === 'id' && (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
-                  </th>
                   <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('name')}>
                     Name {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
                   </th>
@@ -114,19 +145,14 @@ export default function LoginHistory() {
                   <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('logoutDate')}>
                     Logout Date {sortConfig.key === 'logoutDate' && (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
                   </th>
-                  <th className="px-4 py-2">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {currentLogs.map((log) => (
-                  <tr key={log.id} className="border-b hover:bg-green-50 transition duration-150">
-                    <td className="px-4 py-2">{log.id}</td>
+                {currentLogs.map((log, index) => (
+                  <tr key={index} className="border-b hover:bg-green-50 transition duration-150">
                     <td className="px-4 py-2">{log.name}</td>
-                    <td className="px-4 py-2">{log.loginDate}</td>
-                    <td className="px-4 py-2">{log.logoutDate || '-'}</td>
-                    <td className="px-4 py-2">
-                      <span className={`w-3 h-3 inline-block rounded-full ${log.logoutDate ? 'bg-green-600' : 'bg-red-500'}`}></span>
-                    </td>
+                    <td className="px-4 py-2">{formatDateTime(log.loginDate)}</td>
+                    <td className="px-4 py-2">{log.logoutDate ? formatDateTime(log.logoutDate) : '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -141,8 +167,12 @@ export default function LoginHistory() {
               <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
                 Previous
               </button>
-              {[...Array(totalPages).keys()].map(num => (
-                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
+              {[...Array(totalPages).keys()].map((num) => (
+                <button
+                  key={num + 1}
+                  onClick={() => setCurrentPage(num + 1)}
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                >
                   {num + 1}
                 </button>
               ))}
@@ -151,7 +181,6 @@ export default function LoginHistory() {
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>
