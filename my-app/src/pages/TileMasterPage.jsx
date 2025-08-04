@@ -1,552 +1,560 @@
+// src/pages/TileMasterPage.jsx
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
-import { FaEdit, FaTrash, FaPlus, FaSortUp, FaSortDown, FaAngleDoubleLeft, FaAngleLeft, FaAngleRight, FaAngleDoubleRight } from 'react-icons/fa';
+import axios from 'axios';
+import { FaPlus, FaEdit, FaBan, FaCheck, FaSortUp, FaSortDown, FaAngleLeft, FaAngleRight, FaSearch } from 'react-icons/fa';
+import TileModal from '../components/TileModal';
 
-const initialFormState = {
-  sku_name: '',
-  sku_code: '',
-  cat_id: '',
-  cat_name: '',
-  space_id: '',
-  space_name: '',
-  size_id: '',
-  size_name: '',
-  finish_id: '',
-  finish_name: '',
-  block: '',
-  created_by: '',
-  created_date: '',
-  modify_by: '',
-  modify_date: '',
-};
-
-function TileModal({ initialData, onClose, onSave }) {
-  const [formData, setFormData] = useState(initialData || initialFormState);
-  const [showConfirmSave, setShowConfirmSave] = useState(false);
-  const [showConfirmCancel, setShowConfirmCancel] = useState(false);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSave = () => {
-    onSave({ ...formData, tile_id: initialData ? initialData.tile_id : Date.now() });
-    setShowConfirmSave(false);
-  };
-
-  const confirmClose = () => {
-    onClose();
-    setShowConfirmCancel(false);
-  };
-
-  const cancelClose = () => {
-    setShowConfirmCancel(false);
-  };
-
-  const cancelSave = () => {
-    setShowConfirmSave(false);
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-        <div className="bg-white p-6 rounded-lg w-[90%] max-w-4xl">
-          <h2 className="text-xl font-bold mb-4">{initialData ? 'Edit Tile' : 'Add Tile'}</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setShowConfirmSave(true);
-            }}
-          >
-            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
-              {Object.keys(initialFormState).map((key) => (
-                key !== 'created_date' && key !== 'modify_date' && (
-                  <div key={key} className="flex flex-col">
-                    <label className="capitalize text-sm mb-1">{key.replace(/_/g, ' ')}</label>
-                    <input
-                      required
-                      type="text"
-                      name={key}
-                      value={formData[key] || ''}
-                      onChange={handleInputChange}
-                      className="border p-2 rounded"
-                    />
-                  </div>
-                )
-              ))}
-            </div>
-            <div className="flex justify-end gap-4 mt-6">
-              <button
-                type="submit"
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-                onClick={() => setShowConfirmCancel(true)}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {showConfirmSave && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg text-center w-[90%] max-w-md">
-            <p className="mb-4 text-lg">Are you sure you want to save this tile?</p>
-            <div className="flex justify-center gap-6">
-              <button
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                onClick={handleSave}
-              >
-                Yes, Save
-              </button>
-              <button
-                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-                onClick={cancelSave}
-              >
-                No, Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showConfirmCancel && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg text-center w-[90%] max-w-md">
-            <p className="mb-4 text-lg">Discard tile entry?</p>
-            <div className="flex justify-center gap-6">
-              <button
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                onClick={confirmClose}
-              >
-                Yes, Discard
-              </button>
-              <button
-                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-                onClick={cancelClose}
-              >
-                No, Go Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function TileMasterPage() {
+export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [entriesToShow, setEntriesToShow] = useState(10);
-  const [sortConfig, setSortConfig] = useState({ key: '', direction: '' });
-  const [showModal, setShowModal] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
+  const [message, setMessage] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editTileData, setEditTileData] = useState(null);
+  const [referenceData, setReferenceData] = useState({
+    categories: [],
+    applications: [],
+    spaces: [],
+    sizes: [],
+    finishes: [],
+    colors: []
+  });
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState(() => {});
-  const [columnSearches, setColumnSearches] = useState({});
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [columnSearches, setColumnSearches] = useState({
+    sku_name: '',
+    sku_code: '',
+    cat_name: '',
+    app_name: '',
+    space_name: '',
+    size_name: '',
+    finish_name: '',
+    color_name: ''
+  });
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [tempFormData, setTempFormData] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
-  const columns = [
-    { key: 'sku_name', label: 'SKU Name' },
-    { key: 'sku_code', label: 'SKU Code' },
-    { key: 'cat_name', label: 'Category Name' },
-    { key: 'space_name', label: 'Space Name' },
-    { key: 'size_name', label: 'Size Name' },
-    { key: 'finish_name', label: 'Finish Name' },
-    { key: 'block', label: 'Block' },
-  ];
+  const API_BASE = 'https://svikinfotech.com/clients/visualizer/api';
+  const USER_ID = 1;
 
   useEffect(() => {
-    const dummyTiles = [
-      {
-        tile_id: 1, sku_name: 'Matte Marble', sku_code: 'MM001', cat_id: 10, cat_name: 'Marble',
-        space_id: 201, space_name: 'Bathroom', size_id: 301, size_name: '600x600',
-        finish_id: 401, finish_name: 'Matte', block: 'N',
-        created_by: 'Admin', created_date: '2024-07-01', modify_by: 'Admin', modify_date: '2024-07-10'
-      },
-      {
-        tile_id: 2, sku_name: 'Glossy Granite', sku_code: 'GG002', cat_id: 11, cat_name: 'Granite',
-        space_id: 202, space_name: 'Kitchen', size_id: 302, size_name: '800x800',
-        finish_id: 402, finish_name: 'Glossy', block: 'Y',
-        created_by: 'Editor', created_date: '2024-06-20', modify_by: 'Admin', modify_date: '2024-07-05'
-      },
-      {
-        tile_id: 3, sku_name: 'Textured Slate', sku_code: 'TS003', cat_id: 12, cat_name: 'Slate',
-        space_id: 203, space_name: 'Balcony', size_id: 303, size_name: '1200x600',
-        finish_id: 403, finish_name: 'Textured', block: 'N',
-        created_by: 'User', created_date: '2024-05-15', modify_by: 'User', modify_date: '2024-06-15'
-      },
-      {
-        tile_id: 4, sku_name: 'Satin Stone', sku_code: 'SS004', cat_id: 13, cat_name: 'Stone',
-        space_id: 204, space_name: 'Living Room', size_id: 304, size_name: '600x300',
-        finish_id: 404, finish_name: 'Satin', block: 'N',
-        created_by: 'Admin', created_date: '2024-05-01', modify_by: 'Admin', modify_date: '2024-05-10'
-      },
-      {
-        tile_id: 5, sku_name: 'Glossy White', sku_code: 'GW005', cat_id: 14, cat_name: 'Ceramic',
-        space_id: 205, space_name: 'Toilet', size_id: 301, size_name: '600x600',
-        finish_id: 402, finish_name: 'Glossy', block: 'Y',
-        created_by: 'Manager', created_date: '2024-04-20', modify_by: 'Admin', modify_date: '2024-04-25'
-      },
-      {
-        tile_id: 6, sku_name: 'Rustic Clay', sku_code: 'RC006', cat_id: 15, cat_name: 'Clay',
-        space_id: 206, space_name: 'Porch', size_id: 305, size_name: '450x450',
-        finish_id: 405, finish_name: 'Rustic', block: 'N',
-        created_by: 'Admin', created_date: '2024-03-30', modify_by: 'Admin', modify_date: '2024-04-10'
-      },
-      {
-        tile_id: 7, sku_name: 'Glossy Pearl', sku_code: 'GP007', cat_id: 16, cat_name: 'Porcelain',
-        space_id: 207, space_name: 'Bedroom', size_id: 302, size_name: '800x800',
-        finish_id: 402, finish_name: 'Glossy', block: 'Y',
-        created_by: 'Editor', created_date: '2024-03-15', modify_by: 'Editor', modify_date: '2024-03-20'
-      },
-      {
-        tile_id: 8, sku_name: 'Matte Blue Sky', sku_code: 'MB008', cat_id: 17, cat_name: 'Ceramic',
-        space_id: 208, space_name: 'Terrace', size_id: 306, size_name: '300x300',
-        finish_id: 401, finish_name: 'Matte', block: 'N',
-        created_by: 'Designer', created_date: '2024-02-25', modify_by: 'Admin', modify_date: '2024-03-01'
-      },
-      {
-        tile_id: 9, sku_name: 'Satin Ash', sku_code: 'SA009', cat_id: 18, cat_name: 'Vinyl',
-        space_id: 209, space_name: 'Lobby', size_id: 307, size_name: '900x450',
-        finish_id: 404, finish_name: 'Satin', block: 'Y',
-        created_by: 'User', created_date: '2024-02-01', modify_by: 'User', modify_date: '2024-02-10'
-      },
-      {
-        tile_id: 10, sku_name: 'Stone Edge', sku_code: 'SE010', cat_id: 13, cat_name: 'Stone',
-        space_id: 210, space_name: 'Foyer', size_id: 308, size_name: '600x1200',
-        finish_id: 405, finish_name: 'Rustic', block: 'N',
-        created_by: 'Manager', created_date: '2024-01-20', modify_by: 'Editor', modify_date: '2024-01-25'
-      },
-    ];
-    setTiles(dummyTiles);
+    fetchTiles();
+    fetchReferenceData();
   }, []);
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page on new search
+  const fetchTiles = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/GetTileList`);
+      setTiles(res.data);
+    } catch (err) {
+      console.error('Fetch Error:', err);
+      setMessage('Failed to fetch tiles.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleColumnSearch = (key, value) => {
+  const fetchReferenceData = async () => {
+    setIsLoading(true);
+    try {
+      const [categories, applications, spaces, sizes, finishes, colors] = await Promise.all([
+        axios.get(`${API_BASE}/GetCategoryList`),
+        axios.get(`${API_BASE}/GetApplicationList`),
+        axios.get(`${API_BASE}/GetSpaceList`),
+        axios.get(`${API_BASE}/GetSizeList`),
+        axios.get(`${API_BASE}/GetFinishList`),
+        axios.get(`${API_BASE}/GetColorList`)
+      ]);
+      setReferenceData({
+        categories: categories.data,
+        applications: applications.data,
+        spaces: spaces.data,
+        sizes: sizes.data,
+        finishes: finishes.data,
+        colors: colors.data
+      });
+    } catch (err) {
+      console.error('Reference Data Fetch Error:', err);
+      setMessage('Failed to fetch reference data.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddTileConfirm = (data) => {
+    setTempFormData(data);
+    setConfirmMessage('Do you want to add this tile?');
+    setConfirmAction(() => () => handleAddTile(data));
+    setShowConfirm(true);
+  };
+
+  const handleEditTileConfirm = (data) => {
+    setTempFormData(data);
+    setConfirmMessage('Do you want to save changes?');
+    setConfirmAction(() => () => handleEditTile(data));
+    setShowConfirm(true);
+  };
+
+  const handleAddTile = async (data) => {
+    console.log('Submitted Data:', data);
+    try {
+      const payload = new FormData();
+      payload.append('SkuName', data.SkuName);
+      payload.append('SkuCode', data.SkuCode);
+      payload.append('CatId', getIdFromName(referenceData.categories, data.CatName, 'cat_id', 'cat_name'));
+      payload.append('CatName', data.CatName);
+      payload.append('AppId', getIdFromName(referenceData.applications, data.AppName, 'app_id', 'app_name'));
+      payload.append('AppName', data.AppName);
+      payload.append('SpaceId', getIdFromName(referenceData.spaces, data.SpaceName, 'space_id', 'space_name'));
+      payload.append('SpaceName', data.SpaceName);
+      payload.append('SizeId', getIdFromName(referenceData.sizes, data.SizeName, 'size_id', 'size_name'));
+      payload.append('SizeName', data.SizeName);
+      payload.append('FinishId', getIdFromName(referenceData.finishes, data.FinishName, 'finish_id', 'finish_name'));
+      payload.append('FinishName', data.FinishName);
+      payload.append('ColorId', getIdFromName(referenceData.colors, data.ColorName, 'color_id', 'color_name'));
+      payload.append('ColorName', data.ColorName);
+      payload.append('RequestBy', USER_ID);
+
+      setIsLoading(true);
+      const res = await axios.post(`${API_BASE}/AddTile`, payload);
+      const responseText = res.data;
+
+      if (responseText === 'success') {
+        setAlertMessage('Tile added successfully!');
+        setShowAlert(true);
+        setShowAddModal(false);
+        fetchTiles();
+      } else if (responseText === 'alreadyexists') {
+        setAlertMessage('Tile already exists!');
+        setShowAlert(true);
+      } else {
+        setAlertMessage(responseText);
+        setShowAlert(true);
+      }
+    } catch (err) {
+      console.error('Add Error:', err);
+      setAlertMessage('An error occurred while adding tile.');
+      setShowAlert(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditClick = (tile) => {
+    setEditTileData({
+      TileId: tile.tile_id || '',
+      SkuName: tile.sku_name || '',
+      SkuCode: tile.sku_code || '',
+      CatName: tile.cat_name || '',
+      AppName: tile.app_name || '',
+      SpaceName: tile.space_name || '',
+      SizeName: tile.size_name || '',
+      FinishName: tile.finish_name || '',
+      ColorName: tile.color_name || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditTile = async (data) => {
+    console.log('Submitted Data:', data);
+    try {
+      const payload = new FormData();
+      payload.append('TileId', editTileData.TileId);
+      payload.append('SkuName', data.SkuName);
+      payload.append('SkuCode', data.SkuCode);
+      payload.append('CatId', getIdFromName(referenceData.categories, data.CatName, 'cat_id', 'cat_name'));
+      payload.append('CatName', data.CatName);
+      payload.append('AppId', getIdFromName(referenceData.applications, data.AppName, 'app_id', 'app_name'));
+      payload.append('AppName', data.AppName);
+      payload.append('SpaceId', getIdFromName(referenceData.spaces, data.SpaceName, 'space_id', 'space_name'));
+      payload.append('SpaceName', data.SpaceName);
+      payload.append('SizeId', getIdFromName(referenceData.sizes, data.SizeName, 'size_id', 'size_name'));
+      payload.append('SizeName', data.SizeName);
+      payload.append('FinishId', getIdFromName(referenceData.finishes, data.FinishName, 'finish_id', 'finish_name'));
+      payload.append('FinishName', data.FinishName);
+      payload.append('ColorId', getIdFromName(referenceData.colors, data.ColorName, 'color_id', 'color_name'));
+      payload.append('ColorName', data.ColorName);
+      payload.append('RequestBy', USER_ID);
+
+      setIsLoading(true);
+      const res = await axios.post(`${API_BASE}/EditTile`, payload);
+      const responseText = res.data;
+
+      if (responseText === 'success') {
+        setAlertMessage('Tile updated successfully!');
+        setShowAlert(true);
+        setShowEditModal(false);
+        fetchTiles();
+      } else if (responseText === 'alreadyexists') {
+        setAlertMessage('Tile already exists!');
+        setShowAlert(true);
+      } else {
+        setAlertMessage(responseText);
+        setShowAlert(true);
+      }
+    } catch (err) {
+      console.error('Edit Error:', err);
+      setAlertMessage('An error occurred while updating tile.');
+      setShowAlert(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBlockToggle = async (tileId, currentStatus) => {
+    setConfirmMessage(`Are you sure you want to ${currentStatus ? 'unblock' : 'block'} this tile?`);
+    setConfirmAction(() => async () => {
+      try {
+        setIsLoading(true);
+        const res = await axios.get(`${API_BASE}/BlockTile/${USER_ID}/${tileId}/${currentStatus ? 0 : 1}`);
+        if (res.data === 'success') {
+          setAlertMessage(`Tile ${currentStatus ? 'unblocked' : 'blocked'} successfully.`);
+          setShowAlert(true);
+          fetchTiles();
+        } else {
+          setAlertMessage('Failed to update block status.');
+          setShowAlert(true);
+        }
+      } catch (err) {
+        console.error('Block Error:', err);
+        setAlertMessage('Error while toggling block status.');
+        setShowAlert(true);
+      } finally {
+        setIsLoading(false);
+        setShowConfirm(false);
+      }
+    });
+    setShowConfirm(true);
+  };
+
+  const getIdFromName = (dataArray, name, idKey, nameKey) => {
+    const item = dataArray.find(item => item[nameKey] === name);
+    return item ? item[idKey] : '';
+  };
+
+  const closeAlert = () => {
+    setShowAlert(false);
+    setAlertMessage('');
+  };
+
+  const closeConfirm = (confirm) => {
+    if (confirm && confirmAction) confirmAction();
+    setShowConfirm(false);
+    setConfirmMessage('');
+    setConfirmAction(() => {});
+    setTempFormData(null);
+  };
+
+  const handleSearchChange = (key, value) => {
     setColumnSearches((prev) => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // Reset to first page on new column search
+    setCurrentPage(1);
   };
 
-  const getSortedTiles = () => {
-    let filtered = tiles.filter((tile) =>
-      Object.entries(columnSearches).every(([key, value]) =>
-        value ? String(tile[key]).toLowerCase().includes(value.toLowerCase()) : true
-      ) && (
-        searchTerm === '' || 
-        Object.values(tile).some((val) =>
-          String(val).toLowerCase().includes(searchTerm.toLowerCase())
+  const handleGlobalSearchChange = (e) => {
+    setGlobalSearch(e.target.value.toLowerCase());
+    setCurrentPage(1);
+  };
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setCurrentPage(1);
+  };
+
+  const getSortedAndFilteredTiles = () => {
+    let filteredTiles = [...tiles];
+
+    if (globalSearch) {
+      filteredTiles = filteredTiles.filter((tile) =>
+        Object.values(tile).some((value) =>
+          String(value).toLowerCase().includes(globalSearch)
         )
+      );
+    }
+
+    filteredTiles = filteredTiles.filter((tile) =>
+      Object.entries(columnSearches).every(([key, value]) =>
+        !value || String(tile[key]).toLowerCase().includes(value.toLowerCase())
       )
     );
 
     if (sortConfig.key) {
-      filtered.sort((a, b) => {
+      filteredTiles.sort((a, b) => {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
-
         if (!isNaN(aVal) && !isNaN(bVal)) {
           return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
         }
-
         return sortConfig.direction === 'asc'
           ? String(aVal).localeCompare(String(bVal))
           : String(bVal).localeCompare(String(aVal));
       });
     }
 
-    return filtered;
+    return filteredTiles;
   };
 
-  const handleSort = (key, direction) => {
-    setSortConfig({ key, direction });
-    setCurrentPage(1); // Reset to first page on new sort
+  const paginatedTiles = () => {
+    const filteredTiles = getSortedAndFilteredTiles();
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    return filteredTiles.slice(indexOfFirstItem, indexOfLastItem);
   };
 
-  const handleAdd = () => {
-    setEditIndex(null);
-    setShowModal(true);
-  };
+  const totalPages = Math.ceil(getSortedAndFilteredTiles().length / itemsPerPage);
 
-  const handleEdit = (index) => {
-    const sortedTiles = getSortedTiles();
-    const actualIndex = tiles.indexOf(sortedTiles[(currentPage - 1) * entriesToShow + index]);
-    setEditIndex(actualIndex);
-    setShowModal(true);
-  };
-
-  const handleDelete = (index) => {
-    const sortedTiles = getSortedTiles();
-    const actualIndex = tiles.indexOf(sortedTiles[(currentPage - 1) * entriesToShow + index]);
-    setConfirmAction(() => () => {
-      const newTiles = [...tiles];
-      newTiles.splice(actualIndex, 1);
-      setTiles(newTiles);
-      setShowConfirm(false);
-      // Adjust current page if necessary
-      const totalItems = getSortedTiles().length - 1;
-      const maxPage = Math.ceil(totalItems / entriesToShow);
-      if (currentPage > maxPage && maxPage > 0) {
-        setCurrentPage(maxPage);
-      }
-    });
-    setShowConfirm(true);
-  };
-
-  const handleSave = (tileData) => {
-    const newTiles = [...tiles];
-    if (editIndex !== null) {
-      newTiles[editIndex] = { ...tileData, tile_id: tiles[editIndex].tile_id };
-    } else {
-      newTiles.push({ ...tileData, tile_id: Date.now() });
-    }
-    setTiles(newTiles);
-    setShowModal(false);
-  };
-
-  // Pagination logic
-  const sortedTiles = getSortedTiles();
-  const totalItems = sortedTiles.length;
-  const totalPages = Math.ceil(totalItems / entriesToShow);
-  const startIndex = (currentPage - 1) * entriesToShow;
-  const endIndex = Math.min(startIndex + entriesToShow, totalItems);
-  const paginatedTiles = sortedTiles.slice(startIndex, endIndex);
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
-
-  const handleFirstPage = () => {
-    setCurrentPage(1);
-  };
-
-  const handleLastPage = () => {
-    setCurrentPage(totalPages);
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  // Generate page numbers to display
-  const getPageNumbers = () => {
-    const maxPagesToShow = 5;
-    const pages = [];
-    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
-    if (endPage - startPage + 1 < maxPagesToShow) {
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    return pages;
-  };
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const nextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+  const prevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Topbar />
-        <div className="p-4 flex-1">
+        <div className="p-5 flex-1">
           <Breadcrumbs currentPage="Tile Master" />
-
-          <div className="flex justify-between items-center my-4">
-            <h2 className="text-2xl font-semibold">Tile Master</h2>
-            <button
-              onClick={handleAdd}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              <FaPlus className="inline mr-2" /> Add Tile
-            </button>
-          </div>
-
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              Show
-              <select
-                className="mx-2 border px-2 py-1"
-                value={entriesToShow}
-                onChange={(e) => {
-                  setEntriesToShow(Number(e.target.value));
-                  setCurrentPage(1); // Reset to first page when entries change
-                }}
+          <div className="mt-5">
+            <div className="flex justify-between items-center mb-5">
+              <h1 className="text-3xl font-bold text-gray-800">Tile Master</h1>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex items-center"
+                disabled={isLoading}
               >
-                {[5, 10, 15, 20, 25].map((num) => (
-                  <option key={num} value={num}>{num}</option>
-                ))}
-              </select>
-              entries
+                <FaPlus className="mr-2" /> Add Tile
+              </button>
             </div>
-            <input
-              type="text"
-              placeholder="Search..."
-              className="border px-2 py-1"
-              value={searchTerm}
-              onChange={handleSearch}
-            />
-          </div>
-
-          <div className="col-sm-12">
-            <div className="card">
-              <div className="card-body">
-                <div className="overflow-x-auto max-h-[400px] relative">
-                  <table className="min-w-[1000px] bg-white border border-gray-200">
-                    <thead className="bg-green-200 sticky top-0 z-10">
-                      <tr>
-                        {columns.map(({ key, label }) => (
-                          <th key={key} className="px-4 py-2 text-left cursor-pointer whitespace-nowrap border-b">
+            {message && (
+              <div className="mb-6 text-sm text-center text-green-600 bg-green-100 p-3 rounded-md">
+                {message}
+              </div>
+            )}
+            {isLoading && <div className="text-center text-gray-600">Loading...</div>}
+            <div className="bg-white shadow-lg rounded-lg p-3">
+              <div className="mb-4 flex justify-between items-center">
+                <div className="flex items-center">
+                  <span className="mr-2">Show Entries:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border p-1 rounded"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </select>
+                </div>
+                <div className="flex items-center">
+                  <FaSearch className="mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Search all columns..."
+                    value={globalSearch}
+                    onChange={handleGlobalSearchChange}
+                    className="border p-1 rounded"
+                  />
+                </div>
+              </div>
+              <div className="overflow-auto max-h-[calc(100vh-300px)]"> {/* Adjustable max height */}
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-green-700 text-white">
+                    <tr>
+                      {['sku_name', 'sku_code', 'cat_name', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
+                        <th
+                          key={key}
+                          className="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase tracking-wider"
+                        >
+                          {key === 'actions' ? 'Actions' : key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          {key !== 'actions' && (
                             <div className="flex items-center">
-                              {label}
-                              <div className="ml-1">
-                                <FaSortUp onClick={() => handleSort(key, 'asc')} className="cursor-pointer" />
-                                <FaSortDown onClick={() => handleSort(key, 'desc')} className="cursor-pointer -mt-1" />
+                              <input
+                                type="text"
+                                placeholder={`Search ${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`}
+                                value={columnSearches[key]}
+                                onChange={(e) => handleSearchChange(key, e.target.value)}
+                                className="mt-2 w-full border p-1 rounded text-sm"
+                              />
+                              <div className="ml-2">
+                                <FaSortUp
+                                  onClick={() => handleSort(key)}
+                                  className={`cursor-pointer ${sortConfig.key === key && sortConfig.direction === 'asc' ? 'text-blue-600' : ''}`}
+                                />
+                                <FaSortDown
+                                  onClick={() => handleSort(key)}
+                                  className={`cursor-pointer -mt-1 ${sortConfig.key === key && sortConfig.direction === 'desc' ? 'text-blue-600' : ''}`}
+                                />
                               </div>
                             </div>
-                          </th>
-                        ))}
-                        <th className="px-4 py-2 border-b">Actions</th>
-                      </tr>
-                      <tr>
-                        {columns.map(({ key, label }) => (
-                          <th key={key} className="px-4 py-2 border-b">
-                            <input
-                              type="text"
-                              placeholder={`Search ${label}`}
-                              className="border px-2 py-1 w-full"
-                              value={columnSearches[key] || ''}
-                              onChange={(e) => handleColumnSearch(key, e.target.value)}
-                            />
-                          </th>
-                        ))}
-                        <th className="px-4 py-2 border-b"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedTiles.map((tile, index) => (
-                        <tr key={index} className="border-t">
-                          {columns.map(({ key }) => (
-                            <td key={key} className="px-4 py-2 whitespace-nowrap">{tile[key]}</td>
-                          ))}
-                          <td className="px-4 py-2 whitespace-nowrap">
-                            <button onClick={() => handleEdit(index)} className="text-blue-600 hover:underline mr-2">
-                              <FaEdit />
-                            </button>
-                            <button onClick={() => handleDelete(index)} className="text-red-600 hover:underline">
-                              <FaTrash />
-                            </button>
-                          </td>
-                        </tr>
+                          )}
+                        </th>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-                {/* Pagination Controls */}
-                <div className="flex justify-between items-center mt-4">
-                  <div>
-                    Showing {startIndex + 1} to {endIndex} of {totalItems} entries
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleFirstPage}
-                      disabled={currentPage === 1}
-                      className={`px-2 py-1 rounded ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-gray-200'}`}
-                    >
-                      <FaAngleDoubleLeft />
-                    </button>
-                    <button
-                      onClick={handlePrevPage}
-                      disabled={currentPage === 1}
-                      className={`px-2 py-1 rounded ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-gray-200'}`}
-                    >
-                      <FaAngleLeft />
-                    </button>
-                    {getPageNumbers().map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`px-3 py-1 rounded ${currentPage === page ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-gray-200'}`}
-                      >
-                        {page}
-                      </button>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedTiles().map((tile, index) => (
+                      <tr key={index} className="hover:bg-gray-50 transition duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.sku_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.sku_code}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.cat_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.app_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.space_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.size_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.finish_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {tile.color_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 space-x-4">
+                          <button
+                            onClick={() => handleEditClick(tile)}
+                            className="text-blue-600 hover:text-blue-800 transition duration-150"
+                            disabled={isLoading}
+                            aria-label="Edit Tile"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            onClick={() => handleBlockToggle(tile.tile_id, tile.block)}
+                            className="text-red-600 hover:text-red-800 transition duration-150"
+                            disabled={isLoading}
+                            aria-label={tile.block ? 'Unblock Tile' : 'Block Tile'}
+                          >
+                            {tile.block ? <FaCheck /> : <FaBan />}
+                          </button>
+                        </td>
+                      </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex justify-between items-center">
+                <div className="text-sm">
+                  Showing {paginatedTiles().length} of {getSortedAndFilteredTiles().length} entries
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={prevPage}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 bg-gray-300 rounded disabled:opacity-50"
+                  >
+                    <FaAngleLeft />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
                     <button
-                      onClick={handleNextPage}
-                      disabled={currentPage === totalPages}
-                      className={`px-2 py-1 rounded ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-gray-200'}`}
+                      key={number}
+                      onClick={() => paginate(number)}
+                      className={`px-3 py-1 rounded ${currentPage === number ? 'bg-green-600 text-white' : 'bg-gray-300'}`}
                     >
-                      <FaAngleRight />
+                      {number}
                     </button>
-                    <button
-                      onClick={handleLastPage}
-                      disabled={currentPage === totalPages}
-                      className={`px-2 py-1 rounded ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-gray-200'}`}
-                    >
-                      <FaAngleDoubleRight />
-                    </button>
-                  </div>
+                  ))}
+                  <button
+                    onClick={nextPage}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 bg-gray-300 rounded disabled:opacity-50"
+                  >
+                    <FaAngleRight />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-
-          {showModal && (
-            <TileModal
-              initialData={editIndex !== null ? tiles[editIndex] : null}
-              onClose={() => setShowModal(false)}
-              onSave={handleSave}
-            />
-          )}
-
-          {showConfirm && (
-            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded shadow-lg text-center w-[90%] max-w-md">
-                <p className="mb-4 text-lg">Are you sure you want to delete this tile?</p>
-                <div className="flex justify-center gap-6">
-                  <button
-                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                    onClick={confirmAction}
-                  >
-                    Yes, Delete
-                  </button>
-                  <button
-                    className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-                    onClick={() => setShowConfirm(false)}
-                  >
-                    No, Cancel
-                  </button>
-                </div>
+        </div>
+        {showAddModal && (
+          <TileModal
+            title="Add Tile"
+            defaultValues={{
+              SkuName: '',
+              SkuCode: '',
+              CatName: '',
+              AppName: '',
+              SpaceName: '',
+              SizeName: '',
+              FinishName: '',
+              ColorName: ''
+            }}
+            referenceData={referenceData}
+            onSubmit={handleAddTileConfirm}
+            onClose={() => setShowAddModal(false)}
+            isOpen={showAddModal}
+            isEdit={false}
+          />
+        )}
+        {showEditModal && (
+          <TileModal
+            title="Edit Tile"
+            defaultValues={editTileData || {}}
+            referenceData={referenceData}
+            onSubmit={handleEditTileConfirm}
+            onClose={() => setShowEditModal(false)}
+            isOpen={showEditModal}
+            isEdit={true}
+          />
+        )}
+        {showAlert && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg text-center w-[90%] max-w-md">
+              <p className="mb-4 text-lg font-semibold">{alertMessage}</p>
+              <button
+                onClick={closeAlert}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+        {showConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg text-center w-[90%] max-w-md">
+              <p className="mb-4 text-lg font-semibold">{confirmMessage}</p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => closeConfirm(true)}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => closeConfirm(false)}
+                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                >
+                  No
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-export default TileMasterPage;

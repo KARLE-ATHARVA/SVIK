@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
+import Breadcrumbs from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
@@ -32,73 +33,7 @@ export default function CompanyMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [companies, setCompanies] = useState([
-    {
-      comp_id: 1,
-      plan_id: 101,
-      comp_name: 'ABC Corp',
-      comp_address: '123 Main St',
-      comp_address1: 'Suite 200',
-      pin_code: 400001,
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      country: 'India',
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      comp_id: 2,
-      plan_id: 102,
-      comp_name: 'XYZ Solutions',
-      comp_address: '456 Tech Park',
-      comp_address1: 'Building A',
-      pin_code: 560001,
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      country: 'India',
-      block: true,
-      created_by: 102,
-      created_date: '2025-07-06T10:00:00',
-      modify_by: 102,
-      modify_date: '2025-07-06T10:00:00',
-    },
-    {
-      comp_id: 3,
-      plan_id: 103,
-      comp_name: 'PQR Innovations',
-      comp_address: '789 Business Rd',
-      comp_address1: '',
-      pin_code: 110001,
-      city: 'Delhi',
-      state: 'Delhi',
-      country: 'India',
-      block: false,
-      created_by: 103,
-      created_date: '2025-07-05T09:15:00',
-      modify_by: 103,
-      modify_date: '2025-07-05T09:15:00',
-    },
-    {
-      comp_id: 4,
-      plan_id: 104,
-      comp_name: 'LMN Enterprises',
-      comp_address: '101 Industrial Area',
-      comp_address1: 'Phase 3',
-      pin_code: 600001,
-      city: 'Chennai',
-      state: 'Tamil Nadu',
-      country: 'India',
-      block: false,
-      created_by: 104,
-      created_date: '2025-07-04T14:30:00',
-      modify_by: 104,
-      modify_date: '2025-07-04T14:30:00',
-    },
-  ]);
-
+  const [companies, setCompanies] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [confirmation, setConfirmation] = useState({
@@ -108,25 +43,65 @@ export default function CompanyMasterPage() {
   });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
-    plan_id: '',
-    comp_name: '',
-    comp_address: '',
-    comp_address1: '',
-    pin_code: '',
-    city: '',
-    state: '',
-    country: '',
-    block: false,
-    created_by: '',
+    PlanId: '',
+    CompName: '',
+    Address: '',
+    Address1: '',
+    PinCode: '',
+    City: '',
+    State: '',
+    Country: '',
+    RequestBy: '',
   });
+  const [error, setError] = useState('');
 
-  const filteredCompanies = companies.filter((comp) =>
-    comp.comp_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const API_BASE_URL = 'https://svikinfotech.com/clients/visualizer/api/';
+
+  // Current timestamp in IST (2025-08-03T14:08:00+05:30)
+  const currentDateTime = '2025-08-03T14:08:00+05:30';
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/GetCompanyList`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        const data = await response.json();
+        console.log('API Response:', data);
+        if (Array.isArray(data)) {
+          const mappedCompanies = data.map(comp => ({
+            comp_id: comp.CompId || 0,
+            plan_id: comp.PlanId || 0,
+            comp_name: comp.CompName || '',
+            comp_address: comp.Address || '',
+            comp_address1: comp.Address1 || '',
+            pin_code: comp.PinCode || 0,
+            city: comp.City || '',
+            state: comp.State || '',
+            country: comp.Country || '',
+            block: comp.Block || false,
+            created_by: comp.CreatedBy || 0,
+            created_date: comp.CreatedDate || currentDateTime,
+            modify_by: comp.ModifyBy || 0,
+            modify_date: comp.ModifyDate || currentDateTime,
+          }));
+          setCompanies(mappedCompanies);
+        } else {
+          setError('Failed to fetch company list: Invalid response format');
+        }
+      } catch (err) {
+        setError('Error fetching company list: ' + err.message);
+      }
+    };
+    fetchCompanies();
+  }, []);
 
   const startEditing = (comp) => {
     setEditId(comp.comp_id);
-    setEditData({ ...comp });
+    setEditData({ ...comp, CompId: comp.comp_id });
   };
 
   const cancelEditing = () => {
@@ -138,28 +113,53 @@ export default function CompanyMasterPage() {
     setEditData({ ...editData, [field]: value });
   };
 
+  const saveEdit = async () => {
+    const formData = new FormData();
+    formData.append('CompId', editData.CompId);
+    formData.append('PlanId', editData.plan_id);
+    formData.append('CompName', editData.comp_name);
+    formData.append('Address', editData.comp_address);
+    formData.append('Address1', editData.comp_address1);
+    formData.append('PinCode', editData.pin_code);
+    formData.append('City', editData.city);
+    formData.append('State', editData.state);
+    formData.append('Country', editData.country);
+    formData.append('RequestBy', editData.modify_by);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/EditCompany`, {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.text();
+      if (result === 'success') {
+        setCompanies(companies.map(comp =>
+          comp.comp_id === editId
+            ? {
+                ...editData,
+                modify_by: parseInt(editData.modify_by),
+                modify_date: currentDateTime,
+              }
+            : comp
+        ).sort((a, b) => a.comp_id - b.comp_id));
+        setEditId(null);
+        setEditData({});
+        setConfirmation({ ...confirmation, show: false });
+      } else if (result === 'alreadyexists') {
+        setError('Company already exists');
+      } else {
+        setError(result);
+      }
+    } catch (err) {
+      setError('Error editing company: ' + err.message);
+    }
+  };
+
   const confirmSave = () => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = companies
-          .map((comp) =>
-            comp.comp_id === editId
-              ? {
-                  ...editData,
-                  modify_by: 999,
-                  modify_date: new Date().toISOString(),
-                }
-              : comp
-          )
-          .sort((a, b) => a.comp_id - b.comp_id);
-
-        setCompanies(updated);
-        setEditId(null);
-        setEditData({});
-        setConfirmation({ ...confirmation, show: false });
-      },
+      onConfirm: saveEdit,
     });
   };
 
@@ -167,8 +167,8 @@ export default function CompanyMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setCompanies(companies.filter((comp) => comp.comp_id !== id));
+      onConfirm: async () => {
+        setCompanies(companies.filter(comp => comp.comp_id !== id));
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -177,16 +177,15 @@ export default function CompanyMasterPage() {
   const startAdding = () => {
     setIsAdding(true);
     setNewData({
-      plan_id: '',
-      comp_name: '',
-      comp_address: '',
-      comp_address1: '',
-      pin_code: '',
-      city: '',
-      state: '',
-      country: '',
-      block: false,
-      created_by: '',
+      PlanId: '',
+      CompName: '',
+      Address: '',
+      Address1: '',
+      PinCode: '',
+      City: '',
+      State: '',
+      Country: '',
+      RequestBy: '',
     });
   };
 
@@ -194,49 +193,109 @@ export default function CompanyMasterPage() {
     setIsAdding(false);
   };
 
-  const saveAdding = () => {
-    if (!newData.comp_name || !newData.created_by || !newData.plan_id) {
-      alert('Please fill all required fields');
+  const saveAdding = async () => {
+    if (!newData.CompName || !newData.RequestBy || !newData.PlanId) {
+      setError('Please fill all required fields');
       return;
     }
 
-    setConfirmation({
-      show: true,
-      message: 'Are you sure you want to save this new company?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          comp_id: companies.length
-            ? Math.max(...companies.map((c) => c.comp_id)) + 1
-            : 1,
-          plan_id: parseInt(newData.plan_id),
-          pin_code: parseInt(newData.pin_code) || '',
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
+    const formData = new FormData();
+    formData.append('PlanId', newData.PlanId);
+    formData.append('CompName', newData.CompName);
+    formData.append('Address', newData.Address);
+    formData.append('Address1', newData.Address1);
+    formData.append('PinCode', newData.PinCode);
+    formData.append('City', newData.City);
+    formData.append('State', newData.State);
+    formData.append('Country', newData.Country);
+    formData.append('RequestBy', newData.RequestBy);
 
-        const updated = [...companies, newEntry].sort(
-          (a, b) => a.comp_id - b.comp_id
-        );
-        setCompanies(updated);
+    try {
+      const response = await fetch(`${API_BASE_URL}/AddCompany`, {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.text();
+      if (result === 'success') {
+        const newCompany = {
+          comp_id: companies.length ? Math.max(...companies.map(c => c.comp_id)) + 1 : 1,
+          plan_id: parseInt(newData.PlanId),
+          comp_name: newData.CompName,
+          comp_address: newData.Address,
+          comp_address1: newData.Address1,
+          pin_code: parseInt(newData.PinCode) || 0,
+          city: newData.City,
+          state: newData.State,
+          country: newData.Country,
+          block: false,
+          created_by: parseInt(newData.RequestBy),
+          created_date: currentDateTime,
+          modify_by: parseInt(newData.RequestBy),
+          modify_date: currentDateTime,
+        };
+        setCompanies([...companies, newCompany].sort((a, b) => a.comp_id - b.comp_id));
         setIsAdding(false);
         setConfirmation({ ...confirmation, show: false });
-      },
-    });
+      } else if (result === 'alreadyexists') {
+        setError('Company already exists');
+      } else {
+        setError(result);
+      }
+    } catch (err) {
+      setError('Error adding company: ' + err.message);
+    }
   };
+
+  const toggleBlock = async (comp) => {
+    const status = comp.block ? 0 : 1;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/BlockCompany/${comp.modify_by}/${comp.comp_id}/${status}`,
+        {
+          method: 'GET',
+        }
+      );
+      const result = await response.text();
+      if (result === 'success') {
+        setCompanies(companies.map(c =>
+          c.comp_id === comp.comp_id
+            ? { ...c, block: status === 1, modify_date: currentDateTime }
+            : c
+        ));
+      } else {
+        setError('Error toggling block status: ' + result);
+      }
+    } catch (err) {
+      setError('Error toggling block status: ' + err.message);
+    }
+  };
+
+  const filteredCompanies = companies.filter(comp => {
+    const compName = comp.comp_name || '';
+    return compName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+        <div className="p-5 flex-1">
+                  <Breadcrumbs currentPage="Tile Master" />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+              <button
+                className="ml-4 text-red-700 hover:text-red-900"
+                onClick={() => setError('')}
+              >
+                Close
+              </button>
+            </div>
+          )}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Company Master Table
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800">Company Master Table</h2>
             <div className="flex space-x-2">
               {!isAdding && (
                 <button
@@ -254,8 +313,8 @@ export default function CompanyMasterPage() {
               type="text"
               placeholder="Search by Company Name..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 bg-white dark:bg-gray-700 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-green-600"
+              onChange={e => setSearchTerm(e.target.value || '')}
+              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
           </div>
 
@@ -282,34 +341,32 @@ export default function CompanyMasterPage() {
                   <tr className="border-b border-gray-200 dark:border-gray-700"> {/* Row divider for the adding row */}
                     <td className="px-4 py-3"></td> {/* Empty cell for Comp ID */}
                     {[
-                      'plan_id',
-                      'comp_name',
-                      'comp_address',
-                      'comp_address1',
-                      'pin_code',
-                      'city',
-                      'state',
-                      'country',
-                    ].map((field) => (
+                      'PlanId',
+                      'CompName',
+                      'Address',
+                      'Address1',
+                      'PinCode',
+                      'City',
+                      'State',
+                      'Country',
+                    ].map(field => (
                       <td key={field} className="px-4 py-3">
                         <input
                           value={newData[field]}
-                          onChange={(e) =>
+                          onChange={e =>
                             setNewData({ ...newData, [field]: e.target.value })
                           }
-                          className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full"
+                          type={field === 'PinCode' ? 'number' : 'text'}
                         />
                       </td>
                     ))}
                     <td className="px-4 py-3">
                       <input
                         type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({
-                            ...newData,
-                            created_by: e.target.value,
-                          })
+                        value={newData.RequestBy}
+                        onChange={e =>
+                          setNewData({ ...newData, RequestBy: e.target.value })
                         }
                         className="border rounded px-2 py-1 w-full"
                       />
@@ -318,9 +375,10 @@ export default function CompanyMasterPage() {
                       <input
                         type="checkbox"
                         checked={newData.block}
-                        onChange={(e) =>
+                        onChange={e =>
                           setNewData({ ...newData, block: e.target.checked })
                         }
+                        disabled
                       />
                     </td>
                     <td className="px-4 py-3 space-x-2 flex">
@@ -340,8 +398,8 @@ export default function CompanyMasterPage() {
                   </tr>
                 )}
 
-                {filteredCompanies.map((comp, index) => (
-                  <tr key={comp.comp_id} className={`${index === filteredCompanies.length - 1 ? '' : 'border-b border-gray-200 dark:border-gray-700'}`}> {/* Row divider for data rows */}
+                {filteredCompanies.map(comp => (
+                  <tr key={comp.comp_id}>
                     <td className="px-4 py-3">{comp.comp_id}</td>
                     {[
                       'plan_id',
@@ -352,15 +410,16 @@ export default function CompanyMasterPage() {
                       'city',
                       'state',
                       'country',
-                    ].map((field) => (
+                    ].map(field => (
                       <td key={field} className="px-4 py-3">
                         {editId === comp.comp_id ? (
                           <input
                             value={editData[field]}
-                            onChange={(e) =>
+                            onChange={e =>
                               handleEditChange(field, e.target.value)
                             }
                             className="border rounded px-2 py-1 w-full"
+                            type={field === 'pin_code' ? 'number' : 'text'}
                           />
                         ) : (
                           comp[field]
@@ -373,15 +432,11 @@ export default function CompanyMasterPage() {
                         <input
                           type="checkbox"
                           checked={editData.block}
-                          onChange={(e) =>
+                          onChange={e =>
                             handleEditChange('block', e.target.checked)
                           }
                         />
-                      ) : comp.block ? (
-                        'Yes'
-                      ) : (
-                        'No'
-                      )}
+                      ) : comp.block ? 'Yes' : 'No'}
                     </td>
                     <td className="px-4 py-3 space-x-2 flex items-center justify-center">
                       {editId === comp.comp_id ? (
@@ -423,7 +478,7 @@ export default function CompanyMasterPage() {
           </div>
         </div>
       </div>
-
+      </div>
       {confirmation.show && (
         <ConfirmationModal
           message={confirmation.message}

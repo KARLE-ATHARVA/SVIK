@@ -9,7 +9,7 @@ export default function Sidebar({ darkMode }) {
   console.log('Sidebar collapsed state:', sidebarCollapsed); // Debug line
 
   return (
-    <div className={`${sidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-gray-900 h-screen shadow flex flex-col p-4 transition-all duration-300 font-sans`}>
+    <div className={`${sidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-gray-900 h-screen shadow flex flex-col p-1 transition-all duration-300 font-sans`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-green-700 rounded-full flex items-center justify-center text-white text-xl font-bold">
