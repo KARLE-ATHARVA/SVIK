@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+// Updated ColorMasterPage with professional and premium UI matching SpaceMasterPage
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
+import axios from 'axios';
+import Breadcrumb from '../components/Breadcrumb';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -10,16 +16,10 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
       <div className="bg-white p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-            onClick={onCancel}
-          >
+          <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400" onClick={onCancel}>
             Cancel
           </button>
-          <button
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
-            onClick={onConfirm}
-          >
+          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>
             Yes
           </button>
         </div>
@@ -32,45 +32,58 @@ export default function ColorMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [colors, setColors] = useState([
-    {
-      color_id: 1,
-      color_name: 'Red',
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      color_id: 2,
-      color_name: 'Blue',
-      block: true,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
-    },
-  ]);
-
+  const [colors, setColors] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({
-    color_name: '',
-    block: false,
-    created_by: '',
-  });
+  const [newData, setNewData] = useState({ color_name: '', created_by: '' });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const userId = localStorage.getItem('userid');
 
-  const filteredColors = colors.filter(
-    (color) =>
-      color.color_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (color.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
+  const fetchColors = async () => {
+    try {
+      const res = await axios.get(`${baseURL}/GetColorList`);
+      setColors(res.data);
+    } catch (error) {
+      console.error('Error fetching colors:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchColors();
+  }, []);
+
+  const sortedColors = React.useMemo(() => {
+    let sortable = [...colors];
+    if (sortConfig.key) {
+      sortable.sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        if (typeof aVal === 'string') return (aVal.localeCompare(bVal)) * (sortConfig.direction === 'asc' ? 1 : -1);
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortable;
+  }, [colors, sortConfig]);
+
+  const filteredColors = sortedColors.filter(color => color.color_name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => (
+    <span className="inline-block ml-1">
+      <FaSortUp className={`text-xs ${sortConfig.key === key && sortConfig.direction === 'asc' ? 'text-blue-500' : 'text-gray-400'}`} />
+      <FaSortDown className={`-mt-1 text-xs ${sortConfig.key === key && sortConfig.direction === 'desc' ? 'text-blue-500' : 'text-gray-400'}`} />
+    </span>
   );
 
   const startEditing = (color) => {
@@ -91,42 +104,57 @@ export default function ColorMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = colors
-          .map((color) =>
-            color.color_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : color
-          )
-          .sort((a, b) => a.color_id - b.color_id);
-
-        setColors(updated);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('ColorId', editData.color_id);
+          formData.append('ColorName', editData.color_name);
+          formData.append('RequestBy', userId);
+          await axios.post(`${baseURL}/EditColor`, formData);
+          fetchColors();
+        } catch (err) {
+          console.error(err);
+        }
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (colorId) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setColors(colors.filter((color) => color.color_id !== id));
+      onConfirm: async () => {
+        try {
+          await axios.get(`${baseURL}/BlockColor/${userId}/${colorId}/1`);
+          fetchColors();
+        } catch (err) {
+          console.error(err);
+        }
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
+  };
+
+  const toggleBlock = async (color) => {
+    try {
+      await axios.get(`${baseURL}/BlockColor/${userId}/${color.color_id}/${color.block ? 0 : 1}`);
+      fetchColors();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ color_name: '', block: false, created_by: '' });
+    setNewData({ color_name: '', created_by: userId });
   };
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ color_name: '', block: false, created_by: '' });
+    setNewData({ color_name: '', created_by: '' });
   };
 
   const saveAdding = () => {
@@ -134,27 +162,23 @@ export default function ColorMasterPage() {
       alert('Please fill all required fields');
       return;
     }
-
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new color?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          color_id: colors.length ? Math.max(...colors.map((c) => c.color_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
-
-        const updated = [...colors, newEntry].sort((a, b) => a.color_id - b.color_id);
-        setColors(updated);
-
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('ColorName', newData.color_name);
+          formData.append('RequestBy', newData.created_by);
+          await axios.post(`${baseURL}/AddColor`, formData);
+          fetchColors();
+        } catch (err) {
+          console.error(err);
+        }
         setIsAdding(false);
-        setNewData({ color_name: '', block: false, created_by: '' });
+        setNewData({ color_name: '', created_by: '' });
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
@@ -166,163 +190,87 @@ export default function ColorMasterPage() {
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Color Master Table</h2>
-            <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Color
-                </button>
-              )}
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Color</h2>
+            <Breadcrumb />
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4 flex justify-between items-center">
             <input
               type="text"
-              placeholder="Search by Color Name or Block..."
+              placeholder="Search Color Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
+            {!isAdding && (
+              <button
+                onClick={startAdding}
+                className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
+              >
+                <FaPlus className="mr-2" /> Add New Color
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <table className="min-w-full text-sm text-left">
               <thead className="bg-green-700 text-white">
                 <tr>
-                  <th className="px-4 py-3">Color ID</th>
-                  <th className="px-4 py-3">Color Name</th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('color_id')}>Color ID {getSortIcon('color_id')}</th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('color_name')}>Color Name {getSortIcon('color_name')}</th>
                   <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modify By</th>
-                  <th className="px-4 py-3">Modify Date</th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('updated_by')}>Updated By {getSortIcon('updated_by')}</th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('updated_date')}>Updated Date {getSortIcon('updated_date')}</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {isAdding && (
                   <tr>
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
-                      <input
-                        value={newData.color_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, color_name: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
+                      <input className="border px-2 py-1 rounded w-full" value={newData.color_name} onChange={(e) => setNewData({ ...newData, color_name: e.target.value })} />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
-                      <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <FaSave size={22} />
-                      </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        <FaTimes size={22} />
-                      </button>
+                    <td className="px-4 py-3">—</td>
+                    <td className="px-4 py-3">{userId}</td>
+                    <td className="px-4 py-3">—</td>
+                    <td className="px-4 py-3 space-x-2">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800"><FaSave size={18} /></button>
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800"><FaTimes size={18} /></button>
                     </td>
                   </tr>
                 )}
 
                 {filteredColors.map((color) => (
-                  <tr key={color.color_id}>
+                  <tr key={color.color_id} className="border-t">
                     <td className="px-4 py-3">{color.color_id}</td>
                     <td className="px-4 py-3">
                       {editId === color.color_id ? (
-                        <input
-                          value={editData.color_name}
-                          onChange={(e) =>
-                            handleEditChange('color_name', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
-                        />
+                        <input className="border px-2 py-1 rounded w-full" value={editData.color_name} onChange={(e) => handleEditChange('color_name', e.target.value)} />
                       ) : (
                         color.color_name
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {editId === color.color_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : color.block ? 'Yes' : 'No'}
+                      <span
+                        onClick={() => toggleBlock(color)}
+                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${color.block ? 'bg-red-600' : 'bg-green-600'}`}
+                      >
+                        {color.block ? 'Blocked' : 'Active'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">{color.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(color.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{color.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(color.modify_date).toLocaleDateString()}
-                    </td>
+                    <td className="px-4 py-3">{color.updated_by || '-'}</td>
+                    <td className="px-4 py-3">{new Date(color.updated_date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === color.color_id ? (
                         <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            <FaSave size={22} />
-                          </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
-                            <FaTimes size={22} />
-                          </button>
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800"><FaSave size={18} /></button>
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800"><FaTimes size={18} /></button>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={() => startEditing(color)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
-                            <FaEdit size={22} />
-                          </button>
-                          <button
-                            onClick={() => confirmDelete(color.color_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash size={22} />
-                          </button>
+                          <button onClick={() => startEditing(color)} className="text-yellow-500 hover:text-yellow-700"><FaEdit size={18} /></button>
+                          <button onClick={() => confirmDelete(color.color_id)} className="text-red-500 hover:text-red-700"><FaTrash size={18} /></button>
                         </>
                       )}
                     </td>
@@ -330,6 +278,14 @@ export default function ColorMasterPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
+            <div>Showing {filteredColors.length} entries</div>
+            <div className="flex space-x-2">
+              <button className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Previous</button>
+              <button className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+            </div>
           </div>
         </div>
       </div>
