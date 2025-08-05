@@ -5,6 +5,8 @@ import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
@@ -52,15 +54,13 @@ export default function UserMasterPage() {
   });
   const [error, setError] = useState('');
 
-  const API_BASE_URL = 'https://svikinfotech.com/clients/visualizer/api/';
-
-  // Current timestamp in IST (2025-08-03T15:30:00+05:30)
+  // Current timestamp in IST
   const currentDateTime = '2025-08-03T15:30:00+05:30';
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/GetUserList`, {
+        const response = await fetch(`${baseURL}/GetUserList`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -105,6 +105,7 @@ export default function UserMasterPage() {
       ContNumber: user.cont_number,
       ProfileId: user.profile_id,
       RequestBy: user.modify_by,
+      block: user.block,
     });
   };
 
@@ -124,7 +125,7 @@ export default function UserMasterPage() {
     });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/EditUser`, {
+      const response = await fetch(`${baseURL}/EditUser`, {
         method: 'POST',
         body: formData,
       });
@@ -134,19 +135,20 @@ export default function UserMasterPage() {
           user.user_id === editId
             ? {
                 ...user,
-                comp_id: parseInt(editData.CompId),
-                user_name: editData.UserName,
-                email_id: editData.EmailId,
-                cont_number: editData.ContNumber,
-                profile_id: parseInt(editData.ProfileId),
-                modify_by: parseInt(editData.RequestBy),
+                comp_id: parseInt(editData.CompId) || user.comp_id,
+                user_name: editData.UserName || user.user_name,
+                email_id: editData.EmailId || user.email_id,
+                cont_number: editData.ContNumber || user.cont_number,
+                profile_id: parseInt(editData.ProfileId) || user.profile_id,
+                modify_by: parseInt(editData.RequestBy) || user.modify_by,
                 modify_date: currentDateTime,
+                block: editData.block || user.block,
               }
             : user
         ).sort((a, b) => a.user_id - b.user_id));
         setEditId(null);
         setEditData({});
-        setConfirmation({ ...confirmation, show: false });
+        setConfirmation({ show: false, message: '', onConfirm: () => {} });
       } else if (result === 'alreadyexists') {
         setError('User already exists');
       } else {
@@ -170,8 +172,20 @@ export default function UserMasterPage() {
       show: true,
       message: 'Are you sure you want to delete this user?',
       onConfirm: async () => {
-        setUsers(users.filter(user => user.user_id !== id));
-        setConfirmation({ ...confirmation, show: false });
+        try {
+          const response = await fetch(`${baseURL}/DeleteUser/${id}`, {
+            method: 'POST',
+          });
+          const result = await response.text();
+          if (result === 'success') {
+            setUsers(users.filter(user => user.user_id !== id));
+            setConfirmation({ show: false, message: '', onConfirm: () => {} });
+          } else {
+            setError('Error deleting user: ' + result);
+          }
+        } catch (err) {
+          setError('Error deleting user: ' + err.message);
+        }
       },
     });
   };
@@ -189,6 +203,7 @@ export default function UserMasterPage() {
       ContNumber: '',
       ProfileId: '',
       RequestBy: '',
+      block: false,
     });
   };
 
@@ -204,7 +219,7 @@ export default function UserMasterPage() {
     });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/AddUser`, {
+      const response = await fetch(`${baseURL}/AddUser`, {
         method: 'POST',
         body: formData,
       });
@@ -212,22 +227,22 @@ export default function UserMasterPage() {
       if (result === 'success') {
         const newUser = {
           user_id: users.length ? Math.max(...users.map(u => u.user_id)) + 1 : 1,
-          comp_id: parseInt(newData.CompId),
+          comp_id: parseInt(newData.CompId) || 0,
           user_name: newData.UserName,
           email_id: newData.EmailId,
-          cont_number: newData.ContNumber,
-          profile_id: parseInt(newData.ProfileId),
-          block: false,
-          created_by: parseInt(newData.RequestBy),
+          cont_number: newData.ContNumber || '',
+          profile_id: parseInt(newData.ProfileId) || 0,
+          block: newData.block || false,
+          created_by: parseInt(newData.RequestBy) || 0,
           created_date: currentDateTime,
-          modify_by: parseInt(newData.RequestBy),
+          modify_by: parseInt(newData.RequestBy) || 0,
           modify_date: currentDateTime,
-          updated_by: newData.UserName,
+          updated_by: newData.UserName || '',
           updated_date: currentDateTime,
         };
         setUsers([...users, newUser].sort((a, b) => a.user_id - b.user_id));
         cancelAdding();
-        setConfirmation({ ...confirmation, show: false });
+        setConfirmation({ show: false, message: '', onConfirm: () => {} });
       } else if (result === 'alreadyexists') {
         setError('User already exists');
       } else {
@@ -250,9 +265,9 @@ export default function UserMasterPage() {
     const status = user.block ? 0 : 1;
     try {
       const response = await fetch(
-        `${API_BASE_URL}/BlockUser/${user.modify_by || 0}/${user.user_id}/${status}`,
+        `${baseURL}/BlockUser/${user.modify_by || 0}/${user.user_id}/${status}`,
         {
-          method: 'GET',
+          method: 'POST',
         }
       );
       const result = await response.text();
@@ -284,9 +299,9 @@ export default function UserMasterPage() {
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="p-5 flex-1">
-                  <Breadcrumbs currentPage="Tile Master" />
-        <div className="flex flex-col flex-1 p-6 overflow-auto">
+        <div className="flex-1 p-6 overflow-auto">
+          
+          
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
@@ -300,28 +315,25 @@ export default function UserMasterPage() {
           )}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">User Master Table</h2>
-            <div className="flex space-x-2">
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New User
-                </button>
-              )}
-            </div>
+            <Breadcrumbs currentPage="User Master" />
           </div>
-
-          <div className="mb-4">
+          <div className="mb-4 flex justify-between items-center">
             <input
               type="text"
-              placeholder="Search by User Name or Email ID..."
+              placeholder="Search by User Name or Email..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value || '')}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
+            {!isAdding && (
+              <button
+                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                onClick={startAdding}
+              >
+                <FaPlus className="mr-2" /> Add New User
+              </button>
+            )}
           </div>
-
           <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-green-700 text-white">
@@ -337,181 +349,237 @@ export default function UserMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              {filteredUsers.length === 0 ? (
-                <tbody>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {isAdding && (
                   <tr>
-                    <td colSpan="9" className="px-4 py-3 text-center text-gray-500">
-                      No users found
+                    <td className="px-4 py-3">New</td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="number"
+                        value={newData.CompId}
+                        onChange={e =>
+                          setNewData({ ...newData, CompId: e.target.value })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        value={newData.UserName}
+                        onChange={e =>
+                          setNewData({ ...newData, UserName: e.target.value })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        value={newData.EmailId}
+                        onChange={e =>
+                          setNewData({ ...newData, EmailId: e.target.value })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="text"
+                        value={newData.ContNumber}
+                        onChange={e =>
+                          setNewData({ ...newData, ContNumber: e.target.value })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="number"
+                        value={newData.ProfileId}
+                        onChange={e =>
+                          setNewData({ ...newData, ProfileId: e.target.value })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={newData.block}
+                        onChange={e =>
+                          setNewData({ ...newData, block: e.target.checked })
+                        }
+                        disabled
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <input
+                        type="number"
+                        value={newData.RequestBy}
+                        onChange={e =>
+                          setNewData({ ...newData, RequestBy: e.target.value })
+                        }
+                        className="border rounded px-2 py-1 w-full"
+                      />
+                    </td>
+                    <td className="px-4 py-3 flex space-x-2">
+                      <button
+                        onClick={confirmAdd}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <FaSave size={20} />
+                      </button>
+                      <button
+                        onClick={cancelAdding}
+                        className="text-gray-600 hover:text-gray-800"
+                      >
+                        <FaTimes size={20} />
+                      </button>
                     </td>
                   </tr>
-                </tbody>
-              ) : (
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {isAdding && (
-                    <tr>
-                      <td className="px-4 py-3">New</td>
-                      <td className="px-4 py-3">
+                )}
+                {filteredUsers.map(user => (
+                  <tr key={user.user_id}>
+                    <td className="px-4 py-3">{user.user_id}</td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
                         <input
                           type="number"
-                          value={newData.CompId}
-                          onChange={e =>
-                            setNewData({ ...newData, CompId: e.target.value })
-                          }
+                          value={editData.CompId}
+                          onChange={e => handleEditChange('CompId', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
-                      </td>
-                      <td className="px-4 py-3">
+                      ) : (
+                        user.comp_id
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
                         <input
-                          value={newData.UserName}
-                          onChange={e =>
-                            setNewData({ ...newData, UserName: e.target.value })
-                          }
+                          value={editData.UserName}
+                          onChange={e => handleEditChange('UserName', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
-                      </td>
-                      <td className="px-4 py-3">
+                      ) : (
+                        user.user_name
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
                         <input
-                          value={newData.EmailId}
-                          onChange={e =>
-                            setNewData({ ...newData, EmailId: e.target.value })
-                          }
+                          value={editData.EmailId}
+                          onChange={e => handleEditChange('EmailId', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
-                      </td>
-                      <td className="px-4 py-3">
+                      ) : (
+                        user.email_id
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
+                        <input
+                          type="text"
+                          value={editData.ContNumber}
+                          onChange={e => handleEditChange('ContNumber', e.target.value)}
+                          className="border rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        user.cont_number
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
                         <input
                           type="number"
-                          value={newData.ContNumber}
-                          onChange={e =>
-                            setNewData({ ...newData, ContNumber: e.target.value })
-                          }
+                          value={editData.ProfileId}
+                          onChange={e => handleEditChange('ProfileId', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          value={newData.ProfileId}
-                          onChange={e =>
-                            setNewData({ ...newData, ProfileId: e.target.value })
-                          }
-                          className="border rounded px-2 py-1 w-full"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
+                      ) : (
+                        user.profile_id
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
                         <input
                           type="checkbox"
-                          checked={newData.block}
-                          onChange={e =>
-                            setNewData({ ...newData, block: e.target.checked })
-                          }
-                          disabled
+                          checked={editData.block}
+                          onChange={e => handleEditChange('block', e.target.checked)}
                         />
-                      </td>
-                      <td className="px-4 py-3">
+                      ) : (
+                        <button
+                          onClick={() => toggleBlock(user)}
+                          className={`px-2 py-1 rounded ${
+                            user.block
+                              ? 'bg-yellow-500 hover:bg-yellow-600'
+                              : 'bg-green-500 hover:bg-green-600'
+                          } text-white`}
+                        >
+                          {user.block ? 'Unblock' : 'Block'}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
                         <input
                           type="number"
-                          value={newData.RequestBy}
-                          onChange={e =>
-                            setNewData({ ...newData, RequestBy: e.target.value })
-                          }
+                          value={editData.RequestBy}
+                          onChange={e => handleEditChange('RequestBy', e.target.value)}
                           className="border rounded px-2 py-1 w-full"
                         />
-                      </td>
-                      <td className="px-4 py-3 flex space-x-2">
-                        <button
-                          onClick={confirmAdd}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          <FaSave size={20} />
-                        </button>
-                        <button
-                          onClick={cancelAdding}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
-                          <FaTimes size={20} />
-                        </button>
-                      </td>
-                    </tr>
-                  )}
-                  {filteredUsers.map(user => (
-                    <tr key={user.user_id}>
-                      <td className="px-4 py-3">{user.user_id}</td>
-                      <td className="px-4 py-3">{user.comp_id}</td>
-                      <td className="px-4 py-3">{user.user_name}</td>
-                      <td className="px-4 py-3">{user.email_id}</td>
-                      <td className="px-4 py-3">{user.cont_number}</td>
-                      <td className="px-4 py-3">{user.profile_id}</td>
-                      <td className="px-4 py-3">
-                        {editId === user.user_id ? (
-                          <input
-                            type="checkbox"
-                            checked={editData.block}
-                            onChange={e =>
-                              handleEditChange('block', e.target.checked)
-                            }
-                          />
-                        ) : (
+                      ) : (
+                        user.created_by
+                      )}
+                    </td>
+                    <td className="px-4 py-3 flex space-x-2">
+                      {editId === user.user_id ? (
+                        <>
                           <button
-                            onClick={() => toggleBlock(user)}
-                            className={`px-2 py-1 rounded ${
-                              user.block
-                                ? 'bg-yellow-500 hover:bg-yellow-600'
-                                : 'bg-green-500 hover:bg-green-600'
-                            } text-white`}
+                            onClick={confirmSave}
+                            className="text-green-600 hover:text-green-800"
                           >
-                            {user.block ? 'Unblock' : 'Block'}
+                            <FaSave size={20} />
                           </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">{user.created_by}</td>
-                      <td className="px-4 py-3 flex space-x-2">
-                        {editId === user.user_id ? (
-                          <>
-                            <button
-                              onClick={confirmSave}
-                              className="text-green-600 hover:text-green-800"
-                            >
-                              <FaSave size={20} />
-                            </button>
-                            <button
-                              onClick={cancelEditing}
-                              className="text-gray-600 hover:text-gray-800"
-                            >
-                              <FaTimes size={20} />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => startEditing(user)}
-                              className="text-yellow-500 hover:text-yellow-700"
-                            >
-                              <FaEdit size={20} />
-                            </button>
-                            <button
-                              onClick={() => confirmDelete(user.user_id)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <FaTrash size={20} />
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              )}
+                          <button
+                            onClick={cancelEditing}
+                            className="text-gray-600 hover:text-gray-800"
+                          >
+                            <FaTimes size={20} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditing(user)}
+                            className="text-yellow-500 hover:text-yellow-700"
+                          >
+                            <FaEdit size={20} />
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(user.user_id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <FaTrash size={20} />
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
+            {filteredUsers.length === 0 && !isAdding && (
+              <div className="px-4 py-3 text-center text-gray-500">
+                No users found
+              </div>
+            )}
           </div>
         </div>
-      </div>
       </div>
       {confirmation.show && (
         <ConfirmationModal
           message={confirmation.message}
           onConfirm={confirmation.onConfirm}
-          onCancel={() => setConfirmation({ ...confirmation, show: false })}
+          onCancel={() => setConfirmation({ show: false, message: '', onConfirm: () => {} })}
         />
       )}
     </div>
