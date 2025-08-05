@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
+import axios from 'axios';
+import Breadcrumb from '../components/Breadcrumb';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -10,16 +14,10 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
       <div className="bg-white p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-            onClick={onCancel}
-          >
+          <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400" onClick={onCancel}>
             Cancel
           </button>
-          <button
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
-            onClick={onConfirm}
-          >
+          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>
             Yes
           </button>
         </div>
@@ -32,45 +30,69 @@ export default function SpaceMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [spaces, setSpaces] = useState([
-    {
-      space_id: 1,
-      space_name: 'Living Room',
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      space_id: 2,
-      space_name: 'Bedroom',
-      block: true,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
-    },
-  ]);
-
+  const [spaces, setSpaces] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({
-    space_name: '',
-    block: false,
-    created_by: '',
-  });
+  const [newData, setNewData] = useState({ space_name: '', created_by: '' });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  const filteredSpaces = spaces.filter(
-    (space) =>
-      space.space_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (space.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
+  const userId = localStorage.getItem('userid');
+
+  const fetchSpaces = async () => {
+    try {
+      const res = await axios.get(`${baseURL}/GetSpaceList`);
+      setSpaces(res.data);
+    } catch (error) {
+      console.error('Error fetching spaces:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSpaces();
+  }, []);
+
+  const sortedSpaces = React.useMemo(() => {
+    let sortable = [...spaces];
+    if (sortConfig.key) {
+      sortable.sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        if (typeof aVal === 'string') return (aVal.localeCompare(bVal)) * (sortConfig.direction === 'asc' ? 1 : -1);
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortable;
+  }, [spaces, sortConfig]);
+
+  const filteredSpaces = sortedSpaces.filter(space =>
+    space.space_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => (
+    <span className="inline-block ml-1">
+      <FaSortUp
+        className={`text-xs ${
+          sortConfig.key === key && sortConfig.direction === 'asc' ? 'text-blue-500' : 'text-gray-400'
+        }`}
+      />
+      <FaSortDown
+        className={`-mt-1 text-xs ${
+          sortConfig.key === key && sortConfig.direction === 'desc' ? 'text-blue-500' : 'text-gray-400'
+        }`}
+      />
+    </span>
   );
 
   const startEditing = (space) => {
@@ -91,42 +113,57 @@ export default function SpaceMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = spaces
-          .map((space) =>
-            space.space_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : space
-          )
-          .sort((a, b) => a.space_id - b.space_id);
-
-        setSpaces(updated);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('SpaceId', editData.space_id);
+          formData.append('SpaceName', editData.space_name);
+          formData.append('RequestBy', userId);
+          await axios.post(`${baseURL}/EditSpace`, formData);
+          fetchSpaces();
+        } catch (err) {
+          console.error(err);
+        }
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (spaceId) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setSpaces(spaces.filter((space) => space.space_id !== id));
+      onConfirm: async () => {
+        try {
+          await axios.get(`${baseURL}/BlockSpace/${userId}/${spaceId}/1`);
+          fetchSpaces();
+        } catch (err) {
+          console.error(err);
+        }
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
+  };
+
+  const toggleBlock = async (space) => {
+    try {
+      await axios.get(`${baseURL}/BlockSpace/${userId}/${space.space_id}/${space.block ? 0 : 1}`);
+      fetchSpaces();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ space_name: '', block: false, created_by: '' });
+    setNewData({ space_name: '', created_by: userId });
   };
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ space_name: '', block: false, created_by: '' });
+    setNewData({ space_name: '', created_by: '' });
   };
 
   const saveAdding = () => {
@@ -134,27 +171,23 @@ export default function SpaceMasterPage() {
       alert('Please fill all required fields');
       return;
     }
-
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new space?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          space_id: spaces.length ? Math.max(...spaces.map((s) => s.space_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
-
-        const updated = [...spaces, newEntry].sort((a, b) => a.space_id - b.space_id);
-        setSpaces(updated);
-
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('SpaceName', newData.space_name);
+          formData.append('RequestBy', newData.created_by);
+          await axios.post(`${baseURL}/AddSpace`, formData);
+          fetchSpaces();
+        } catch (err) {
+          console.error(err);
+        }
         setIsAdding(false);
-        setNewData({ space_name: '', block: false, created_by: '' });
+        setNewData({ space_name: '', created_by: '' });
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
@@ -166,162 +199,115 @@ export default function SpaceMasterPage() {
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Space Master Table</h2>
-            <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Space
-                </button>
-              )}
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800">Space</h2>
+            <Breadcrumb  className="text-2xl"/>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4 flex justify-between items-center">
             <input
               type="text"
-              placeholder="Search by Space Name or Block..."
+              placeholder="Search Space Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
+            {!isAdding && (
+              <button
+                onClick={startAdding}
+                className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
+              >
+                <FaPlus className="mr-2" /> Add New Space
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <table className="min-w-full text-sm text-left">
               <thead className="bg-green-700 text-white">
                 <tr>
-                  <th className="px-4 py-3">Space ID</th>
-                  <th className="px-4 py-3">Space Name</th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('space_id')}>
+                    ID {getSortIcon('space_id')}
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('space_name')}>
+                    Space Name {getSortIcon('space_name')}
+                  </th>
                   <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modified By</th>
-                  <th className="px-4 py-3">Modified Date</th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('updated_by')}>
+                    Updated By {getSortIcon('updated_by')}
+                  </th>
+                  <th className="px-4 py-3 cursor-pointer" onClick={() => requestSort('updated_date')}>
+                    Updated Date {getSortIcon('updated_date')}
+                  </th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {isAdding && (
                   <tr>
                     <td className="px-4 py-3">New</td>
                     <td className="px-4 py-3">
                       <input
+                        className="border px-2 py-1 rounded w-full"
                         value={newData.space_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, space_name: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
+                        onChange={(e) => setNewData({ ...newData, space_name: e.target.value })}
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
-                      <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <FaSave size={22} />
+                    <td className="px-4 py-3">—</td>
+                    <td className="px-4 py-3">{userId}</td>
+                    <td className="px-4 py-3">—</td>
+                    <td className="px-4 py-3 space-x-2">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
+                        <FaSave size={18} />
                       </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        <FaTimes size={22} />
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
+                        <FaTimes size={18} />
                       </button>
                     </td>
                   </tr>
                 )}
-
                 {filteredSpaces.map((space) => (
-                  <tr key={space.space_id}>
+                  <tr key={space.space_id} className="border-t">
                     <td className="px-4 py-3">{space.space_id}</td>
                     <td className="px-4 py-3">
                       {editId === space.space_id ? (
                         <input
+                          className="border px-2 py-1 rounded w-full"
                           value={editData.space_name}
-                          onChange={(e) =>
-                            handleEditChange('space_name', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
+                          onChange={(e) => handleEditChange('space_name', e.target.value)}
                         />
                       ) : (
                         space.space_name
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {editId === space.space_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : space.block ? 'Yes' : 'No'}
+                      <span
+                        onClick={() => toggleBlock(space)}
+                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
+                          space.block ? 'bg-red-600' : 'bg-green-600'
+                        }`}
+                      >
+                        {space.block ? 'Blocked' : 'Active'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">{space.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(space.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{space.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(space.modify_date).toLocaleDateString()}
-                    </td>
+                    <td className="px-4 py-3">{space.updated_by || '-'}</td>
+                    <td className="px-4 py-3">{new Date(space.updated_date).toLocaleDateString()}</td>
                     <td className="px-4 py-3 space-x-2 flex">
                       {editId === space.space_id ? (
                         <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            <FaSave size={22} />
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
+                            <FaSave size={18} />
                           </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
-                            <FaTimes size={22} />
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
+                            <FaTimes size={18} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={() => startEditing(space)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
-                            <FaEdit size={22} />
+                          <button onClick={() => startEditing(space)} className="text-yellow-500 hover:text-yellow-700">
+                            <FaEdit size={18} />
                           </button>
-                          <button
-                            onClick={() => confirmDelete(space.space_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash size={22} />
+                          <button onClick={() => confirmDelete(space.space_id)} className="text-red-500 hover:text-red-700">
+                            <FaTrash size={18} />
                           </button>
                         </>
                       )}
@@ -330,6 +316,14 @@ export default function SpaceMasterPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
+            <div>Showing {filteredSpaces.length} entries</div>
+            <div className="flex space-x-2">
+              <button className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Previous</button>
+              <button className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Next</button>
+            </div>
           </div>
         </div>
       </div>
