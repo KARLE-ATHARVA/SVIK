@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { FaBoxOpen } from 'react-icons/fa';
 import { FiGrid, FiLogIn, FiActivity, FiUserCheck, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useSidebar } from '../context/SidebarContext'; // Updated path
 
@@ -43,55 +44,50 @@ export default function Sidebar({ darkMode }) {
           <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">Emay Walter</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Human Resources Department</p>
 
-          <div className="flex justify-between w-full text-center text-xs">
-            <div className="flex-1">
-              <p className="font-bold text-gray-800 dark:text-gray-100">19.8k</p>
-              <p className="text-gray-500 dark:text-gray-400">Follow</p>
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-gray-800 dark:text-gray-100">2 yr</p>
-              <p className="text-gray-500 dark:text-gray-400">Experience</p>
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-gray-800 dark:text-gray-100">95.2k</p>
-              <p className="text-gray-500 dark:text-gray-400">Follower</p>
-            </div>
-          </div>
+          <div className="flex justify-between w-full text-center text-xs divide-x divide-gray-300 dark:divide-gray-700">
+  <div className="flex-1 px-2">
+    <p className="font-bold text-gray-800 dark:text-gray-100">19.8k</p>
+    <p className="text-gray-500 dark:text-gray-400">Follow</p>
+  </div>
+  <div className="flex-1 px-2">
+    <p className="font-bold text-gray-800 dark:text-gray-100">2 yr</p>
+    <p className="text-gray-500 dark:text-gray-400">Experience</p>
+  </div>
+  <div className="flex-1 px-2">
+    <p className="font-bold text-gray-800 dark:text-gray-100">95.2k</p>
+    <p className="text-gray-500 dark:text-gray-400">Follower</p>
+  </div>
+</div>
+
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto space-y-2">
         <Link
+  to="/tileMaster"
+  className="flex items-center justify-start gap-3 px-2 py-2 rounded-md text-gray-800 dark:text-gray-100 hover:bg-green-700 hover:text-white transition"
+>
+  <FaBoxOpen className={`${sidebarCollapsed ? 'text-2xl' : 'text-lg'}`} />
+  {!sidebarCollapsed && <span>Products</span>}
+</Link>
+
+        <Link
           to="/masterTables"
-          className="flex items-center justify-center gap-3 px-2 py-2 rounded-md text-gray-800 dark:text-gray-100 hover:bg-green-700 hover:text-white transition"
+          className="flex items-center justify-start gap-3 px-2 py-2 rounded-md text-gray-800 dark:text-gray-100 hover:bg-green-700 hover:text-white transition"
         >
           <FiGrid className={`${sidebarCollapsed ? 'text-2xl' : 'text-lg'}`} />
           {!sidebarCollapsed && <span>Master Tables</span>}
         </Link>
 
         <Link
-          to="/loginHistory"
-          className="flex items-center justify-center gap-3 px-2 py-2 rounded hover:bg-green-100 dark:hover:bg-green-900 text-gray-800 dark:text-gray-100 text-sm"
-        >
-          <FiLogIn className={`${sidebarCollapsed ? 'text-2xl' : 'text-lg'}`} />
-          {!sidebarCollapsed && <span>Login History</span>}
-        </Link>
-
-        <Link
-          to="/userActivity"
-          className="flex items-center justify-center gap-3 px-2 py-2 rounded hover:bg-green-100 dark:hover:bg-green-900 text-gray-800 dark:text-gray-100 text-sm"
-        >
-          <FiUserCheck className={`${sidebarCollapsed ? 'text-2xl' : 'text-lg'}`} />
-          {!sidebarCollapsed && <span>User Activity Log</span>}
-        </Link>
-
-        <Link
-          to="/adminActivity"
-          className="flex items-center justify-center gap-3 px-2 py-2 rounded hover:bg-green-100 dark:hover:bg-green-900 text-gray-800 dark:text-gray-100 text-sm"
-        >
-          <FiActivity className={`${sidebarCollapsed ? 'text-2xl' : 'text-lg'}`} />
-          {!sidebarCollapsed && <span>Admin Activity Log</span>}
-        </Link>
+  to="/reportsPage"
+  className="flex items-center justify-start gap-3 px-2 py-2 rounded-md text-gray-800 dark:text-gray-100 hover:bg-green-700 hover:text-white transition"
+  title="Logs"
+  aria-label="Logs"
+>
+  <FiActivity className={`${sidebarCollapsed ? 'text-2xl' : 'text-lg'}`} />
+  {!sidebarCollapsed && <span>Logs</span>}
+</Link>
       </div>
     </div>
   );
