@@ -76,19 +76,8 @@ export default function Topbar({
   };
 
   return (
-    <div className="flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm px-6 py-3 relative z-50">
-      <div className="flex items-center space-x-4">
-        {location.pathname !== '/dashboard' && (
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-2 bg-green-50 text-green-800 px-4 py-2 rounded-md border border-green-200 hover:bg-green-100 transition text-sm font-medium"
-          >
-            <FiArrowLeft className="w-5 h-5" />
-            Return to Dashboard
-          </Link>
-        )}
-      </div>
-      <div className="flex items-center space-x-5 text-gray-700 dark:text-gray-200 relative">
+    <div className="flex justify-end items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm px-6 py-3 relative z-50">
+  <div className="flex items-center space-x-5 text-gray-700 dark:text-gray-200 relative">
         {isFullscreen ? (
           <FiMinimize2
             onClick={toggleFullscreen}
