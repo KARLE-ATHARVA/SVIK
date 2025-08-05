@@ -5,11 +5,13 @@ import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-100">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
             className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
@@ -36,11 +38,6 @@ export default function CompanyMasterPage() {
   const [companies, setCompanies] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
     PlanId: '',
@@ -52,18 +49,22 @@ export default function CompanyMasterPage() {
     State: '',
     Country: '',
     RequestBy: '',
+    block: false,
+  });
+  const [confirmation, setConfirmation] = useState({
+    show: false,
+    message: '',
+    onConfirm: () => {},
   });
   const [error, setError] = useState('');
 
-  const API_BASE_URL = 'https://svikinfotech.com/clients/visualizer/api/';
-
-  // Current timestamp in IST (2025-08-03T14:08:00+05:30)
-  const currentDateTime = '2025-08-03T14:08:00+05:30';
+  // Current timestamp in IST
+  const currentDateTime = '2025-08-05T23:32:00+05:30';
 
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/GetCompanyList`, {
+        const response = await fetch(`${baseURL}/GetCompanyList`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -101,7 +102,19 @@ export default function CompanyMasterPage() {
 
   const startEditing = (comp) => {
     setEditId(comp.comp_id);
-    setEditData({ ...comp, CompId: comp.comp_id });
+    setEditData({
+      CompId: comp.comp_id,
+      plan_id: comp.plan_id,
+      comp_name: comp.comp_name,
+      comp_address: comp.comp_address,
+      comp_address1: comp.comp_address1,
+      pin_code: comp.pin_code,
+      city: comp.city,
+      state: comp.state,
+      country: comp.country,
+      modify_by: comp.modify_by,
+      block: comp.block,
+    });
   };
 
   const cancelEditing = () => {
@@ -127,7 +140,7 @@ export default function CompanyMasterPage() {
     formData.append('RequestBy', editData.modify_by);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/EditCompany`, {
+      const response = await fetch(`${baseURL}/EditCompany`, {
         method: 'POST',
         body: formData,
       });
@@ -136,15 +149,24 @@ export default function CompanyMasterPage() {
         setCompanies(companies.map(comp =>
           comp.comp_id === editId
             ? {
-                ...editData,
-                modify_by: parseInt(editData.modify_by),
+                ...comp,
+                plan_id: parseInt(editData.plan_id) || comp.plan_id,
+                comp_name: editData.comp_name || comp.comp_name,
+                comp_address: editData.comp_address || comp.comp_address,
+                comp_address1: editData.comp_address1 || comp.comp_address1,
+                pin_code: parseInt(editData.pin_code) || comp.pin_code,
+                city: editData.city || comp.city,
+                state: editData.state || comp.state,
+                country: editData.country || comp.country,
+                modify_by: parseInt(editData.modify_by) || comp.modify_by,
                 modify_date: currentDateTime,
+                block: editData.block || comp.block,
               }
             : comp
         ).sort((a, b) => a.comp_id - b.comp_id));
         setEditId(null);
         setEditData({});
-        setConfirmation({ ...confirmation, show: false });
+        setConfirmation({ show: false, message: '', onConfirm: () => {} });
       } else if (result === 'alreadyexists') {
         setError('Company already exists');
       } else {
@@ -166,10 +188,22 @@ export default function CompanyMasterPage() {
   const confirmDelete = (id) => {
     setConfirmation({
       show: true,
-      message: 'Are you sure you want to delete this entry?',
+      message: 'Are you sure you want to delete this company?',
       onConfirm: async () => {
-        setCompanies(companies.filter(comp => comp.comp_id !== id));
-        setConfirmation({ ...confirmation, show: false });
+        try {
+          const response = await fetch(`${baseURL}/DeleteCompany/${id}`, {
+            method: 'POST',
+          });
+          const result = await response.text();
+          if (result === 'success') {
+            setCompanies(companies.filter(comp => comp.comp_id !== id));
+            setConfirmation({ show: false, message: '', onConfirm: () => {} });
+          } else {
+            setError('Error deleting company: ' + result);
+          }
+        } catch (err) {
+          setError('Error deleting company: ' + err.message);
+        }
       },
     });
   };
@@ -186,11 +220,24 @@ export default function CompanyMasterPage() {
       State: '',
       Country: '',
       RequestBy: '',
+      block: false,
     });
   };
 
   const cancelAdding = () => {
     setIsAdding(false);
+    setNewData({
+      PlanId: '',
+      CompName: '',
+      Address: '',
+      Address1: '',
+      PinCode: '',
+      City: '',
+      State: '',
+      Country: '',
+      RequestBy: '',
+      block: false,
+    });
   };
 
   const saveAdding = async () => {
@@ -200,18 +247,12 @@ export default function CompanyMasterPage() {
     }
 
     const formData = new FormData();
-    formData.append('PlanId', newData.PlanId);
-    formData.append('CompName', newData.CompName);
-    formData.append('Address', newData.Address);
-    formData.append('Address1', newData.Address1);
-    formData.append('PinCode', newData.PinCode);
-    formData.append('City', newData.City);
-    formData.append('State', newData.State);
-    formData.append('Country', newData.Country);
-    formData.append('RequestBy', newData.RequestBy);
+    Object.keys(newData).forEach(key => {
+      formData.append(key, newData[key]);
+    });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/AddCompany`, {
+      const response = await fetch(`${baseURL}/AddCompany`, {
         method: 'POST',
         body: formData,
       });
@@ -219,23 +260,23 @@ export default function CompanyMasterPage() {
       if (result === 'success') {
         const newCompany = {
           comp_id: companies.length ? Math.max(...companies.map(c => c.comp_id)) + 1 : 1,
-          plan_id: parseInt(newData.PlanId),
+          plan_id: parseInt(newData.PlanId) || 0,
           comp_name: newData.CompName,
-          comp_address: newData.Address,
-          comp_address1: newData.Address1,
+          comp_address: newData.Address || '',
+          comp_address1: newData.Address1 || '',
           pin_code: parseInt(newData.PinCode) || 0,
-          city: newData.City,
-          state: newData.State,
-          country: newData.Country,
-          block: false,
-          created_by: parseInt(newData.RequestBy),
+          city: newData.City || '',
+          state: newData.State || '',
+          country: newData.Country || '',
+          block: newData.block || false,
+          created_by: parseInt(newData.RequestBy) || 0,
           created_date: currentDateTime,
-          modify_by: parseInt(newData.RequestBy),
+          modify_by: parseInt(newData.RequestBy) || 0,
           modify_date: currentDateTime,
         };
         setCompanies([...companies, newCompany].sort((a, b) => a.comp_id - b.comp_id));
-        setIsAdding(false);
-        setConfirmation({ ...confirmation, show: false });
+        cancelAdding();
+        setConfirmation({ show: false, message: '', onConfirm: () => {} });
       } else if (result === 'alreadyexists') {
         setError('Company already exists');
       } else {
@@ -246,13 +287,21 @@ export default function CompanyMasterPage() {
     }
   };
 
+  const confirmAdd = () => {
+    setConfirmation({
+      show: true,
+      message: 'Are you sure you want to save this new company?',
+      onConfirm: saveAdding,
+    });
+  };
+
   const toggleBlock = async (comp) => {
     const status = comp.block ? 0 : 1;
     try {
       const response = await fetch(
-        `${API_BASE_URL}/BlockCompany/${comp.modify_by}/${comp.comp_id}/${status}`,
+        `${baseURL}/BlockCompany/${comp.modify_by || 0}/${comp.comp_id}/${status}`,
         {
-          method: 'GET',
+          method: 'POST',
         }
       );
       const result = await response.text();
@@ -276,13 +325,12 @@ export default function CompanyMasterPage() {
   });
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="p-5 flex-1">
-                  <Breadcrumbs currentPage="Tile Master" />
-        <div className="flex flex-col flex-1 p-6 overflow-auto">
+        <div className="flex-1 p-6 overflow-auto">
+          
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
@@ -295,31 +343,28 @@ export default function CompanyMasterPage() {
             </div>
           )}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Company Master Table</h2>
-            <div className="flex space-x-2">
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Company
-                </button>
-              )}
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Company</h2>
+            <Breadcrumbs currentPage="Company Master" />
           </div>
-
-          <div className="mb-4">
+          <div className="mb-4 flex justify-between items-center">
+            {!isAdding && (
+              <button
+                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                onClick={startAdding}
+              >
+                <FaPlus className="mr-2" /> Add New Company
+              </button>
+            )}
             <input
               type="text"
               placeholder="Search by Company Name..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value || '')}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600 w-1/3"
             />
           </div>
-
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <div className="overflow-x-auto rounded-lg shadow border border-gray-400 dark:border-gray-600">
+            <table className="min-w-full text-sm">
               <thead className="bg-green-700 text-white">
                 <tr>
                   <th className="px-4 py-3">Comp ID</th>
@@ -336,9 +381,10 @@ export default function CompanyMasterPage() {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-900">
                 {isAdding && (
-                  <tr>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <td className="px-4 py-3">New</td>
                     {[
                       'PlanId',
                       'CompName',
@@ -355,7 +401,7 @@ export default function CompanyMasterPage() {
                           onChange={e =>
                             setNewData({ ...newData, [field]: e.target.value })
                           }
-                          className="border rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                           type={field === 'PinCode' ? 'number' : 'text'}
                         />
                       </td>
@@ -367,7 +413,7 @@ export default function CompanyMasterPage() {
                         onChange={e =>
                           setNewData({ ...newData, RequestBy: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -378,27 +424,27 @@ export default function CompanyMasterPage() {
                           setNewData({ ...newData, block: e.target.checked })
                         }
                         disabled
+                        className="dark:bg-gray-800 dark:border-gray-600"
                       />
                     </td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3 flex space-x-2">
                       <button
-                        onClick={saveAdding}
+                        onClick={confirmAdd}
                         className="text-green-600 hover:text-green-800"
                       >
                         <FaSave size={22} />
                       </button>
                       <button
                         onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
+                        className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                       >
                         <FaTimes size={22} />
                       </button>
                     </td>
                   </tr>
                 )}
-
                 {filteredCompanies.map(comp => (
-                  <tr key={comp.comp_id}>
+                  <tr key={comp.comp_id} className="border-b border-gray-200 dark:border-gray-700">
                     <td className="px-4 py-3">{comp.comp_id}</td>
                     {[
                       'plan_id',
@@ -417,7 +463,7 @@ export default function CompanyMasterPage() {
                             onChange={e =>
                               handleEditChange(field, e.target.value)
                             }
-                            className="border rounded px-2 py-1 w-full"
+                            className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                             type={field === 'pin_code' ? 'number' : 'text'}
                           />
                         ) : (
@@ -425,7 +471,18 @@ export default function CompanyMasterPage() {
                         )}
                       </td>
                     ))}
-                    <td className="px-4 py-3">{comp.created_by}</td>
+                    <td className="px-4 py-3">
+                      {editId === comp.comp_id ? (
+                        <input
+                          type="number"
+                          value={editData.modify_by}
+                          onChange={e => handleEditChange('modify_by', e.target.value)}
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                        />
+                      ) : (
+                        comp.created_by
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       {editId === comp.comp_id ? (
                         <input
@@ -434,10 +491,22 @@ export default function CompanyMasterPage() {
                           onChange={e =>
                             handleEditChange('block', e.target.checked)
                           }
+                          className="dark:bg-gray-800 dark:border-gray-600"
                         />
-                      ) : comp.block ? 'Yes' : 'No'}
+                      ) : (
+                        <button
+                          onClick={() => toggleBlock(comp)}
+                          className={`px-2 py-1 rounded ${
+                            comp.block
+                              ? 'bg-yellow-500 hover:bg-yellow-600'
+                              : 'bg-green-500 hover:bg-green-600'
+                          } text-white`}
+                        >
+                          {comp.block ? 'Unblock' : 'Block'}
+                        </button>
+                      )}
                     </td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-3 flex space-x-2">
                       {editId === comp.comp_id ? (
                         <>
                           <button
@@ -448,7 +517,7 @@ export default function CompanyMasterPage() {
                           </button>
                           <button
                             onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
+                            className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                           >
                             <FaTimes size={22} />
                           </button>
@@ -474,15 +543,19 @@ export default function CompanyMasterPage() {
                 ))}
               </tbody>
             </table>
+            {filteredCompanies.length === 0 && !isAdding && (
+              <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
+                No companies found
+              </div>
+            )}
           </div>
         </div>
-      </div>
       </div>
       {confirmation.show && (
         <ConfirmationModal
           message={confirmation.message}
           onConfirm={confirmation.onConfirm}
-          onCancel={() => setConfirmation({ ...confirmation, show: false })}
+          onCancel={() => setConfirmation({ show: false, message: '', onConfirm: () => {} })}
         />
       )}
     </div>
