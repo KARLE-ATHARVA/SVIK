@@ -8,8 +8,6 @@ import axios from 'axios';
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 const userid = localStorage.getItem('userid');
 
-
-
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
@@ -55,6 +53,7 @@ export default function PlanMasterPage() {
     block: false,
   
   });
+  const [recentlyDeleted, setRecentlyDeleted] = useState(null);
 
   useEffect(() => {
     fetchPlans();
@@ -143,27 +142,46 @@ const confirmSave = () => {
 
 
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (planId) => {
   setConfirmation({
     show: true,
-    message: 'Are you sure you want to block this plan?',
+    message: 'Are you sure you want to delete this plan?',
     onConfirm: async () => {
       try {
-        
-        const status = 1; 
+        // Soft delete via backend
+        const status = 1; // blocked
+        await axios.get(`${baseURL}/BlockPlan/${userid}/${planId}/${status}`);
 
-        await axios.get(`${baseURL}/BlockPlan/${userid}/${id}/${status}`);
+        // Remove visually from table and store in recentlyDeleted
+        const deletedPlan = plans.find(p => p.plan_id === planId);
+        setPlans(prev => prev.filter(p => p.plan_id !== planId));
+        setRecentlyDeleted(deletedPlan);
 
-        alert('Plan blocked successfully');
-        fetchPlans();
+        setTimeout(() => {
+          setRecentlyDeleted(null); 
+        }, 7000); 
       } catch (error) {
-        alert('Failed to block plan');
+        alert('Failed to delete plan');
       } finally {
         setConfirmation({ ...confirmation, show: false });
       }
-    },
+    }
   });
 };
+
+const handleUndoDelete = async () => {
+  if (!recentlyDeleted) return;
+
+  try {
+    
+    await axios.get(`${baseURL}/BlockPlan/${userid}/${recentlyDeleted.plan_id}/0`);
+    setPlans(prev => [recentlyDeleted, ...prev]);
+    setRecentlyDeleted(null);
+  } catch (error) {
+    alert('Failed to restore plan');
+  }
+};
+
 
 
   const startAdding = () => {
@@ -171,7 +189,7 @@ const confirmSave = () => {
     setNewData({
       plan_name: '',
       total_user_allow: '',
-      // block: Boolean(plan_id.block), 
+       
       updated_by:''
       
     });
@@ -241,7 +259,7 @@ const confirmSave = () => {
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
                   onClick={startAdding}
                 >
-                  <FaPlus className="mr-2" /> Add New Plan
+                  <FaPlus className="mr-2" /> Add 
                 </button>
               )}
             </div>
@@ -264,7 +282,7 @@ const confirmSave = () => {
                   {/* <th className="px-4 py-3">Plan ID</th> */}
                   <th className="px-4 py-3">Plan Name</th>
                   <th className="px-4 py-3">Total Users Allowed</th>
-                  <th className="px-4 py-3">Block</th>
+                  {/* <th className="px-4 py-3">Block</th> */}
                   <th className="px-4 py-3">Updated By</th>
                   <th className="px-4 py-3">Updated Date</th>
 
@@ -301,7 +319,7 @@ const confirmSave = () => {
                       />
                     </td>
                     <td className="px-4 py-3">
-      {/* Don't show checkbox when adding */}
+      
       <span className="text-gray-400 italic">--</span>
     </td>
                     {/* <td className="px-4 py-3">
@@ -369,7 +387,7 @@ const confirmSave = () => {
 
    
 
-                    
+          
 
                     <td className="px-4 py-3">
                       {editId === plan.plan_id ? (
@@ -385,24 +403,8 @@ const confirmSave = () => {
                         plan.total_user_allow
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
-  {editId === plan.plan_id ? (
-    <input
-      type="checkbox"
-      checked={editData.block}
-      onChange={(e) => handleEditChange('block', e.target.checked)}
-      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-    />
-  ) : (
-    <input
-      type="checkbox"
-      checked={plan.block}
-      // disabled
-      // readOnly
-      className="w-4 h-4 text-gray-400 cursor-not-allowed"
-    />
-  )}
-</td>
+                    
+
 
                     <td className="px-4 py-3">{plan.updated_by}</td>
                     
@@ -458,6 +460,20 @@ const confirmSave = () => {
           onConfirm={confirmation.onConfirm}
           onCancel={() => setConfirmation({ ...confirmation, show: false })}
         />
+      )}
+      {recentlyDeleted && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border border-green-600 text-black-800 px-6 py-4 rounded-lg shadow-md z-50 flex items-center space-x-6 animate-fade-in">
+    <div className="flex items-center space-x-2">
+      <span className="font-semibold">{recentlyDeleted.plan_name}</span>
+      <span className="text-sm">has been deleted.</span>
+    </div>
+    <button
+      onClick={handleUndoDelete}
+      className="bg-green-700 hover:bg-green-600 text-white text-sm font-medium px-4 py-1.5 rounded transition duration-200"
+    >
+            Undo
+          </button>
+        </div>
       )}
     </div>
   );
