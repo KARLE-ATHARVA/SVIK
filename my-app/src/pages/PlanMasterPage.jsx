@@ -4,6 +4,8 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import axios from 'axios';
+import { DateTime } from 'luxon';
+
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 const userid = localStorage.getItem('userid');
@@ -407,10 +409,13 @@ const handleUndoDelete = async () => {
 
 
                     <td className="px-4 py-3">{plan.updated_by}</td>
-                    
-     <td className="px-4 py-3">
-  {new Date(plan.updated_date).toLocaleString()}
+                    <td className="px-4 py-3">
+  {DateTime.fromISO(plan.updated_date, { zone: 'America/Los_Angeles' })
+    .setZone('Asia/Kolkata')
+    .toFormat('yyyy-MM-dd hh:mm a')}
 </td>
+
+   
 
 
                     <td className="px-4 py-3 space-x-2 flex">

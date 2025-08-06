@@ -11,40 +11,46 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setErrorMsg('');
+const [loading, setLoading] = useState(false); 
 
-    if (!username || !password) {
-      setErrorMsg('Please enter both username and password');
-      return;
-    }
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setErrorMsg('');
+  setLoading(true); 
 
-    try {
-      const response = await axios.post(`${baseURL}/Login`, {
-        username,
-        password
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+  if (!username || !password) {
+    setErrorMsg('Please enter both username and password');
+    setLoading(false); 
+    return;
+  }
 
-      if (typeof response.data === 'string') {
-        setErrorMsg(response.data); 
-      } else {
-        
-        const { pgatoken, userid, username: name } = response.data;
-        localStorage.setItem('token', pgatoken);
-        localStorage.setItem('userid', userid);
-        localStorage.setItem('username', username);
-        navigate('/dashboard');
+  try {
+    const response = await axios.post(`${baseURL}/Login`, {
+      username,
+      password
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
       }
-    } catch (error) {
-      console.error(error);
-      setErrorMsg('Server error. Please try again.');
+    });
+
+    if (typeof response.data === 'string') {
+      setErrorMsg(response.data);
+      setLoading(false); 
+    } else {
+      const { pgatoken, userid, username: name } = response.data;
+      localStorage.setItem('token', pgatoken);
+      localStorage.setItem('userid', userid);
+      localStorage.setItem('username', username);
+      navigate('/dashboard');
     }
-  };
+  } catch (error) {
+    console.error(error);
+    setErrorMsg('Server error. Please try again.');
+    setLoading(false); 
+  }
+};
+
 
   const registerAccount = () => {
     navigate('/register');
@@ -167,11 +173,13 @@ export default function LoginPage() {
             )}
 
             <button
-              type="submit"
-              className="w-full bg-emerald-700 text-white py-3 rounded-lg hover:bg-emerald-800 transition"
-            >
-              Sign In
-            </button>
+  type="submit"
+  className="w-full bg-emerald-700 text-white py-3 rounded-lg hover:bg-emerald-800 transition"
+  disabled={loading} // Disable button while loading
+>
+  {loading ? 'Logging in...' : 'Sign In'}
+</button>
+
           </form>
 
           <div className="flex items-center my-6">

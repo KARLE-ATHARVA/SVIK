@@ -4,6 +4,7 @@ import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import { FaSortUp, FaSortDown } from 'react-icons/fa';
 import axios from 'axios';
+import { DateTime } from 'luxon';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
@@ -42,21 +43,14 @@ export default function LoginHistory() {
       console.error('Failed to fetch login history:', error.response?.data || error.message);
     }
   };
-
-  const formatDateTime = (dateString) => {
+ 
+ const formatDateTime = (dateString) => {
   if (!dateString) return '-';
-  const date = new Date(dateString);
-  return date.toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  });
+  return DateTime.fromISO(dateString, { zone: 'America/Los_Angeles' }) 
+    .setZone('Asia/Kolkata')
+    .toFormat('yyyy-MM-dd hh:mm a');
 };
+
 
 
   const filtered = loginHistory.filter(
@@ -134,7 +128,7 @@ export default function LoginHistory() {
 
           <div className="overflow-x-auto bg-white shadow rounded">
             <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-100 text-green-900 text-xs uppercase sticky top-0 z-10">
+              <thead className="bg-green-700 text-white text-xs uppercase sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('name')}>
                     Name {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
