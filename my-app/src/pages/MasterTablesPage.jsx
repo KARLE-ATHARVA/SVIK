@@ -51,19 +51,19 @@ export default function MasterTablesPage() {
               <ul className="space-y-4">
                 {filteredTables.map((table, index) => (
   <li
-  key={index}
-  className={`text-sm font-light px-4 py-[6px] border-b border-gray-200 
-    ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
->
-  <Link
-    to={table.path}
-    className="text-green-700 dark:text-green-400 hover:text-dark-green-600 block w-full"
+    key={index}
+    className={`text-sm font-light px-4 py-[6px] border-b border-gray-200 
+      ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
   >
-    {table.name}
-  </Link>
-</li>
-
+    <Link
+      to={table.path}
+      className="text-green-700 dark:text-green-400 hover:text-green-600 block w-full"
+    >
+      {table.name}
+    </Link>
+  </li>
 ))}
+
 
                 {filteredTables.length === 0 && (
                   <li className="text-gray-500 dark:text-gray-400 text-center mt-4">
