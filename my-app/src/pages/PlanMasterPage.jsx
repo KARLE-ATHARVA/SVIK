@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import axios from 'axios';
+import Breadcrumb from '../components/Breadcrumb';
+import { DateTime } from 'luxon';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+const userid = localStorage.getItem('userid');
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -32,18 +38,10 @@ export default function PlanMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [plans, setPlans] = useState([
-    {
-      plan_id: 1,
-      plan_name: 'Basic',
-      total_user_allow: 5,
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-  ]);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -57,16 +55,40 @@ export default function PlanMasterPage() {
     plan_name: '',
     total_user_allow: '',
     block: false,
-    created_by: '',
   });
+  const [recentlyDeleted, setRecentlyDeleted] = useState(null);
 
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const response = await axios.get(`${baseURL}/GetPlanList`);
+      setPlans(response.data);
+    } catch (error) {
+      alert('Error fetching plans');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Pagination logic
   const filteredPlans = plans.filter((plan) =>
     plan.plan_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentPlans = filteredPlans.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filteredPlans.length / itemsPerPage);
+
   const startEditing = (plan) => {
     setEditId(plan.plan_id);
-    setEditData({ ...plan });
+    setEditData({
+      ...plan,
+      block: Boolean(plan.block),
+    });
   };
 
   const cancelEditing = () => {
@@ -75,27 +97,45 @@ export default function PlanMasterPage() {
   };
 
   const handleEditChange = (field, value) => {
-    setEditData({ ...editData, [field]: value });
+    setEditData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const confirmSave = () => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = plans
-          .map((plan) =>
-            plan.plan_id === editId
-              ? {
-                  ...editData,
-                  modify_by: 999,
-                  modify_date: new Date().toISOString(),
-                }
-              : plan
-          )
-          .sort((a, b) => a.plan_id - b.plan_id);
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('PlanID', editData.plan_id);
+          formData.append('PlanName', editData.plan_name);
+          formData.append('TotalUsers', editData.total_user_allow);
+          formData.append('RequestBy', userid ?? '');
 
-        setPlans(updated);
+          const originalPlan = plans.find(p => p.plan_id === editData.plan_id);
+          const blockChanged = originalPlan.block !== editData.block;
+
+          const res = await axios.post(`${baseURL}/EditPlan`, formData);
+
+          if (res.data === 'alreadyexists') {
+            alert('Plan already exists!');
+          } else if (res.data === 'success') {
+            if (blockChanged) {
+              const blockStatus = editData.block ? 1 : 0;
+              await axios.get(`${baseURL}/BlockPlan/${userid}/${editData.plan_id}/${blockStatus}`);
+            }
+            fetchPlans();
+          } else {
+            alert(`Failed to update plan: ${res.data}`);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error updating plan');
+        }
+
         setEditId(null);
         setEditData({});
         setConfirmation({ ...confirmation, show: false });
@@ -103,15 +143,41 @@ export default function PlanMasterPage() {
     });
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (planId) => {
     setConfirmation({
       show: true,
-      message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setPlans(plans.filter((plan) => plan.plan_id !== id));
-        setConfirmation({ ...confirmation, show: false });
-      },
+      message: 'Are you sure you want to delete this plan?',
+      onConfirm: async () => {
+        try {
+          const status = 1; // blocked
+          await axios.get(`${baseURL}/BlockPlan/${userid}/${planId}/${status}`);
+
+          const deletedPlan = plans.find(p => p.plan_id === planId);
+          setPlans(prev => prev.filter(p => p.plan_id !== planId));
+          setRecentlyDeleted(deletedPlan);
+
+          setTimeout(() => {
+            setRecentlyDeleted(null);
+          }, 7000);
+        } catch (error) {
+          alert('Failed to delete plan');
+        } finally {
+          setConfirmation({ ...confirmation, show: false });
+        }
+      }
     });
+  };
+
+  const handleUndoDelete = async () => {
+    if (!recentlyDeleted) return;
+
+    try {
+      await axios.get(`${baseURL}/BlockPlan/${userid}/${recentlyDeleted.plan_id}/0`);
+      setPlans(prev => [recentlyDeleted, ...prev]);
+      setRecentlyDeleted(null);
+    } catch (error) {
+      alert('Failed to restore plan');
+    }
   };
 
   const startAdding = () => {
@@ -119,8 +185,7 @@ export default function PlanMasterPage() {
     setNewData({
       plan_name: '',
       total_user_allow: '',
-      block: false,
-      created_by: '',
+      updated_by: ''
     });
   };
 
@@ -129,32 +194,37 @@ export default function PlanMasterPage() {
   };
 
   const saveAdding = () => {
-    if (!newData.plan_name || !newData.created_by || !newData.total_user_allow) {
-      alert('Please fill all required fields');
+    if (!newData.plan_name || !newData.total_user_allow) {
+      alert('Please fill in Plan Name and Total Users');
       return;
     }
 
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new plan?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          plan_id: plans.length
-            ? Math.max(...plans.map((p) => p.plan_id)) + 1
-            : 1,
-          total_user_allow: parseInt(newData.total_user_allow),
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('PlanName', newData.plan_name);
+          formData.append('TotalUsers', newData.total_user_allow);
+          formData.append('RequestBy', userid ?? '');
 
-        const updated = [...plans, newEntry].sort(
-          (a, b) => a.plan_id - b.plan_id
-        );
-        setPlans(updated);
+          const res = await axios.post(`${baseURL}/AddPlan`, formData);
+
+          if (res.data === 'alreadyexists') {
+            alert('Plan already exists!');
+          } else if (res.data === 'success') {
+            fetchPlans();
+          } else {
+            alert(`Failed to add plan: ${res.data}`);
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error adding plan');
+        }
+
         setIsAdding(false);
+        setNewData({ plan_name: '', total_user_allow: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -167,54 +237,43 @@ export default function PlanMasterPage() {
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Plan Master Table
-            </h2>
-            <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Plan
-                </button>
-              )}
-            </div>
+            <h2 className="text-2xl font-bold text-green-800">Plans</h2>
+            <Breadcrumb className="text-2xl" />
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4 flex justify-between items-center">
             <input
               type="text"
-              placeholder="Search by Plan Name..."
+              placeholder="Search Plan Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
+            {!isAdding && (
+              <button
+                onClick={startAdding}
+                className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
+              >
+                <FaPlus className="mr-2" /> Add New Plan
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-700 text-white">
+              <thead className="bg-green-100 text-gray-800">
                 <tr>
-                  <th className="px-4 py-3">Plan ID</th>
-                  <th className="px-4 py-3">Plan Name</th>
-                  <th className="px-4 py-3">Total Users Allowed</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-2 font-semibold text-left">Plan Name</th>
+                  <th className="px-4 py-2 font-semibold text-left">Total Users Allowed</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
+                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
                   <tr>
-                    <td className="px-4 py-3">New</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         value={newData.plan_name}
                         onChange={(e) =>
@@ -226,7 +285,7 @@ export default function PlanMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         type="number"
                         value={newData.total_user_allow}
@@ -239,52 +298,29 @@ export default function PlanMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({
-                            ...newData,
-                            created_by: e.target.value,
-                          })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
+                    <td className="px-4 py-2">
+                      <span className="text-gray-400 italic">--</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({
-                            ...newData,
-                            block: e.target.checked,
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-2 space-x-2 flex">
                       <button
                         onClick={saveAdding}
                         className="text-green-600 hover:text-green-800"
                       >
-                        <FaSave size={22} />
+                        <FaSave size={18} />
                       </button>
                       <button
                         onClick={cancelAdding}
                         className="text-gray-600 hover:text-gray-800"
                       >
-                        <FaTimes size={22} />
+                        <FaTimes size={18} />
                       </button>
                     </td>
                   </tr>
                 )}
 
-                {filteredPlans.map((plan) => (
+                {currentPlans.map((plan) => (
                   <tr key={plan.plan_id}>
-                    <td className="px-4 py-3">{plan.plan_id}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       {editId === plan.plan_id ? (
                         <input
                           value={editData.plan_name}
@@ -297,7 +333,7 @@ export default function PlanMasterPage() {
                         plan.plan_name
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       {editId === plan.plan_id ? (
                         <input
                           type="number"
@@ -311,36 +347,26 @@ export default function PlanMasterPage() {
                         plan.total_user_allow
                       )}
                     </td>
-                    <td className="px-4 py-3">{plan.created_by}</td>
-                    <td className="px-4 py-3">
-                      {editId === plan.plan_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : plan.block ? (
-                        'Yes'
-                      ) : (
-                        'No'
-                      )}
+                    <td className="px-4 py-2">{plan.updated_by}</td>
+                    <td className="px-4 py-2">
+                      {DateTime.fromISO(plan.updated_date, { zone: 'America/Los_Angeles' })
+                        .setZone('Asia/Kolkata')
+                        .toFormat('yyyy-MM-dd hh:mm a')}
                     </td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-2 space-x-2 flex">
                       {editId === plan.plan_id ? (
                         <>
                           <button
                             onClick={confirmSave}
                             className="text-green-600 hover:text-green-800"
                           >
-                            <FaSave size={22} />
+                            <FaSave size={18} />
                           </button>
                           <button
                             onClick={cancelEditing}
                             className="text-gray-600 hover:text-gray-800"
                           >
-                            <FaTimes size={22} />
+                            <FaTimes size={18} />
                           </button>
                         </>
                       ) : (
@@ -349,13 +375,13 @@ export default function PlanMasterPage() {
                             onClick={() => startEditing(plan)}
                             className="text-yellow-500 hover:text-yellow-700"
                           >
-                            <FaEdit size={22} />
+                            <FaEdit size={18} />
                           </button>
                           <button
                             onClick={() => confirmDelete(plan.plan_id)}
                             className="text-red-500 hover:text-red-700"
                           >
-                            <FaTrash size={22} />
+                            <FaTrash size={18} />
                           </button>
                         </>
                       )}
@@ -365,16 +391,62 @@ export default function PlanMasterPage() {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
 
-      {confirmation.show && (
-        <ConfirmationModal
-          message={confirmation.message}
-          onConfirm={confirmation.onConfirm}
-          onCancel={() => setConfirmation({ ...confirmation, show: false })}
-        />
-      )}
+          <div className="flex justify-between mt-4 text-sm items-center">
+            <span>
+              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filteredPlans.length)} of {filteredPlans.length} entries
+            </span>
+            <div className="flex gap-1">
+              <button 
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} 
+                disabled={currentPage === 1} 
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              {[...Array(totalPages).keys()].map(num => (
+                <button 
+                  key={num + 1} 
+                  onClick={() => setCurrentPage(num + 1)} 
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                >
+                  {num + 1}
+                </button>
+              ))}
+              <button 
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} 
+                disabled={currentPage === totalPages} 
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {confirmation.show && (
+          <ConfirmationModal
+            message={confirmation.message}
+            onConfirm={confirmation.onConfirm}
+            onCancel={() => setConfirmation({ ...confirmation, show: false })}
+          />
+        )}
+
+        {recentlyDeleted && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white border border-green-600 text-black-800 px-6 py-4 rounded-lg shadow-md z-50 flex items-center space-x-6 animate-fade-in">
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold">{recentlyDeleted.plan_name}</span>
+              <span className="text-sm">has been deleted.</span>
+            </div>
+            <button
+              onClick={handleUndoDelete}
+              className="bg-green-700 hover:bg-green-600 text-white text-sm font-medium px-4 py-1.5 rounded transition duration-200"
+            >
+              Undo
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

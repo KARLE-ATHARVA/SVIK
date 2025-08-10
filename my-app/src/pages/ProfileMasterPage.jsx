@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
+import Breadcrumb from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import axios from 'axios';
 
@@ -32,17 +33,16 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
 }
 
 export default function ProfileMasterPage() {
+  const userId = localStorage.getItem('userid');
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [profiles, setProfiles] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({ name: '', created_by: '' });
-
-  const userId = localStorage.getItem('userid');
+  const [newData, setNewData] = useState({ name: '', created_by: userId });
 
   useEffect(() => {
     fetchProfiles();
@@ -59,7 +59,7 @@ export default function ProfileMasterPage() {
 
   const startEditing = (profile) => {
     setEditId(profile.profile_id);
-    setEditData({ name: profile.name, profile_id: profile.profile_id });
+    setEditData({ profile_id: profile.profile_id, name: profile.name });
   };
 
   const cancelEditing = () => {
@@ -84,19 +84,17 @@ export default function ProfileMasterPage() {
 
           const res = await axios.post(`${baseURL}/EditProfile`, formData);
 
-          if (res.data === 'alreadyexists') {
-            alert('Profile already exists!');
-          } else if (res.data === 'success') {
+          if (res.data === 'success') {
             fetchProfiles();
+            cancelEditing();
           } else {
-            alert(`Failed to update profile: ${res.data}`);
+            alert(res.data === 'alreadyexists' ? 'Profile already exists!' : `Error: ${res.data}`);
           }
         } catch (err) {
           console.error(err);
-          alert('Error updating profile');
+          alert('Error saving profile');
         }
-        setEditId(null);
-        setEditData({});
+
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -140,8 +138,8 @@ export default function ProfileMasterPage() {
   };
 
   const saveAdding = () => {
-    if (!newData.name || !newData.created_by) {
-      alert('Please fill all required fields');
+    if (!newData.name) {
+      alert('Please enter a name.');
       return;
     }
 
@@ -156,20 +154,17 @@ export default function ProfileMasterPage() {
 
           const res = await axios.post(`${baseURL}/AddProfile`, formData);
 
-          if (res.data === 'alreadyexists') {
-            alert('Profile already exists!');
-          } else if (res.data === 'success') {
+          if (res.data === 'success') {
             fetchProfiles();
+            cancelAdding();
           } else {
-            alert(`Failed to add profile: ${res.data}`);
+            alert(res.data === 'alreadyexists' ? 'Profile already exists!' : `Error: ${res.data}`);
           }
         } catch (err) {
           console.error(err);
           alert('Error adding profile');
         }
 
-        setIsAdding(false);
-        setNewData({ name: '', created_by: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -180,38 +175,33 @@ export default function ProfileMasterPage() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar collapsed={collapsed} />
-      <div className="flex flex-col flex-1">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="p-6 overflow-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-semibold text-gray-800">Profile Master</h1>
-            <div className="flex gap-3">
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Back to Dashboard
-              </button>
-              {!isAdding && (
-                <button
-                  className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add Profile
-                </button>
-              )}
-            </div>
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Topbar />
+        <div className="flex flex-col flex-1 p-6 overflow-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-800">Profile</h2>
+            <Breadcrumb />
           </div>
 
-          <input
-            type="text"
-            placeholder="Search by Profile Name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-4 w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
-          />
+          <div className="mb-4 flex justify-between items-center">
+            <input
+              type="text"
+              placeholder="Search Profile Name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600"
+            />
+            {!isAdding && (
+              <button
+                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                onClick={startAdding}
+              >
+                <FaPlus className="mr-2" /> Add New Profile
+              </button>
+            )}
+          </div>
 
           <div className="bg-white shadow rounded-lg overflow-x-auto">
             <table className="min-w-full text-sm text-left">
@@ -233,7 +223,7 @@ export default function ProfileMasterPage() {
                       <input
                         value={newData.name}
                         onChange={(e) => setNewData({ ...newData, name: e.target.value })}
-                        className="border border-gray-300 rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full"
                       />
                     </td>
                     <td className="px-4 py-3">—</td>
@@ -251,14 +241,14 @@ export default function ProfileMasterPage() {
                 )}
 
                 {filteredProfiles.map((profile) => (
-                  <tr key={profile.profile_id} className="hover:bg-gray-50">
+                  <tr key={profile.profile_id}>
                     <td className="px-4 py-3">{profile.profile_id}</td>
                     <td className="px-4 py-3">
                       {editId === profile.profile_id ? (
                         <input
                           value={editData.name}
                           onChange={(e) => handleEditChange('name', e.target.value)}
-                          className="border border-gray-300 rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full"
                         />
                       ) : (
                         profile.name
@@ -267,7 +257,7 @@ export default function ProfileMasterPage() {
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={profile.block === true}
+                        checked={profile.block}
                         onChange={() => toggleBlock(profile)}
                       />
                     </td>

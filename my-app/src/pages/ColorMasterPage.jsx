@@ -190,7 +190,7 @@ export default function ColorMasterPage() {
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Color Master Table</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Color</h2>
             <Breadcrumb />
           </div>
 

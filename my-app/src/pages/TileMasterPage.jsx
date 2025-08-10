@@ -328,10 +328,10 @@ export default function TileMasterPage() {
       <div className="flex-1 flex flex-col">
         <Topbar />
         <div className="p-5 flex-1">
-          <Breadcrumbs currentPage="Tile Master" />
+          <Breadcrumbs currentPage="Products" />
           <div className="mt-5">
             <div className="flex justify-between items-center mb-5">
-              <h1 className="text-3xl font-bold text-gray-800">Tile Master</h1>
+              <h1 className="text-3xl font-bold text-gray-800">Products</h1>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex items-center"

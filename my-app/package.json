@@ -13,6 +13,7 @@
     "datatables.net-dt": "^2.3.2",
     "framer-motion": "^12.23.9",
     "jquery": "^3.7.1",
+    "luxon": "^3.7.1",
     "react": "^19.1.0",
     "react-calendar": "^6.0.0",
     "react-dom": "^19.1.0",
@@ -20,6 +21,7 @@
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.6.3",
     "react-scripts": "5.0.1",
+    "react-toastify": "^11.0.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

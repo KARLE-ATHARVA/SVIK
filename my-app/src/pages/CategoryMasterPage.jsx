@@ -32,12 +32,10 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
-  const userId = localStorage.getItem('userid');
-
+const userId = localStorage.getItem('userid');
 
 export default function CategoryMasterPage() {
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categories, setCategories] = useState([]);
   const [editId, setEditId] = useState(null);
@@ -45,6 +43,10 @@ export default function CategoryMasterPage() {
   const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({ cat_name: '', created_by: '' });
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '',direction: 'ascending' });
+  const [fadeIn, setFadeIn] = useState(false);
 
   const fetchCategories = async () => {
     try {
@@ -56,14 +58,41 @@ export default function CategoryMasterPage() {
   };
 
   useEffect(() => {
+    setFadeIn(true)
     fetchCategories();
   }, []);
 
-  const filteredCategories = categories.filter(
+  const filtered = categories.filter(
     (cat) =>
       cat.cat_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (cat.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
   );
+
+    const sorted = React.useMemo(() => {
+      let sortableItems = [...filtered];
+      if (sortConfig.key !== '') {
+        sortableItems.sort((a, b) => {
+          if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+          if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+          return 0;
+        });
+      }
+      return sortableItems;
+    }, [filtered, sortConfig]);
+
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentApps = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
+
+    const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
 
   const startEditing = (cat) => {
     setEditId(cat.cat_id);
@@ -88,7 +117,7 @@ export default function CategoryMasterPage() {
           const formData = new FormData();
           formData.append('CatId', editData.cat_id);
           formData.append('CatName', editData.cat_name);
-          formData.append('RequestBy', userId); // hardcoded user
+          formData.append('RequestBy', userId);
 
           const res = await axios.post(`${baseURL}/EditCategory`, formData);
           if (res.data === 'success') {
@@ -111,7 +140,6 @@ export default function CategoryMasterPage() {
       message: 'Are you sure you want to delete this entry?',
       onConfirm: async () => {
         try {
- 
           const res = await axios.get(`${baseURL}/BlockCategory/${userId}/${id}/1`);
           if (res.data === 'success') fetchCategories();
         } catch (err) {
@@ -123,7 +151,6 @@ export default function CategoryMasterPage() {
   };
 
   const toggleBlock = async (cat) => {
-
     try {
       const res = await axios.get(`${baseURL}/BlockCategory/${userId}/${cat.cat_id}/${cat.block ? 0 : 1}`);
       if (res.data === 'success') fetchCategories();
@@ -134,7 +161,7 @@ export default function CategoryMasterPage() {
 
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ cat_name: '', created_by: userId});
+    setNewData({ cat_name: '', created_by: userId });
   };
 
   const cancelAdding = () => {
@@ -174,66 +201,57 @@ export default function CategoryMasterPage() {
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar collapsed={collapsed} />
+      <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+        <Topbar />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Category Master Table</h2>
-            <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Category
-                </button>
-              )}
-            </div>
+            <h2 className="text-2xl font-bold text-green-800">Category</h2>
+            <Breadcrumb />
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4 flex justify-between items-center">
             <input
               type="text"
-              placeholder="Search by Category Name or Block..."
+              placeholder="Search Category Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600"
             />
+            {!isAdding && (
+              <button
+                className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
+                onClick={startAdding}
+              >
+                <FaPlus className="mr-2" /> Add New Category
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-700 text-white">
+              <thead className="bg-green-100 text-grey-800">
                 <tr>
-                  <th className="px-4 py-3">Cat ID</th>
-                  <th className="px-4 py-3">Cat Name</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Updated By</th>
-                  <th className="px-4 py-3">Updated Date</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-2 font-semibold text-left">Category Name</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
+                  <th className="px-4 py-2 font-semibold text-left">Block</th>
+                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
                   <tr>
-                    <td className="px-4 py-3">New</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         value={newData.cat_name}
                         onChange={(e) => setNewData({ ...newData, cat_name: e.target.value })}
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">No</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">No</td>
+                    <td className="px-4 py-2">
                       <input
                         type="number"
                         value={newData.created_by}
@@ -241,21 +259,20 @@ export default function CategoryMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td colSpan="2" className="px-4 py-3 space-x-2 flex">
+                    <td colSpan="2" className="px-4 py-2 space-x-2 flex">
                       <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
-                        <FaSave size={22} />
+                        <FaSave size={18} />
                       </button>
                       <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
-                        <FaTimes size={22} />
+                        <FaTimes size={18} />
                       </button>
                     </td>
                   </tr>
                 )}
 
-                {filteredCategories.map((cat) => (
+                {filtered.map((cat) => (
                   <tr key={cat.cat_id}>
-                    <td className="px-4 py-3">{cat.cat_id}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       {editId === cat.cat_id ? (
                         <input
                           value={editData.cat_name}
@@ -266,16 +283,19 @@ export default function CategoryMasterPage() {
                         cat.cat_name
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={cat.block}
-                        onChange={() => toggleBlock(cat)}
-                      />
+                    <td className="px-4 py-2">{cat.updated_by}</td>
+                    <td className="px-4 py-2">{new Date(cat.updated_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        onClick={() => toggleBlock(cat)}
+                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
+                          cat.block ? 'bg-red-600' : 'bg-green-600'
+                        }`}
+                      >
+                        {cat.block ? 'Yes' : 'No'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">{cat.updated_by}</td>
-                    <td className="px-4 py-3">{new Date(cat.updated_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-2 space-x-2 flex">
                       {editId === cat.cat_id ? (
                         <>
                           <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
@@ -288,10 +308,10 @@ export default function CategoryMasterPage() {
                       ) : (
                         <>
                           <button onClick={() => startEditing(cat)} className="text-yellow-500 hover:text-yellow-700">
-                            <FaEdit size={22} />
+                            <FaEdit size={18} />
                           </button>
                           <button onClick={() => confirmDelete(cat.cat_id)} className="text-red-500 hover:text-red-700">
-                            <FaTrash size={22} />
+                            <FaTrash size={18} />
                           </button>
                         </>
                       )}
@@ -301,6 +321,25 @@ export default function CategoryMasterPage() {
               </tbody>
             </table>
           </div>
+          <div className="flex justify-between mt-4 text-sm items-center">
+            <span>
+              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
+                Previous
+              </button>
+              {[...Array(totalPages).keys()].map(num => (
+                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
+                  {num + 1}
+                </button>
+              ))}
+              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">
+                Next
+              </button>
+            </div>
+          </div>
+          
         </div>
       </div>
 
