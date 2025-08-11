@@ -242,7 +242,7 @@ export default function SizeMasterPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
-                  <tr>
+                  <tr className="border-b hover:bg-green-50 transition duration-150">
                     <td className="px-4 py-2">
                       <input
                         value={newData.size_name}
@@ -271,7 +271,7 @@ export default function SizeMasterPage() {
                 )}
 
                 {filtered.map((sz) => (
-                  <tr key={sz.size_id}>
+                  <tr key={sz.size_id} className="border-b hover:bg-green-50 transition duration-150">
                     <td className="px-4 py-2">
                       {editId === sz.size_id ? (
                         <input

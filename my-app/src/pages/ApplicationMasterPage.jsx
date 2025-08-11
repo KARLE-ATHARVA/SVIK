@@ -252,7 +252,7 @@ export default function ApplicationMasterPage() {
               <tbody>
                 {isAdding && (
                   <tr className="border-b hover:bg-green-50 transition duration-150">
-                    <td className="px-4 py-2">New</td>
+
                     <td className="px-4 py-2">
                       <input
                         value={newData.app_name}
@@ -260,12 +260,12 @@ export default function ApplicationMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-2">—</td>
-                    <td className="px-4 py-2">{userId}</td>
-                    <td className="px-4 py-2">—</td>
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
                     <td className="px-4 py-2 flex gap-2">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800"><FaSave size={18} /></button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800"><FaTimes size={18} /></button>
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800"><FaSave size={22} /></button>
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800"><FaTimes size={22} /></button>
                     </td>
                   </tr>
                 )}
@@ -298,8 +298,8 @@ export default function ApplicationMasterPage() {
                     <td className="px-4 py-2 flex gap-2">
                       {editId === app.app_id ? (
                         <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800"><FaSave size={18} /></button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800"><FaTimes size={18} /></button>
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800"><FaSave size={22} /></button>
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800"><FaTimes size={22} /></button>
                         </>
                       ) : (
                         <>

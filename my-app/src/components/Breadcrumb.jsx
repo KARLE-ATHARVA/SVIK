@@ -13,6 +13,12 @@ export default function Breadcrumb() {
     navigate(to);
   };
 
+  const formatName = (name) => {
+    // Remove 'Master' (case-insensitive) and capitalize first letter
+    return name.replace(/master/i, '').trim().charAt(0).toUpperCase() +
+           name.replace(/master/i, '').trim().slice(1);
+  };
+
   return (
     <ol className="flex flex-wrap items-center space-x-1 text-gray-500 text-sm">
       <li
@@ -30,7 +36,7 @@ export default function Breadcrumb() {
               className={`${isLast ? 'font-medium text-gray-800' : 'cursor-pointer hover:underline text-emerald-700'}`}
               {...(!isLast && { onClick: () => handleClick(index) })}
             >
-              {name.charAt(0).toUpperCase() + name.slice(1)}
+              {formatName(name)}
             </li>
           </React.Fragment>
         );
