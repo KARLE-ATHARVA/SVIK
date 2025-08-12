@@ -1,5 +1,5 @@
-// src/pages/TileMasterPage.jsx
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
@@ -12,7 +12,6 @@ const baseURL = process.env.REACT_APP_API_BASE_URL;
 export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
   const [message, setMessage] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editTileData, setEditTileData] = useState(null);
@@ -45,11 +44,10 @@ export default function TileMasterPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
-
   const userId = localStorage.getItem('userid');
 
-
   useEffect(() => {
+    console.log('TileMasterPage mounted');
     fetchTiles();
     fetchReferenceData();
   }, []);
@@ -58,7 +56,8 @@ export default function TileMasterPage() {
     setIsLoading(true);
     try {
       const res = await axios.get(`${baseURL}/GetTileList`);
-      setTiles(res.data);
+      console.log('Tiles fetched:', res.data);
+      setTiles(res.data || []);
     } catch (err) {
       console.error('Fetch Error:', err);
       setMessage('Failed to fetch tiles.');
@@ -71,14 +70,22 @@ export default function TileMasterPage() {
     setIsLoading(true);
     try {
       const [categories, applications, spaces, sizes, finishes, colors] = await Promise.all([
-        axios.get(`${baseURL}/GetCategoryList`),
-        axios.get(`${baseURL}/GetApplicationList`),
-        axios.get(`${baseURL}/GetSpaceList`),
-        axios.get(`${baseURL}/GetSizeList`),
-        axios.get(`${baseURL}/GetFinishList`),
-        axios.get(`${baseURL}/GetColorList`)
+        axios.get(`${baseURL}/GetCategoryList`).catch(err => { console.error('GetCategoryList error:', err); throw err; }),
+        axios.get(`${baseURL}/GetApplicationList`).catch(err => { console.error('GetApplicationList error:', err); throw err; }),
+        axios.get(`${baseURL}/GetSpaceList`).catch(err => { console.error('GetSpaceList error:', err); throw err; }),
+        axios.get(`${baseURL}/GetSizeList`).catch(err => { console.error('GetSizeList error:', err); throw err; }),
+        axios.get(`${baseURL}/GetFinishList`).catch(err => { console.error('GetFinishList error:', err); throw err; }),
+        axios.get(`${baseURL}/GetColorList`).catch(err => { console.error('GetColorList error:', err); throw err; })
       ]);
       setReferenceData({
+        categories: categories.data || [],
+        applications: applications.data || [],
+        spaces: spaces.data || [],
+        sizes: sizes.data || [],
+        finishes: finishes.data || [],
+        colors: colors.data || []
+      });
+      console.log('Reference data fetched:', {
         categories: categories.data,
         applications: applications.data,
         spaces: spaces.data,
@@ -94,66 +101,8 @@ export default function TileMasterPage() {
     }
   };
 
-  const handleAddTileConfirm = (data) => {
-    setTempFormData(data);
-    setConfirmMessage('Do you want to add this tile?');
-    setConfirmAction(() => () => handleAddTile(data));
-    setShowConfirm(true);
-  };
-
-  const handleEditTileConfirm = (data) => {
-    setTempFormData(data);
-    setConfirmMessage('Do you want to save changes?');
-    setConfirmAction(() => () => handleEditTile(data));
-    setShowConfirm(true);
-  };
-
-  const handleAddTile = async (data) => {
-    console.log('Submitted Data:', data);
-    try {
-      const payload = new FormData();
-      payload.append('SkuName', data.SkuName);
-      payload.append('SkuCode', data.SkuCode);
-      payload.append('CatId', getIdFromName(referenceData.categories, data.CatName, 'cat_id', 'cat_name'));
-      payload.append('CatName', data.CatName);
-      payload.append('AppId', getIdFromName(referenceData.applications, data.AppName, 'app_id', 'app_name'));
-      payload.append('AppName', data.AppName);
-      payload.append('SpaceId', getIdFromName(referenceData.spaces, data.SpaceName, 'space_id', 'space_name'));
-      payload.append('SpaceName', data.SpaceName);
-      payload.append('SizeId', getIdFromName(referenceData.sizes, data.SizeName, 'size_id', 'size_name'));
-      payload.append('SizeName', data.SizeName);
-      payload.append('FinishId', getIdFromName(referenceData.finishes, data.FinishName, 'finish_id', 'finish_name'));
-      payload.append('FinishName', data.FinishName);
-      payload.append('ColorId', getIdFromName(referenceData.colors, data.ColorName, 'color_id', 'color_name'));
-      payload.append('ColorName', data.ColorName);
-      payload.append('RequestBy', userId);
-
-      setIsLoading(true);
-      const res = await axios.post(`${baseURL}/AddTile`, payload);
-      const responseText = res.data;
-
-      if (responseText === 'success') {
-        setAlertMessage('Tile added successfully!');
-        setShowAlert(true);
-        setShowAddModal(false);
-        fetchTiles();
-      } else if (responseText === 'alreadyexists') {
-        setAlertMessage('Tile already exists!');
-        setShowAlert(true);
-      } else {
-        setAlertMessage(responseText);
-        setShowAlert(true);
-      }
-    } catch (err) {
-      console.error('Add Error:', err);
-      setAlertMessage('An error occurred while adding tile.');
-      setShowAlert(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleEditClick = (tile) => {
+    console.log('Edit clicked for tile:', tile);
     setEditTileData({
       TileId: tile.tile_id || '',
       SkuName: tile.sku_name || '',
@@ -166,6 +115,14 @@ export default function TileMasterPage() {
       ColorName: tile.color_name || ''
     });
     setShowEditModal(true);
+  };
+
+  const handleEditTileConfirm = (data) => {
+    console.log('Edit tile confirm:', data);
+    setTempFormData(data);
+    setConfirmMessage('Do you want to save changes?');
+    setConfirmAction(() => () => handleEditTile(data));
+    setShowConfirm(true);
   };
 
   const handleEditTile = async (data) => {
@@ -187,10 +144,11 @@ export default function TileMasterPage() {
       payload.append('FinishName', data.FinishName);
       payload.append('ColorId', getIdFromName(referenceData.colors, data.ColorName, 'color_id', 'color_name'));
       payload.append('ColorName', data.ColorName);
-      payload.append('RequestBy', userId);
+      payload.append('RequestBy', userId || '');
 
       setIsLoading(true);
       const res = await axios.post(`${baseURL}/EditTile`, payload);
+      console.log('EditTile response:', res.data);
       const responseText = res.data;
 
       if (responseText === 'success') {
@@ -215,11 +173,13 @@ export default function TileMasterPage() {
   };
 
   const handleBlockToggle = async (tileId, currentStatus) => {
+    console.log('Block toggle for tileId:', tileId, 'currentStatus:', currentStatus);
     setConfirmMessage(`Are you sure you want to ${currentStatus ? 'unblock' : 'block'} this tile?`);
     setConfirmAction(() => async () => {
       try {
         setIsLoading(true);
         const res = await axios.get(`${baseURL}/BlockTile/${userId}/${tileId}/${currentStatus ? 0 : 1}`);
+        console.log('BlockTile response:', res.data);
         if (res.data === 'success') {
           setAlertMessage(`Tile ${currentStatus ? 'unblocked' : 'blocked'} successfully.`);
           setShowAlert(true);
@@ -241,16 +201,20 @@ export default function TileMasterPage() {
   };
 
   const getIdFromName = (dataArray, name, idKey, nameKey) => {
-    const item = dataArray.find(item => item[nameKey] === name);
-    return item ? item[idKey] : '';
+    const item = dataArray.find(item => item && item[nameKey] === name);
+    const id = item ? item[idKey] : '';
+    console.log(`getIdFromName: ${nameKey}=${name}, ${idKey}=${id}`);
+    return id;
   };
 
   const closeAlert = () => {
+    console.log('Closing alert');
     setShowAlert(false);
     setAlertMessage('');
   };
 
   const closeConfirm = (confirm) => {
+    console.log('Confirm closed, confirmed:', confirm);
     if (confirm && confirmAction) confirmAction();
     setShowConfirm(false);
     setConfirmMessage('');
@@ -259,16 +223,19 @@ export default function TileMasterPage() {
   };
 
   const handleSearchChange = (key, value) => {
+    console.log(`Search change: ${key}=${value}`);
     setColumnSearches((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1);
   };
 
   const handleGlobalSearchChange = (e) => {
+    console.log('Global search:', e.target.value);
     setGlobalSearch(e.target.value.toLowerCase());
     setCurrentPage(1);
   };
 
   const handleSort = (key) => {
+    console.log('Sorting by:', key);
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
@@ -327,18 +294,27 @@ export default function TileMasterPage() {
       <Sidebar />
       <div className="flex-1 flex flex-col">
         <Topbar />
-        <div className="p-5 flex-1">
-          <Breadcrumbs currentPage="Products" />
+        <div className="flex flex-col flex-1 p-6 overflow-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Products</h1>
+            <Breadcrumbs currentPage="Products" />
+          </div>
           <div className="mt-5">
             <div className="flex justify-between items-center mb-5">
-              <h1 className="text-3xl font-bold text-gray-800">Products</h1>
-              <button
-                onClick={() => setShowAddModal(true)}
+              <input
+                type="text"
+                placeholder="Search Product Name..."
+                className="border p-2 rounded w-1/3"
+                value={globalSearch}
+                onChange={handleGlobalSearchChange}
+              />
+               <Link
+                to="/add-tile"
                 className="bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex items-center"
-                disabled={isLoading}
+                onClick={() => console.log('Navigating to /add-tile')}
               >
-                <FaPlus className="mr-2" /> Add Tile
-              </button>
+                <FaPlus className="mr-2" /> Add Product
+              </Link>
             </div>
             {message && (
               <div className="mb-6 text-sm text-center text-green-600 bg-green-100 p-3 rounded-md">
@@ -346,7 +322,7 @@ export default function TileMasterPage() {
               </div>
             )}
             {isLoading && <div className="text-center text-gray-600">Loading...</div>}
-            <div className="bg-white shadow-lg rounded-lg p-3">
+            
               <div className="mb-4 flex justify-between items-center">
                 <div className="flex items-center">
                   <span className="mr-2">Show Entries:</span>
@@ -363,25 +339,15 @@ export default function TileMasterPage() {
                     <option value={20}>20</option>
                   </select>
                 </div>
-                <div className="flex items-center">
-                  <FaSearch className="mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Search all columns..."
-                    value={globalSearch}
-                    onChange={handleGlobalSearchChange}
-                    className="border p-1 rounded"
-                  />
-                </div>
               </div>
-              <div className="overflow-auto max-h-[calc(100vh-300px)]"> {/* Adjustable max height */}
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-green-700 text-white">
+              <div className="overflow-x-auto bg-white rounded-lg shadow">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-green-100 text-gray-800">
                     <tr>
                       {['sku_name', 'sku_code', 'cat_name', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
                         <th
                           key={key}
-                          className="px-6 py-3 text-left text-xs font-medium text-white-500 uppercase tracking-wider"
+                          className="px-4 py-2 font-semibold text-left"
                         >
                           {key === 'actions' ? 'Actions' : key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           {key !== 'actions' && (
@@ -439,7 +405,7 @@ export default function TileMasterPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 space-x-4">
                           <button
                             onClick={() => handleEditClick(tile)}
-                            className="text-blue-600 hover:text-blue-800 transition duration-150"
+                            className="text-yellow-500 hover:text-yellow-700"
                             disabled={isLoading}
                             aria-label="Edit Tile"
                           >
@@ -489,29 +455,8 @@ export default function TileMasterPage() {
                   </button>
                 </div>
               </div>
-            </div>
           </div>
         </div>
-        {showAddModal && (
-          <TileModal
-            title="Add Tile"
-            defaultValues={{
-              SkuName: '',
-              SkuCode: '',
-              CatName: '',
-              AppName: '',
-              SpaceName: '',
-              SizeName: '',
-              FinishName: '',
-              ColorName: ''
-            }}
-            referenceData={referenceData}
-            onSubmit={handleAddTileConfirm}
-            onClose={() => setShowAddModal(false)}
-            isOpen={showAddModal}
-            isEdit={false}
-          />
-        )}
         {showEditModal && (
           <TileModal
             title="Edit Tile"
