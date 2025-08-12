@@ -1,8 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SidebarProvider } from './context/SidebarContext';
+import { ThemeProvider } from "./context/ThemeContext";
 import LoginPage from './pages/LoginPage';
 import Dashboard from './components/Dashboard';
+import Reportspage from './pages/Reportspage';
 import MasterTablesPage from './pages/MasterTablesPage';
 import LoginHistory from './pages/LoginHistory';
 import AdminActivityLog from './pages/AdminActivityLog';
@@ -20,9 +22,12 @@ import CompanyMasterPage from './pages/CompanyMasterPage';
 import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
 import RegisterPage from './pages/RegisterPage';
+import AddTilePage from './pages/AddTilePage';
+
 
 export default function App() {
   return (
+    <ThemeProvider>
   <SidebarProvider>
     <Router>
       <Routes>
@@ -30,6 +35,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage/>} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/masterTables" element={<MasterTablesPage />} />
+        <Route path="/reportsPage" element={<Reportspage />} />
         <Route path="/loginHistory" element={<LoginHistory/>}/>
         <Route path="/adminActivity" element={<AdminActivityLog/>}/>
         <Route path="/userActivity" element={<UserActivityLog/>}/>
@@ -46,9 +52,11 @@ export default function App() {
         <Route path="/loginMaster" element={<LoginMasterPage />} />
         <Route path="/planMaster" element={<PlanMasterPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/add-tile" element={<AddTilePage />} /> {/* Updated path to match /add-tile */}
 
       </Routes>
     </Router>
   </SidebarProvider>
+  </ThemeProvider>
   );
 }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-
 import { FaSortUp, FaSortDown } from 'react-icons/fa';
 import Breadcrumb from '../components/Breadcrumb';
 
@@ -11,6 +10,7 @@ export default function UserActivityLog() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
   const [fadeIn, setFadeIn] = useState(false);
+  const [collapsed, setCollapsed] = useState(false); // Add collapsed state
 
   useEffect(() => {
     setFadeIn(true);
@@ -43,7 +43,7 @@ export default function UserActivityLog() {
     { key: 'created', label: 'Created At' },
   ];
 
- const filtered = userLogs.filter(
+  const filtered = userLogs.filter(
     (log) =>
       log.xsource.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,21 +76,21 @@ export default function UserActivityLog() {
   const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-col flex-1 ml-70">
-        <Topbar />
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      <Sidebar collapsed={collapsed} />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
           <div className="flex justify-between mb-4 items-center">
-            <h1 className="text-2xl font-bold text-green-800">User Activity Log</h1>
+            <h1 className="text-2xl font-bold text-green-800 dark:text-green-200">User Activity Log</h1>
             <Breadcrumb/>
           </div>
 
           <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
               <span>Show</span>
               <select
-                className="border border-gray-300 rounded px-2 py-1"
+                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-800 dark:text-gray-200"
                 value={entriesPerPage}
                 onChange={(e) => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1); }}
               >
@@ -105,13 +105,13 @@ export default function UserActivityLog() {
               placeholder="Search Source, IP, URL..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded w-full max-w-xs"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded w-full max-w-xs dark:bg-gray-800 dark:text-gray-200"
             />
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-md">
-            <table className="min-w-full text-sm text-gray-800">
-              <thead className="bg-green-100 sticky top-0 z-10">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+            <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
+              <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                 <tr>
                   {headers.map(({ key, label }) => (
                     <th key={key} className="px-4 py-2 font-semibold cursor-pointer text-left" onClick={() => handleSort(key)}>
@@ -126,9 +126,9 @@ export default function UserActivityLog() {
                   <th className="px-4 py-2 font-semibold text-left">Block</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {currentLogs.map((log) => (
-                  <tr key={log.id} className="border-b hover:bg-green-50 transition duration-150">
+                  <tr key={log.id} className="border-b dark:border-gray-700 hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
                     <td className="px-4 py-2">{log.id}</td>
                     <td className="px-4 py-2">{log.xsource}</td>
                     <td className="px-4 py-2">{log.ip}</td>
@@ -147,20 +147,20 @@ export default function UserActivityLog() {
             </table>
           </div>
 
-          <div className="flex justify-between mt-4 text-sm items-center">
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
             <span>
               Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
             </span>
             <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50">
                 Previous
               </button>
               {[...Array(totalPages).keys()].map(num => (
-                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
+                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border dark:border-gray-700 rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
                   {num + 1}
                 </button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50">
                 Next
               </button>
             </div>

@@ -1,128 +1,183 @@
-import React, { useState } from 'react';
+// src/pages/TileModal.jsx
+import React, { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
 
-const initialFormState = {
-  tile_id: '',
-  sku_name: '',
-  sku_code: '',
-  cat_name: '',
-  app_name: '',
-  space_name: '',
-  size_name: '',
-  finish_name: '',
-  color_name: '',
-  block: '',
-};
+const TileModal = ({ title, defaultValues, referenceData, onSubmit, onClose, isOpen, isEdit }) => {
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm({
+    defaultValues,
+    mode: 'onChange' // Validate on every change
+  });
 
-function TileModal({ tile = {}, onSave, onClose }) {
-  const isEdit = Object.keys(tile).length > 0;
-  const [formData, setFormData] = useState(isEdit ? { ...tile } : initialFormState);
-  const [confirmAction, setConfirmAction] = useState(null); // 'save' or 'cancel'
-  const [showConfirm, setShowConfirm] = useState(false);
+  const firstInputRef = useRef(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // Log the watched values for debugging
+  useEffect(() => {
+    const subscription = watch((value) => {
+      console.log('Form State:', value);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
-  const handleSave = () => {
-    // Check if all required fields are filled
-    for (let key in formData) {
-      if (
-        key !== 'tile_id' &&
-        key !== 'created_date' &&
-        key !== 'modify_date' &&
-        !formData[key]
-      ) {
-        alert(`Please fill in the "${key.replace(/_/g, ' ')}" field.`);
-        return;
+  useEffect(() => {
+    if (isOpen) {
+      reset(defaultValues); // Reset form with default values
+      // Manually set values to trigger re-validation
+      Object.keys(defaultValues).forEach((key) => setValue(key, defaultValues[key]));
+      console.log('Default Values on Open:', defaultValues); // Debug default values
+      if (firstInputRef.current) {
+        firstInputRef.current.focus();
       }
     }
-    setConfirmAction('save');
-    setShowConfirm(true);
-  };
+  }, [isOpen, defaultValues, reset, setValue]);
 
-  const handleCancel = () => {
-    setConfirmAction('cancel');
-    setShowConfirm(true);
-  };
-
-  const confirmProceed = () => {
-    if (confirmAction === 'save') {
-      onSave(formData);
+  const handleSubmitWithConfirmation = async (data) => {
+    if (isEdit && !window.confirm('Do you want to save the changes?')) {
+      return; // Cancel submission if user declines
     }
-    onClose();
-    setShowConfirm(false);
-  };
-
-  const cancelProceed = () => {
-    setShowConfirm(false);
+    await onSubmit(data); // Proceed with submission if not edit or user confirms
   };
 
   return (
-    <>
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-        <div className="bg-white p-6 rounded-lg w-[90%] max-w-3xl">
-          <h2 className="text-xl font-bold mb-4">{isEdit ? 'Edit Tile' : 'Add Tile'}</h2>
-          <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
-            {Object.keys(formData).map((key) => (
-              key !== 'tile_id' && key !== 'created_date' && key !== 'modify_date' && (
-                <div key={key} className="flex flex-col">
-                  <label className="capitalize text-sm mb-1">{key.replace(/_/g, ' ')}</label>
-                  <input
-                    type="text"
-                    name={key}
-                    value={formData[key] || ''}
-                    onChange={handleChange}
-                    required
-                    className="border p-2 rounded"
-                  />
-                </div>
-              )
-            ))}
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+    >
+      <div className="bg-white dark:bg-gray-900 p-6 rounded w-[600px] max-h-[80vh] overflow-y-auto">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">{title}</h2>
+        <form onSubmit={handleSubmit(handleSubmitWithConfirmation)}>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col">
+              <input
+                {...register('SkuName', { required: 'SKU Name is required' })}
+                placeholder="SKU Name"
+                className="border p-2 rounded w-full"
+                ref={firstInputRef}
+                value={watch('SkuName') || ''}
+                onChange={(e) => setValue('SkuName', e.target.value)}
+              />
+              {errors.SkuName && <span className="text-red-600 text-sm mt-1">{errors.SkuName.message}</span>}
+            </div>
+            <div className="flex flex-col">
+              <input
+                {...register('SkuCode', { required: 'SKU Code is required' })}
+                placeholder="SKU Code"
+                className="border p-2 rounded w-full"
+                value={watch('SkuCode') || ''}
+                onChange={(e) => setValue('SkuCode', e.target.value)}
+              />
+              {errors.SkuCode && <span className="text-red-600 text-sm mt-1">{errors.SkuCode.message}</span>}
+            </div>
+            <div className="flex flex-col">
+              <select
+                {...register('CatName', { required: 'Category is required' })}
+                className="border p-2 rounded w-full"
+                defaultValue=""
+              >
+                <option value="" disabled>Select Category</option>
+                {referenceData.categories.map((item) => (
+                  <option key={item.cat_id} value={item.cat_name}>
+                    {item.cat_name}
+                  </option>
+                ))}
+              </select>
+              {errors.CatName && <span className="text-red-600 text-sm mt-1">{errors.CatName.message}</span>}
+            </div>
+            <div className="flex flex-col">
+              <select
+                {...register('AppName', { required: 'Application is required' })}
+                className="border p-2 rounded w-full"
+                defaultValue=""
+              >
+                <option value="" disabled>Select Application</option>
+                {referenceData.applications.map((item) => (
+                  <option key={item.app_id} value={item.app_name}>
+                    {item.app_name}
+                  </option>
+                ))}
+              </select>
+              {errors.AppName && <span className="text-red-600 text-sm mt-1">{errors.AppName.message}</span>}
+            </div>
+            <div className="flex flex-col">
+              <select
+                {...register('SpaceName', { required: 'Space is required' })}
+                className="border p-2 rounded w-full"
+                defaultValue=""
+              >
+                <option value="" disabled>Select Space</option>
+                {referenceData.spaces.map((item) => (
+                  <option key={item.space_id} value={item.space_name}>
+                    {item.space_name}
+                  </option>
+                ))}
+              </select>
+              {errors.SpaceName && <span className="text-red-600 text-sm mt-1">{errors.SpaceName.message}</span>}
+            </div>
+            <div className="flex flex-col">
+              <select
+                {...register('SizeName', { required: 'Size is required' })}
+                className="border p-2 rounded w-full"
+                defaultValue=""
+              >
+                <option value="" disabled>Select Size</option>
+                {referenceData.sizes.map((item) => (
+                  <option key={item.size_id} value={item.size_name}>
+                    {item.size_name}
+                  </option>
+                ))}
+              </select>
+              {errors.SizeName && <span className="text-red-600 text-sm mt-1">{errors.SizeName.message}</span>}
+            </div>
+            <div className="flex flex-col">
+              <select
+                {...register('FinishName', { required: 'Finish is required' })}
+                className="border p-2 rounded w-full"
+                defaultValue=""
+              >
+                <option value="" disabled>Select Finish</option>
+                {referenceData.finishes.map((item) => (
+                  <option key={item.finish_id} value={item.finish_name}>
+                    {item.finish_name}
+                  </option>
+                ))}
+              </select>
+              {errors.FinishName && <span className="text-red-600 text-sm mt-1">{errors.FinishName.message}</span>}
+            </div>
+            <div className="flex flex-col">
+              <select
+                {...register('ColorName', { required: 'Color is required' })}
+                className="border p-2 rounded w-full"
+                defaultValue=""
+              >
+                <option value="" disabled>Select Color</option>
+                {referenceData.colors.map((item) => (
+                  <option key={item.color_id} value={item.color_name}>
+                    {item.color_name}
+                  </option>
+                ))}
+              </select>
+              {errors.ColorName && <span className="text-red-600 text-sm mt-1">{errors.ColorName.message}</span>}
+            </div>
           </div>
-          <div className="flex justify-end gap-4 mt-6">
+          <div className="flex justify-end mt-4">
             <button
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-              onClick={handleSave}
-            >
-              Save
-            </button>
-            <button
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-              onClick={handleCancel}
+              type="button"
+              onClick={onClose}
+              className="bg-gray-500 text-white px-4 py-2 rounded mr-2"
             >
               Cancel
             </button>
+            <button
+              type="submit"
+              className="bg-green-600 text-white px-4 py-2 rounded"
+            >
+              Save
+            </button>
           </div>
-        </div>
+        </form>
       </div>
-
-      {/* Confirmation Popup */}
-      {showConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-60">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-            <p className="text-lg font-semibold mb-4">
-              Are you sure you want to {confirmAction === 'save' ? 'save' : 'cancel'}?
-            </p>
-            <div className="flex justify-end gap-4">
-              <button
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                onClick={confirmProceed}
-              >
-                Yes
-              </button>
-              <button
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                onClick={cancelProceed}
-              >
-                No
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
-}
+};
 
 export default TileModal;

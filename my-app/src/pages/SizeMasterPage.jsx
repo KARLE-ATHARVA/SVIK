@@ -3,19 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import axios from 'axios';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
@@ -32,57 +32,40 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
+const userId = localStorage.getItem('userid');
+
 export default function SizeMasterPage() {
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sizes, setSizes] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => { } });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({
-    size_name: '',
-    created_by: '',
-  });
+  const [newData, setNewData] = useState({ size_name: '', created_by: '' });
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
   const [fadeIn, setFadeIn] = useState(false);
 
-  const userId = localStorage.getItem('userid');
-
   const fetchSizes = async () => {
     try {
       const res = await axios.get(`${baseURL}/GetSizeList`);
       setSizes(res.data);
-    } catch (error) {
-      console.error('Error fetching sizes:', error);
+    } catch (err) {
+      console.error('Error fetching sizes', err);
     }
   };
 
   useEffect(() => {
-    setFadeIn(true);
+    setFadeIn(true)
     fetchSizes();
   }, []);
 
-  const headers = [
-    { key: 'size_id', label: 'Size ID' },
-    { key: 'size_name', label: 'Size Name' },
-    { key: 'block', label: 'Block' },
-    { key: 'updated_by', label: 'Updated By' },
-    { key: 'updated_date', label: 'Updated Date' },
-  ];
-
   const filtered = sizes.filter(
-    (size) =>
-      size.size_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (size.block ? 'yes' : 'no').includes(searchTerm.toLowerCase()) ||
-      (size.updated_by && size.updated_by.toLowerCase().includes(searchTerm.toLowerCase()))
+    (sz) =>
+      sz.size_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (sz.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
   );
 
   const sorted = React.useMemo(() => {
@@ -97,6 +80,11 @@ export default function SizeMasterPage() {
     return sortableItems;
   }, [filtered, sortConfig]);
 
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentApps = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
+
   const handleSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -105,14 +93,10 @@ export default function SizeMasterPage() {
     setSortConfig({ key, direction });
   };
 
-  const indexOfLast = currentPage * entriesPerPage;
-  const indexOfFirst = indexOfLast - entriesPerPage;
-  const currentSizes = sorted.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
-  const startEditing = (size) => {
-    setEditId(size.size_id);
-    setEditData({ ...size });
+  const startEditing = (sz) => {
+    setEditId(sz.size_id);
+    setEditData({ ...sz });
   };
 
   const cancelEditing = () => {
@@ -136,60 +120,48 @@ export default function SizeMasterPage() {
           formData.append('RequestBy', userId);
 
           const res = await axios.post(`${baseURL}/EditSize`, formData);
-
-          if (res.data === 'alreadyexists') {
-            alert('Size already exists!');
-            return;
-          } else if (res.data === 'success') {
+          if (res.data === 'success') {
             fetchSizes();
+            cancelEditing();
           } else {
-            alert(`Failed to update size: ${res.data}`);
+            alert(res.data);
           }
         } catch (err) {
-          console.error(err);
-          alert('Error updating size');
+          console.error('Edit failed', err);
         }
-
-        setEditId(null);
-        setEditData({});
         setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
-  const confirmDelete = (sizeId) => {
+  const confirmDelete = (id) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this entry?',
       onConfirm: async () => {
         try {
-          await axios.get(`${baseURL}/BlockSize/${userId}/${sizeId}/1`);
-          fetchSizes();
+          const res = await axios.get(`${baseURL}/BlockSize/${userId}/${id}/1`);
+          if (res.data === 'success') fetchSizes();
         } catch (err) {
-          console.error(err);
-          alert('Error deleting size');
+          console.error('Delete failed', err);
         }
         setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
-  const toggleBlock = async (size) => {
+  const toggleBlock = async (sz) => {
     try {
-      await axios.get(`${baseURL}/BlockSize/${userId}/${size.size_id}/${size.block ? 0 : 1}`);
-      fetchSizes();
+      const res = await axios.get(`${baseURL}/BlockSize/${userId}/${sz.size_id}/${sz.block ? 0 : 1}`);
+      if (res.data === 'success') fetchSizes();
     } catch (err) {
-      console.error(err);
-      alert('Error toggling block status');
+      console.error('Block toggle failed', err);
     }
   };
 
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({
-      size_name: '',
-      created_by: userId,
-    });
+    setNewData({ size_name: '', created_by: userId });
   };
 
   const cancelAdding = () => {
@@ -198,8 +170,8 @@ export default function SizeMasterPage() {
   };
 
   const saveAdding = () => {
-    if (!newData.size_name) {
-      alert('Please enter size name');
+    if (!newData.size_name || !newData.created_by) {
+      alert('Please fill all required fields');
       return;
     }
 
@@ -213,146 +185,128 @@ export default function SizeMasterPage() {
           formData.append('RequestBy', newData.created_by);
 
           const res = await axios.post(`${baseURL}/AddSize`, formData);
-
-          if (res.data === 'alreadyexists') {
-            alert('Size already exists!');
-            return;
-          } else if (res.data === 'success') {
+          if (res.data === 'success') {
             fetchSizes();
+            cancelAdding();
           } else {
-            alert(`Failed to add size: ${res.data}`);
+            alert(res.data);
           }
         } catch (err) {
-          console.error(err);
-          alert('Error adding size');
+          console.error('Add failed', err);
         }
-
-        setIsAdding(false);
-        setNewData({ size_name: '', created_by: '' });
         setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <div className="flex flex-col flex-1 ml-70">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="flex justify-between mb-4 items-center">
-            <h1 className="text-2xl font-bold text-green-800">Size Master</h1>
-            <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
-              {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New Color
-                </button>
-              )}
-            </div>
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      <Sidebar theme="dark" />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Topbar theme="dark" />
+
+        <div className="flex flex-col flex-1 p-6 overflow-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Size</h2>
+            <Breadcrumb />
           </div>
 
-                    <div className="mb-4">
+          <div className="mb-4 flex justify-between items-center">
             <input
               type="text"
-              placeholder="Search by Color Name or Block..."
+              placeholder="Search Size Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
+              className="border border-gray-300 dark:border-gray-600 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-white"
             />
+            {!isAdding && (
+              <button
+                className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
+                onClick={startAdding}
+              >
+                <FaPlus className="mr-2" /> Add New Size
+              </button>
+            )}
           </div>
 
-
-
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-md">
-            <table className="min-w-full text-sm text-gray-800">
-              <thead className="bg-green-100 sticky top-0 z-10">
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm text-gray-800 dark:text-gray-200">
+              <thead className="bg-green-100 dark:bg-green-900 text-grey-800 dark:text-gray-200">
                 <tr>
-                  {headers.map(({ key, label }) => (
-                    <th key={key} className="px-4 py-2 font-semibold cursor-pointer text-left" onClick={() => handleSort(key)}>
-                      <div className="flex items-center gap-1">
-                        {label}
-                        {sortConfig.key === key && (
-                          sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />
-                        )}
-                      </div>
-                    </th>
-                  ))}
+                  <th className="px-4 py-2 font-semibold text-left">Size Name</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
+                  <th className="px-4 py-2 font-semibold text-left">Block</th>
                   <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {isAdding && (
-                  <tr className="border-b hover:bg-green-50 transition duration-150">
-                    <td className="px-4 py-2">New</td>
+                  <tr className="dark:bg-gray-900">
                     <td className="px-4 py-2">
                       <input
                         value={newData.size_name}
                         onChange={(e) => setNewData({ ...newData, size_name: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border dark:border-gray-600 rounded px-2 py-1 w-full dark:bg-gray-700"
                       />
                     </td>
-                    <td className="px-4 py-2">—</td>
                     <td className="px-4 py-2">{userId}</td>
-                    <td className="px-4 py-2">—</td>
+                    <td className="px-4 py-2"></td>
+                    <td className="px-4 py-2">
+                      <span className="px-3 py-1 rounded-full text-white text-xs bg-green-600">No</span>
+                    </td>
                     <td className="px-4 py-2 space-x-2 flex">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
-                        <FaSave size={18} />
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
+                        <FaSave size={22} />
                       </button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
-                        <FaTimes size={18} />
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
+                        <FaTimes size={22} />
                       </button>
                     </td>
                   </tr>
                 )}
 
-                {currentSizes.map((size) => (
-                  <tr key={size.size_id} className="border-b hover:bg-green-50 transition duration-150">
-                    <td className="px-4 py-2">{size.size_id}</td>
+                {currentApps.map((sz) => (
+                  <tr key={sz.size_id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-2">
-                      {editId === size.size_id ? (
+                      {editId === sz.size_id ? (
                         <input
                           value={editData.size_name}
                           onChange={(e) => handleEditChange('size_name', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border dark:border-gray-600 rounded px-2 py-1 w-full dark:bg-gray-700"
                         />
                       ) : (
-                        size.size_name
+                        sz.size_name
                       )}
                     </td>
+                    <td className="px-4 py-2">{sz.updated_by}</td>
+                    <td className="px-4 py-2">{new Date(sz.updated_date).toLocaleDateString()}</td>
                     <td className="px-4 py-2">
-                      <input
-                        type="checkbox"
-                        checked={size.block}
-                        onChange={() => toggleBlock(size)}
-                      />
+                      <span
+                        onClick={() => toggleBlock(sz)}
+                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
+                          sz.block ? 'bg-red-600' : 'bg-green-600'
+                        }`}
+                      >
+                        {sz.block ? 'Yes' : 'No'}
+                      </span>
                     </td>
-                    <td className="px-4 py-2">{size.updated_by}</td>
-                    <td className="px-4 py-2">{new Date(size.updated_date).toLocaleDateString()}</td>
                     <td className="px-4 py-2 space-x-2 flex">
-                      {editId === size.size_id ? (
+                      {editId === sz.size_id ? (
                         <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
                             <FaSave size={18} />
                           </button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
                             <FaTimes size={18} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEditing(size)} className="text-yellow-500 hover:text-yellow-700">
+                          <button onClick={() => startEditing(sz)} className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300">
                             <FaEdit size={18} />
                           </button>
-                          <button onClick={() => confirmDelete(size.size_id)} className="text-red-500 hover:text-red-700">
+                          <button onClick={() => confirmDelete(sz.size_id)} className="text-red-500 hover:text-red-700 ">
                             <FaTrash size={18} />
                           </button>
                         </>
@@ -363,37 +317,25 @@ export default function SizeMasterPage() {
               </tbody>
             </table>
           </div>
-
-          <div className="flex justify-between mt-4 text-sm items-center">
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-700 dark:text-gray-300">
             <span>
               Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
             </span>
             <div className="flex gap-1">
-              <button 
-                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} 
-                disabled={currentPage === 1} 
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
+              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                 Previous
               </button>
               {[...Array(totalPages).keys()].map(num => (
-                <button 
-                  key={num + 1} 
-                  onClick={() => setCurrentPage(num + 1)} 
-                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
-                >
+                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded dark:border-gray-600 dark:bg-gray-700 dark:text-white ${currentPage === num + 1 ? 'bg-green-600 text-white dark:bg-green-700' : ''}`}>
                   {num + 1}
                 </button>
               ))}
-              <button 
-                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} 
-                disabled={currentPage === totalPages} 
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
+              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                 Next
               </button>
             </div>
           </div>
+          
         </div>
       </div>
 

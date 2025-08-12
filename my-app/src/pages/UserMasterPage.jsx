@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
+import Breadcrumbs from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-[400px]">
-        <p className="mb-4 text-gray-800">{message}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 dark:bg-opacity-70 z-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-[400px]">
+        <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-600"
             onClick={onCancel}
           >
             Cancel
@@ -32,73 +35,160 @@ export default function UserMasterPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [users, setUsers] = useState([
-    {
-      user_id: 1,
-      comp_id: 101,
-      user_name: 'John Doe',
-      email_id: 'john@example.com',
-      cont_number: '1234567890',
-      profile_id: 1,
-      block: false,
-      created_by: 999,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 999,
-      modify_date: '2025-07-07T12:34:56',
-    },
-  ]);
+  const [users, setUsers] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
-    comp_id: '',
-    user_name: '',
-    email_id: '',
-    cont_number: '',
-    profile_id: '',
+    CompId: '',
+    UserName: '',
+    EmailId: '',
+    ContNumber: '',
+    ProfileId: '',
+    RequestBy: '',
     block: false,
-    created_by: '',
   });
   const [confirmation, setConfirmation] = useState({
     show: false,
     message: '',
     onConfirm: () => {},
   });
+  const [error, setError] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Dark mode state and logic
+  const [isDarkMode, setIsDarkMode] = useState(
+    () => localStorage.getItem('theme') === 'dark'
+  );
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(prevMode => !prevMode);
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  // Current timestamp in IST
+  const currentDateTime = '2025-08-03T15:30:00+05:30';
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch(`${baseURL}/GetUserList`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        const data = await response.json();
+        console.log('API Response:', data);
+        if (Array.isArray(data)) {
+          const mappedUsers = data.map(user => ({
+            user_id: user.user_id || 0,
+            comp_id: user.comp_id || '',
+            user_name: user.user_name || '',
+            email_id: user.email_id || '',
+            cont_number: user.cont_number || '',
+            profile_id: user.profile_id || 0,
+            block: user.block || false,
+            created_by: user.created_by || 0,
+            created_date: user.created_date || currentDateTime,
+            modify_by: user.modify_by || 0,
+            modify_date: user.modify_date || currentDateTime,
+            updated_by: user.updated_by || '',
+            updated_date: user.updated_date || currentDateTime,
+          }));
+          setUsers(mappedUsers);
+        } else {
+          setError('Failed to fetch user list: Invalid response format');
+        }
+      } catch (err) {
+        setError('Error fetching user list: ' + err.message);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const startEditing = (user) => {
     setEditId(user.user_id);
-    setEditData({ ...user });
+    setEditData({
+      UserId: user.user_id,
+      CompId: user.comp_id,
+      UserName: user.user_name,
+      EmailId: user.email_id,
+      ContNumber: user.cont_number,
+      ProfileId: user.profile_id,
+      RequestBy: user.modify_by,
+      block: user.block,
+    });
   };
+
   const cancelEditing = () => {
     setEditId(null);
     setEditData({});
   };
+
   const handleEditChange = (field, value) => {
     setEditData({ ...editData, [field]: value });
+  };
+
+  const saveEdit = async () => {
+    const formData = new FormData();
+    Object.keys(editData).forEach(key => {
+      formData.append(key, editData[key]);
+    });
+
+    try {
+      const response = await fetch(`${baseURL}/EditUser`, {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.text();
+      if (result === 'success') {
+        setUsers(users.map(user =>
+          user.user_id === editId
+            ? {
+                ...user,
+                comp_id: parseInt(editData.CompId) || user.comp_id,
+                user_name: editData.UserName || user.user_name,
+                email_id: editData.EmailId || user.email_id,
+                cont_number: editData.ContNumber || user.cont_number,
+                profile_id: parseInt(editData.ProfileId) || user.profile_id,
+                modify_by: parseInt(editData.RequestBy) || user.modify_by,
+                modify_date: currentDateTime,
+                block: editData.block || user.block,
+              }
+            : user
+        ).sort((a, b) => a.user_id - b.user_id));
+        setEditId(null);
+        setEditData({});
+        setConfirmation({ show: false, message: '', onConfirm: () => {} });
+      } else if (result === 'alreadyexists') {
+        setError('User already exists');
+      } else {
+        setError(result);
+      }
+    } catch (err) {
+      setError('Error editing user: ' + err.message);
+    }
   };
 
   const confirmSave = () => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updatedUsers = users
-          .map((user) =>
-            user.user_id === editId
-              ? {
-                  ...editData,
-                  modify_by: 999,
-                  modify_date: new Date().toISOString(),
-                }
-              : user
-          )
-          .sort((a, b) => a.user_id - b.user_id);
-
-        setUsers(updatedUsers);
-        setEditId(null);
-        setEditData({});
-        setConfirmation({ ...confirmation, show: false });
-      },
+      onConfirm: saveEdit,
     });
   };
 
@@ -106,9 +196,21 @@ export default function UserMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this user?',
-      onConfirm: () => {
-        setUsers(users.filter((user) => user.user_id !== id));
-        setConfirmation({ ...confirmation, show: false });
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${baseURL}/DeleteUser/${id}`, {
+            method: 'POST',
+          });
+          const result = await response.text();
+          if (result === 'success') {
+            setUsers(users.filter(user => user.user_id !== id));
+            setConfirmation({ show: false, message: '', onConfirm: () => {} });
+          } else {
+            setError('Error deleting user: ' + result);
+          }
+        } catch (err) {
+          setError('Error deleting user: ' + err.message);
+        }
       },
     });
   };
@@ -116,71 +218,149 @@ export default function UserMasterPage() {
   const startAdding = () => {
     setIsAdding(true);
   };
+
   const cancelAdding = () => {
     setIsAdding(false);
     setNewData({
-      comp_id: '',
-      user_name: '',
-      email_id: '',
-      cont_number: '',
-      profile_id: '',
+      CompId: '',
+      UserName: '',
+      EmailId: '',
+      ContNumber: '',
+      ProfileId: '',
+      RequestBy: '',
       block: false,
-      created_by: '',
     });
   };
 
-  const saveAdding = () => {
-    if (!newData.user_name || !newData.email_id) {
-      alert('Please fill all required fields');
+  const saveAdding = async () => {
+    if (!newData.UserName || !newData.EmailId) {
+      setError('Please fill all required fields');
       return;
     }
+
+    const formData = new FormData();
+    Object.keys(newData).forEach(key => {
+      formData.append(key, newData[key]);
+    });
+
+    try {
+      const response = await fetch(`${baseURL}/AddUser`, {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.text();
+      if (result === 'success') {
+        const newUser = {
+          user_id: users.length ? Math.max(...users.map(u => u.user_id)) + 1 : 1,
+          comp_id: parseInt(newData.CompId) || 0,
+          user_name: newData.UserName,
+          email_id: newData.EmailId,
+          cont_number: newData.ContNumber || '',
+          profile_id: parseInt(newData.ProfileId) || 0,
+          block: newData.block || false,
+          created_by: parseInt(newData.RequestBy) || 0,
+          created_date: currentDateTime,
+          modify_by: parseInt(newData.RequestBy) || 0,
+          modify_date: currentDateTime,
+          updated_by: newData.UserName || '',
+          updated_date: currentDateTime,
+        };
+        setUsers([...users, newUser].sort((a, b) => a.user_id - b.user_id));
+        cancelAdding();
+        setConfirmation({ show: false, message: '', onConfirm: () => {} });
+      } else if (result === 'alreadyexists') {
+        setError('User already exists');
+      } else {
+        setError(result);
+      }
+    } catch (err) {
+      setError('Error adding user: ' + err.message);
+    }
+  };
+
+  const confirmAdd = () => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new user?',
-      onConfirm: () => {
-        const newUser = {
-          ...newData,
-          user_id: users.length
-            ? Math.max(...users.map((u) => u.user_id)) + 1
-            : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
-        const updatedUsers = [...users, newUser].sort(
-          (a, b) => a.user_id - b.user_id
-        );
-        setUsers(updatedUsers);
-        cancelAdding();
-        setConfirmation({ ...confirmation, show: false });
-      },
+      onConfirm: saveAdding,
     });
   };
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const toggleBlock = async (user) => {
+    const status = user.block ? 0 : 1;
+    try {
+      const response = await fetch(
+        `${baseURL}/BlockUser/${user.modify_by || 0}/${user.user_id}/${status}`,
+        {
+          method: 'POST',
+        }
+      );
+      const result = await response.text();
+      if (result === 'success') {
+        setUsers(users.map(u =>
+          u.user_id === user.user_id
+            ? { ...u, block: status === 1, modify_date: currentDateTime }
+            : u
+        ));
+      } else {
+        setError('Error toggling block status: ' + result);
+      }
+    } catch (err) {
+      setError('Error toggling block status: ' + err.message);
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    const userName = user.user_name || '';
+    const emailId = user.email_id || '';
+    return (
+      userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emailId.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, users, rowsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
+  const indexOfFirst = (currentPage - 1) * rowsPerPage;
+  const indexOfLast = Math.min(indexOfFirst + rowsPerPage, filteredUsers.length);
+  const currentUsers = filteredUsers.slice(indexOfFirst, indexOfFirst + rowsPerPage);
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar collapsed={collapsed} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="flex flex-col flex-1 p-6 overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">
-              User Master Table
-            </h2>
-            <div className="flex space-x-2">
+        <div className="flex-1 p-6 overflow-auto">
+          {error && (
+            <div className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4">
+              {error}
               <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
+                className="ml-4 text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100"
+                onClick={() => setError('')}
               >
-                Return to Dashboard
+                Close
               </button>
+            </div>
+          )}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-200">User</h2>
+            <Breadcrumbs currentPage="User Master" />
+          </div>
+          <div className="mb-4 flex justify-between items-center">
+            <input
+              type="text"
+              placeholder="Search by User Name or Email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+            />
+            <div className="flex items-center space-x-4">
+              
+
               {!isAdding && (
                 <button
                   className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
@@ -192,136 +372,137 @@ export default function UserMasterPage() {
             </div>
           </div>
 
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Search by User Name or Email ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
-            />
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <label className="mr-2 text-sm text-gray-800 dark:text-gray-200">Show</label>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+                className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="ml-2 text-sm text-gray-800 dark:text-gray-200">entries</span>
+            </div>
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-700 text-white">
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200">
                 <tr>
-                  <th className="px-4 py-3">User ID</th>
-                  <th className="px-4 py-3">Company ID</th>
-                  <th className="px-4 py-3">User Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Contact Number</th>
-                  <th className="px-4 py-3">Profile ID</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-2 font-semibold text-left">User ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">Company ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">User Name</th>
+                  <th className="px-4 py-2 font-semibold text-left">Email</th>
+                  <th className="px-4 py-2 font-semibold text-left">Contact Number</th>
+                  <th className="px-4 py-2 font-semibold text-left">Profile ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">Created By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Block</th>
+                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-900 dark:text-gray-100">
                 {isAdding && (
-                  <tr>
-                    <td className="px-4 py-3">New</td>
-                    <td className="px-4 py-3">
+                  <tr className="bg-gray-50 dark:bg-gray-700">
+                    <td className="px-4 py-2">New</td>
+                    <td className="px-4 py-2">
                       <input
-                        value={newData.comp_id}
-                        onChange={(e) =>
-                          setNewData({ ...newData, comp_id: e.target.value })
+                        type="number"
+                        value={newData.CompId}
+                        onChange={e =>
+                          setNewData({ ...newData, CompId: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
-                        value={newData.user_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, user_name: e.target.value })
+                        value={newData.UserName}
+                        onChange={e =>
+                          setNewData({ ...newData, UserName: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
-                        value={newData.email_id}
-                        onChange={(e) =>
-                          setNewData({ ...newData, email_id: e.target.value })
+                        value={newData.EmailId}
+                        onChange={e =>
+                          setNewData({ ...newData, EmailId: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
-                        value={newData.cont_number}
-                        onChange={(e) =>
-                          setNewData({
-                            ...newData,
-                            cont_number: e.target.value,
-                          })
+                        type="text"
+                        value={newData.ContNumber}
+                        onChange={e =>
+                          setNewData({ ...newData, ContNumber: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
-                        value={newData.profile_id}
-                        onChange={(e) =>
-                          setNewData({
-                            ...newData,
-                            profile_id: e.target.value,
-                          })
+                        type="number"
+                        value={newData.ProfileId}
+                        onChange={e =>
+                          setNewData({ ...newData, ProfileId: e.target.value })
                         }
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={newData.RequestBy}
+                        onChange={e =>
+                          setNewData({ ...newData, RequestBy: e.target.value })
+                        }
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
                       <input
                         type="checkbox"
                         checked={newData.block}
-                        onChange={(e) =>
+                        onChange={e =>
                           setNewData({ ...newData, block: e.target.checked })
                         }
+                        disabled
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({
-                            ...newData,
-                            created_by: e.target.value,
-                          })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td className="px-4 py-3 flex space-x-2">
+
+                    <td className="px-4 py-2 flex space-x-2">
                       <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
+                        onClick={confirmAdd}
+                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
                       >
                         <FaSave size={20} />
                       </button>
                       <button
                         onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
+                        className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                       >
                         <FaTimes size={20} />
                       </button>
                     </td>
                   </tr>
                 )}
-
-                {filteredUsers.map((user) => (
-                  <tr key={user.user_id}>
+                {currentUsers.map(user => (
+                  <tr key={user.user_id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3">{user.user_id}</td>
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
                         <input
-                          value={editData.comp_id}
-                          onChange={(e) =>
-                            handleEditChange('comp_id', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
+                          type="number"
+                          value={editData.CompId}
+                          onChange={e => handleEditChange('CompId', e.target.value)}
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                         />
                       ) : (
                         user.comp_id
@@ -330,11 +511,9 @@ export default function UserMasterPage() {
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
                         <input
-                          value={editData.user_name}
-                          onChange={(e) =>
-                            handleEditChange('user_name', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
+                          value={editData.UserName}
+                          onChange={e => handleEditChange('UserName', e.target.value)}
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                         />
                       ) : (
                         user.user_name
@@ -343,11 +522,9 @@ export default function UserMasterPage() {
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
                         <input
-                          value={editData.email_id}
-                          onChange={(e) =>
-                            handleEditChange('email_id', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
+                          value={editData.EmailId}
+                          onChange={e => handleEditChange('EmailId', e.target.value)}
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                         />
                       ) : (
                         user.email_id
@@ -356,11 +533,10 @@ export default function UserMasterPage() {
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
                         <input
-                          value={editData.cont_number}
-                          onChange={(e) =>
-                            handleEditChange('cont_number', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
+                          type="text"
+                          value={editData.ContNumber}
+                          onChange={e => handleEditChange('ContNumber', e.target.value)}
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                         />
                       ) : (
                         user.cont_number
@@ -369,11 +545,10 @@ export default function UserMasterPage() {
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
                         <input
-                          value={editData.profile_id}
-                          onChange={(e) =>
-                            handleEditChange('profile_id', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
+                          type="number"
+                          value={editData.ProfileId}
+                          onChange={e => handleEditChange('ProfileId', e.target.value)}
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                         />
                       ) : (
                         user.profile_id
@@ -382,31 +557,46 @@ export default function UserMasterPage() {
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
                         <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
+                          type="number"
+                          value={editData.RequestBy}
+                          onChange={e => handleEditChange('RequestBy', e.target.value)}
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
                         />
-                      ) : user.block ? (
-                        'Yes'
                       ) : (
-                        'No'
+                        user.created_by
                       )}
                     </td>
-                    <td className="px-4 py-3">{user.created_by}</td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
+                        <input
+                          type="checkbox"
+                          checked={editData.block}
+                          onChange={e => handleEditChange('block', e.target.checked)}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => toggleBlock(user)}
+                          className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
+                            user.block ? 'bg-red-600' : 'bg-green-600'
+                          }`}
+                        >
+                          {user.block ? 'Yes' : 'No'}
+                        </button>
+                      )}
+                    </td>
+
                     <td className="px-4 py-3 flex space-x-2">
                       {editId === user.user_id ? (
                         <>
                           <button
                             onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
                           >
                             <FaSave size={20} />
                           </button>
                           <button
                             onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
+                            className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                           >
                             <FaTimes size={20} />
                           </button>
@@ -415,7 +605,7 @@ export default function UserMasterPage() {
                         <>
                           <button
                             onClick={() => startEditing(user)}
-                            className="text-yellow-500 hover:text-yellow-700"
+                            className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
                           >
                             <FaEdit size={20} />
                           </button>
@@ -432,15 +622,51 @@ export default function UserMasterPage() {
                 ))}
               </tbody>
             </table>
+            {filteredUsers.length === 0 && !isAdding && (
+              <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
+                No users found
+              </div>
+            )}
           </div>
+
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Showing {filteredUsers.length === 0 ? 0 : indexOfFirst + 1} to {indexOfLast} of {filteredUsers.length} entries
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:disabled:text-gray-500"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+                <button
+                  key={num}
+                  onClick={() => setCurrentPage(num)}
+                  className={`px-3 py-1 border rounded ${currentPage === num ? 'bg-green-600 text-white' : 'dark:bg-gray-700 dark:text-white dark:border-gray-600'}`}
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:disabled:text-gray-500"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
-
       {confirmation.show && (
         <ConfirmationModal
           message={confirmation.message}
           onConfirm={confirmation.onConfirm}
-          onCancel={() => setConfirmation({ ...confirmation, show: false })}
+          onCancel={() => setConfirmation({ show: false, message: '', onConfirm: () => {} })}
         />
       )}
     </div>

@@ -10,12 +10,12 @@ const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50 dark:bg-opacity-50">
+      <div className="bg-white p-6 rounded shadow-lg w-96 dark:bg-gray-800">
+        <p className="mb-4 text-gray-800 dark:text-white">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-700"
             onClick={onCancel}
           >
             Cancel
@@ -32,12 +32,10 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
-  const userId = localStorage.getItem('userid');
-
+const userId = localStorage.getItem('userid');
 
 export default function CategoryMasterPage() {
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categories, setCategories] = useState([]);
   const [editId, setEditId] = useState(null);
@@ -45,6 +43,25 @@ export default function CategoryMasterPage() {
   const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({ cat_name: '', created_by: '' });
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '',direction: 'ascending' });
+  
+  // Dark mode state and logic
+  const [isDarkMode, setIsDarkMode] = useState(
+    () => localStorage.getItem('theme') === 'dark'
+  );
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   const fetchCategories = async () => {
     try {
@@ -59,11 +76,37 @@ export default function CategoryMasterPage() {
     fetchCategories();
   }, []);
 
-  const filteredCategories = categories.filter(
+  const filtered = categories.filter(
     (cat) =>
       cat.cat_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (cat.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
   );
+
+  const sorted = React.useMemo(() => {
+      let sortableItems = [...filtered];
+      if (sortConfig.key !== '') {
+        sortableItems.sort((a, b) => {
+          if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+          if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+          return 0;
+        });
+      }
+      return sortableItems;
+    }, [filtered, sortConfig]);
+
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentApps = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
+
+    const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
 
   const startEditing = (cat) => {
     setEditId(cat.cat_id);
@@ -88,7 +131,7 @@ export default function CategoryMasterPage() {
           const formData = new FormData();
           formData.append('CatId', editData.cat_id);
           formData.append('CatName', editData.cat_name);
-          formData.append('RequestBy', userId); // hardcoded user
+          formData.append('RequestBy', userId);
 
           const res = await axios.post(`${baseURL}/EditCategory`, formData);
           if (res.data === 'success') {
@@ -111,7 +154,6 @@ export default function CategoryMasterPage() {
       message: 'Are you sure you want to delete this entry?',
       onConfirm: async () => {
         try {
- 
           const res = await axios.get(`${baseURL}/BlockCategory/${userId}/${id}/1`);
           if (res.data === 'success') fetchCategories();
         } catch (err) {
@@ -123,7 +165,6 @@ export default function CategoryMasterPage() {
   };
 
   const toggleBlock = async (cat) => {
-
     try {
       const res = await axios.get(`${baseURL}/BlockCategory/${userId}/${cat.cat_id}/${cat.block ? 0 : 1}`);
       if (res.data === 'success') fetchCategories();
@@ -134,7 +175,7 @@ export default function CategoryMasterPage() {
 
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ cat_name: '', created_by: userId});
+    setNewData({ cat_name: '', created_by: userId });
   };
 
   const cancelAdding = () => {
@@ -173,125 +214,120 @@ export default function CategoryMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar collapsed={collapsed} />
+    <div className="flex h-screen bg-gray-100 overflow-hidden dark:bg-gray-900">
+      <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+        <Topbar />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Category Master Table</h2>
-            <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
-              {!isAdding && (
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-200">Category</h2>
+            <Breadcrumb />
+          </div>
+
+          <div className="mb-4 flex justify-between items-center">
+            <input
+              type="text"
+              placeholder="Search Category Name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+            <div className="flex items-center space-x-4">
+                {!isAdding && (
                 <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
+                    className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
+                    onClick={startAdding}
                 >
-                  <FaPlus className="mr-2" /> Add New Category
+                    <FaPlus className="mr-2" /> Add New Category
                 </button>
-              )}
+                )}
             </div>
           </div>
 
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Search by Category Name or Block..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
-            />
-          </div>
-
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-700 text-white">
+          <div className="overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-800">
+            <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+              <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3">Cat ID</th>
-                  <th className="px-4 py-3">Cat Name</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Updated By</th>
-                  <th className="px-4 py-3">Updated Date</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-2 font-semibold text-left text-gray-800 dark:text-gray-200">Category Name</th>
+                  <th className="px-4 py-2 font-semibold text-left text-gray-800 dark:text-gray-200">Updated By</th>
+                  <th className="px-4 py-2 font-semibold text-left text-gray-800 dark:text-gray-200">Updated Date</th>
+                  <th className="px-4 py-2 font-semibold text-left text-gray-800 dark:text-gray-200">Block</th>
+                  <th className="px-4 py-2 font-semibold text-left text-gray-800 dark:text-gray-200">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                 {isAdding && (
                   <tr>
-                    <td className="px-4 py-3">New</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         value={newData.cat_name}
                         onChange={(e) => setNewData({ ...newData, cat_name: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
                       />
                     </td>
-                    <td className="px-4 py-3">No</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2 dark:text-gray-200">No</td>
+                    <td className="px-4 py-2">
                       <input
                         type="number"
                         value={newData.created_by}
                         onChange={(e) => setNewData({ ...newData, created_by: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
                       />
                     </td>
-                    <td colSpan="2" className="px-4 py-3 space-x-2 flex">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
-                        <FaSave size={22} />
+                    <td colSpan="2" className="px-4 py-2 space-x-2 flex">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-500">
+                        <FaSave size={18} />
                       </button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
-                        <FaTimes size={22} />
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-500">
+                        <FaTimes size={18} />
                       </button>
                     </td>
                   </tr>
                 )}
 
-                {filteredCategories.map((cat) => (
-                  <tr key={cat.cat_id}>
-                    <td className="px-4 py-3">{cat.cat_id}</td>
-                    <td className="px-4 py-3">
+                {currentApps.map((cat) => (
+                  <tr key={cat.cat_id} className="dark:hover:bg-gray-700">
+                    <td className="px-4 py-2 dark:text-white">
                       {editId === cat.cat_id ? (
                         <input
                           value={editData.cat_name}
                           onChange={(e) => handleEditChange('cat_name', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
                         />
                       ) : (
                         cat.cat_name
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={cat.block}
-                        onChange={() => toggleBlock(cat)}
-                      />
+                    <td className="px-4 py-2 dark:text-white">{cat.updated_by}</td>
+                    <td className="px-4 py-2 dark:text-white">{new Date(cat.updated_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        onClick={() => toggleBlock(cat)}
+                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
+                          cat.block ? 'bg-red-600' : 'bg-green-600'
+                        }`}
+                      >
+                        {cat.block ? 'Yes' : 'No'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">{cat.updated_by}</td>
-                    <td className="px-4 py-3">{new Date(cat.updated_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 space-x-2 flex">
+                    <td className="px-4 py-2 space-x-2 flex">
                       {editId === cat.cat_id ? (
                         <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-500">
                             <FaSave size={22} />
                           </button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-500">
                             <FaTimes size={22} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEditing(cat)} className="text-yellow-500 hover:text-yellow-700">
-                            <FaEdit size={22} />
+                          <button onClick={() => startEditing(cat)} className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-500">
+                            <FaEdit size={18} />
                           </button>
-                          <button onClick={() => confirmDelete(cat.cat_id)} className="text-red-500 hover:text-red-700">
-                            <FaTrash size={22} />
+                          <button onClick={() => confirmDelete(cat.cat_id)} className="text-red-500 hover:text-red-700 dark:text-red-500 dark:hover:text-red-600">
+                            <FaTrash size={18} />
                           </button>
                         </>
                       )}
@@ -301,6 +337,25 @@ export default function CategoryMasterPage() {
               </tbody>
             </table>
           </div>
+          <div className="flex justify-between mt-4 text-sm items-center dark:text-white">
+            <span>
+              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800">
+                Previous
+              </button>
+              {[...Array(totalPages).keys()].map(num => (
+                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''} dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700`}>
+                  {num + 1}
+                </button>
+              ))}
+              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800">
+                Next
+              </button>
+            </div>
+          </div>
+          
         </div>
       </div>
 
