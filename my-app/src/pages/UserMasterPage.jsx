@@ -46,6 +46,7 @@ export default function UserMasterPage() {
     ContNumber: '',
     ProfileId: '',
     RequestBy: '',
+    block: false,
   });
   const [confirmation, setConfirmation] = useState({
     show: false,
@@ -53,6 +54,10 @@ export default function UserMasterPage() {
     onConfirm: () => {},
   });
   const [error, setError] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Current timestamp in IST
   const currentDateTime = '2025-08-03T15:30:00+05:30';
@@ -294,6 +299,16 @@ export default function UserMasterPage() {
     );
   });
 
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, users, rowsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
+  const indexOfFirst = (currentPage - 1) * rowsPerPage;
+  const indexOfLast = Math.min(indexOfFirst + rowsPerPage, filteredUsers.length);
+  const currentUsers = filteredUsers.slice(indexOfFirst, indexOfFirst + rowsPerPage);
+
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       <Sidebar collapsed={collapsed} />
@@ -334,26 +349,44 @@ export default function UserMasterPage() {
               </button>
             )}
           </div>
+
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <label className="mr-2 text-sm">Show</label>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+                className="border rounded px-2 py-1"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="ml-2 text-sm">entries</span>
+            </div>
+          </div>
+
           <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-700 text-white">
+              <thead className="bg-green-100 text-gray-800">
                 <tr>
-                  <th className="px-4 py-3">User ID</th>
-                  <th className="px-4 py-3">Company ID</th>
-                  <th className="px-4 py-3">User Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Contact Number</th>
-                  <th className="px-4 py-3">Profile ID</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-2 font-semibold text-left">User ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">Company ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">User Name</th>
+                  <th className="px-4 py-2 font-semibold text-left">Email</th>
+                  <th className="px-4 py-2 font-semibold text-left">Contact Number</th>
+                  <th className="px-4 py-2 font-semibold text-left">Profile ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">Created By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Block</th>
+                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
                   <tr>
-                    <td className="px-4 py-3">New</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">New</td>
+                    <td className="px-4 py-2">
                       <input
                         type="number"
                         value={newData.CompId}
@@ -363,7 +396,7 @@ export default function UserMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         value={newData.UserName}
                         onChange={e =>
@@ -372,7 +405,7 @@ export default function UserMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         value={newData.EmailId}
                         onChange={e =>
@@ -381,7 +414,7 @@ export default function UserMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         type="text"
                         value={newData.ContNumber}
@@ -391,7 +424,7 @@ export default function UserMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         type="number"
                         value={newData.ProfileId}
@@ -401,17 +434,7 @@ export default function UserMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={e =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                        disabled
-                      />
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         type="number"
                         value={newData.RequestBy}
@@ -421,7 +444,18 @@ export default function UserMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-3 flex space-x-2">
+                    <td className="px-4 py-2">
+                      <input
+                        type="checkbox"
+                        checked={newData.block}
+                        onChange={e =>
+                          setNewData({ ...newData, block: e.target.checked })
+                        }
+                        disabled
+                      />
+                    </td>
+                    
+                    <td className="px-4 py-2 flex space-x-2">
                       <button
                         onClick={confirmAdd}
                         className="text-green-600 hover:text-green-800"
@@ -437,7 +471,7 @@ export default function UserMasterPage() {
                     </td>
                   </tr>
                 )}
-                {filteredUsers.map(user => (
+                {currentUsers.map(user => (
                   <tr key={user.user_id}>
                     <td className="px-4 py-3">{user.user_id}</td>
                     <td className="px-4 py-3">
@@ -501,26 +535,6 @@ export default function UserMasterPage() {
                     <td className="px-4 py-3">
                       {editId === user.user_id ? (
                         <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={e => handleEditChange('block', e.target.checked)}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => toggleBlock(user)}
-                          className={`px-2 py-1 rounded ${
-                            user.block
-                              ? 'bg-yellow-500 hover:bg-yellow-600'
-                              : 'bg-green-500 hover:bg-green-600'
-                          } text-white`}
-                        >
-                          {user.block ? 'Unblock' : 'Block'}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {editId === user.user_id ? (
-                        <input
                           type="number"
                           value={editData.RequestBy}
                           onChange={e => handleEditChange('RequestBy', e.target.value)}
@@ -530,6 +544,27 @@ export default function UserMasterPage() {
                         user.created_by
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      {editId === user.user_id ? (
+                        <input
+                          type="checkbox"
+                          checked={editData.block}
+                          onChange={e => handleEditChange('block', e.target.checked)}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => toggleBlock(user)}
+                          className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
+                            user.block
+                              ? 'bg-red-600'
+                              : 'bg-green-600'
+                          } text-white`}
+                        >
+                          {user.block ? 'Yes' : 'No'}
+                        </button>
+                      )}
+                    </td>
+                    
                     <td className="px-4 py-3 flex space-x-2">
                       {editId === user.user_id ? (
                         <>
@@ -573,6 +608,38 @@ export default function UserMasterPage() {
               </div>
             )}
           </div>
+
+          <div className="flex justify-between mt-4 text-sm items-center">
+            <div className="text-sm text-gray-600">
+              Showing {filteredUsers.length === 0 ? 0 : indexOfFirst + 1} to {indexOfLast} of {filteredUsers.length} entries
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+                <button
+                  key={num}
+                  onClick={() => setCurrentPage(num)}
+                  className={`px-3 py-1 border rounded ${currentPage === num ? 'bg-green-600 text-white' : ''}`}
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
       {confirmation.show && (
