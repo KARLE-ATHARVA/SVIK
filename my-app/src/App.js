@@ -21,36 +21,36 @@ import CompanyMasterPage from './pages/CompanyMasterPage';
 import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
 import RegisterPage from './pages/RegisterPage';
+import AddTilePage from './pages/AddTilePage';
 
 export default function App() {
   return (
-  <SidebarProvider>
-    <Router>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage/>} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/masterTables" element={<MasterTablesPage />} />
-        <Route path="/reportsPage" element={<Reportspage />} />
-        <Route path="/loginHistory" element={<LoginHistory/>}/>
-        <Route path="/adminActivity" element={<AdminActivityLog/>}/>
-        <Route path="/userActivity" element={<UserActivityLog/>}/>
-        <Route path="/sizeMaster" element={<SizeMasterPage />} />
-        <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
-        <Route path="/tileMaster" element={<TileMasterPage />} />
-        <Route path="/profileMaster" element={<ProfileMasterPage />} />
-        <Route path="/colorMaster" element={<ColorMasterPage />} />
-        <Route path="/categoryMaster" element={<CategoryMasterPage />} />
-        <Route path="/spaceMaster" element={<SpaceMasterPage />} />
-        <Route path="/finishMaster" element={<FinishMasterPage />} />
-        <Route path="/userMaster" element={<UserMasterPage />} />
-        <Route path="/companyMaster" element={<CompanyMasterPage />} />
-        <Route path="/loginMaster" element={<LoginMasterPage />} />
-        <Route path="/planMaster" element={<PlanMasterPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-
-      </Routes>
-    </Router>
-  </SidebarProvider>
+    <SidebarProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/masterTables" element={<MasterTablesPage />} />
+          <Route path="/reportsPage" element={<Reportspage />} />
+          <Route path="/loginHistory" element={<LoginHistory />} />
+          <Route path="/adminActivity" element={<AdminActivityLog />} />
+          <Route path="/userActivity" element={<UserActivityLog />} />
+          <Route path="/sizeMaster" element={<SizeMasterPage />} />
+          <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
+          <Route path="/tileMaster" element={<TileMasterPage />} />
+          <Route path="/profileMaster" element={<ProfileMasterPage />} />
+          <Route path="/colorMaster" element={<ColorMasterPage />} />
+          <Route path="/categoryMaster" element={<CategoryMasterPage />} />
+          <Route path="/spaceMaster" element={<SpaceMasterPage />} />
+          <Route path="/finishMaster" element={<FinishMasterPage />} />
+          <Route path="/userMaster" element={<UserMasterPage />} />
+          <Route path="/companyMaster" element={<CompanyMasterPage />} />
+          <Route path="/loginMaster" element={<LoginMasterPage />} />
+          <Route path="/planMaster" element={<PlanMasterPage />} />
+          <Route path="/add-tile" element={<AddTilePage />} /> {/* Updated path to match /add-tile */}
+        </Routes>
+      </Router>
+    </SidebarProvider>
   );
 }
