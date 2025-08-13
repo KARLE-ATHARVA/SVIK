@@ -202,7 +202,7 @@ export default function SpaceMasterPage() {
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-green-800">Space</h2>
+            <h2 className="text-2xl font-bold text-green-800">Spaces</h2>
             <Breadcrumb className="text-2xl" />
           </div>
 
@@ -240,7 +240,7 @@ export default function SpaceMasterPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
                   <tr>
-                    <td className="px-4 py-2">New</td>
+
                     <td className="px-4 py-2">
                       <input
                         className="border px-2 py-1 rounded w-full"
@@ -250,26 +250,26 @@ export default function SpaceMasterPage() {
                         }
                       />
                     </td>
-                    <td className="px-4 py-2">—</td>
-                    <td className="px-4 py-2">{userId}</td>
-                    <td className="px-4 py-2">—</td>
+                    <td className="px-4 py-2"> -- </td>
+                    <td className="px-4 py-2"> -- </td>
+                    <td className="px-4 py-2"> -- </td>
                     <td className="px-4 py-2 space-x-2">
                       <button
                         onClick={saveAdding}
                         className="text-green-600 hover:text-green-800"
                       >
-                        <FaSave size={18} />
+                        <FaSave size={22} />
                       </button>
                       <button
                         onClick={cancelAdding}
                         className="text-gray-600 hover:text-gray-800"
                       >
-                        <FaTimes size={18} />
+                        <FaTimes size={22} />
                       </button>
                     </td>
                   </tr>
                 )}
-                {filtered.map((space) => (
+                {currentApps.map((space) => (
                   <tr key={space.space_id} className="border-t">
 
                     <td className="px-4 py-2">

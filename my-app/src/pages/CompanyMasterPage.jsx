@@ -347,6 +347,13 @@ export default function CompanyMasterPage() {
             <Breadcrumbs currentPage="Company Master" />
           </div>
           <div className="mb-4 flex justify-between items-center">
+            <input
+              type="text"
+              placeholder="Search by Company Name..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value || '')}
+              className="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600 w-1/3"
+            />
             {!isAdding && (
               <button
                 className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
@@ -355,33 +362,27 @@ export default function CompanyMasterPage() {
                 <FaPlus className="mr-2" /> Add New Company
               </button>
             )}
-            <input
-              type="text"
-              placeholder="Search by Company Name..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value || '')}
-              className="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600 w-1/3"
-            />
+            
           </div>
-          <div className="overflow-x-auto rounded-lg shadow border border-gray-400 dark:border-gray-600">
+          <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full text-sm">
-              <thead className="bg-green-700 text-white">
+              <thead className="bg-green-100 text-gray-800">
                 <tr>
-                  <th className="px-4 py-3">Comp ID</th>
-                  <th className="px-4 py-3">Plan ID</th>
-                  <th className="px-4 py-3">Company Name</th>
-                  <th className="px-4 py-3">Address</th>
-                  <th className="px-4 py-3">Address 2</th>
-                  <th className="px-4 py-3">Pin Code</th>
-                  <th className="px-4 py-3">City</th>
-                  <th className="px-4 py-3">State</th>
-                  <th className="px-4 py-3">Country</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-2 font-semibold text-left">Comp ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">Plan ID</th>
+                  <th className="px-4 py-2 font-semibold text-left">Company Name</th>
+                  <th className="px-4 py-2 font-semibold text-left">Address</th>
+                  <th className="px-4 py-2 font-semibold text-left">Address 2</th>
+                  <th className="px-4 py-2 font-semibold text-left">Pin Code</th>
+                  <th className="px-4 py-2 font-semibold text-left">City</th>
+                  <th className="px-4 py-2 font-semibold text-left">State</th>
+                  <th className="px-4 py-2 font-semibold text-left">Country</th>
+                  <th className="px-4 py-2 font-semibold text-left">Created By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Block</th>
+                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-900">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
                   <tr className="border-b border-gray-200 dark:border-gray-700">
                     <td className="px-4 py-3">New</td>
@@ -416,7 +417,7 @@ export default function CompanyMasterPage() {
                         className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <input
                         type="checkbox"
                         checked={newData.block}
@@ -424,7 +425,6 @@ export default function CompanyMasterPage() {
                           setNewData({ ...newData, block: e.target.checked })
                         }
                         disabled
-                        className="dark:bg-gray-800 dark:border-gray-600"
                       />
                     </td>
                     <td className="px-4 py-3 flex space-x-2">
@@ -488,8 +488,7 @@ export default function CompanyMasterPage() {
                         <input
                           type="checkbox"
                           checked={editData.block}
-                          onChange={e =>
-                            handleEditChange('block', e.target.checked)
+                          onChange={e => handleEditChange('block', e.target.checked)
                           }
                           className="dark:bg-gray-800 dark:border-gray-600"
                         />
@@ -498,11 +497,11 @@ export default function CompanyMasterPage() {
                           onClick={() => toggleBlock(comp)}
                           className={`px-2 py-1 rounded ${
                             comp.block
-                              ? 'bg-yellow-500 hover:bg-yellow-600'
-                              : 'bg-green-500 hover:bg-green-600'
+                              ? 'bg-red-600'
+                              : 'bg-green-600'
                           } text-white`}
                         >
-                          {comp.block ? 'Unblock' : 'Block'}
+                          {comp.block ? 'Yes' : 'No'}
                         </button>
                       )}
                     </td>

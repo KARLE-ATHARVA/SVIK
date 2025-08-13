@@ -242,7 +242,7 @@ export default function CategoryMasterPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {isAdding && (
-                  <tr>
+                  <tr className="border-b hover:bg-green-50 transition duration-150">
                     <td className="px-4 py-2">
                       <input
                         value={newData.cat_name}
@@ -250,28 +250,23 @@ export default function CategoryMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-2">No</td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) => setNewData({ ...newData, created_by: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
+                    <td className="px-4 py-2"> -- </td>
+                    <td className="px-4 py-2"> -- </td>
+                    <td className="px-4 py-2"> -- </td>                                        
+
                     <td colSpan="2" className="px-4 py-2 space-x-2 flex">
                       <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
-                        <FaSave size={18} />
+                        <FaSave size={22} />
                       </button>
                       <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
-                        <FaTimes size={18} />
+                        <FaTimes size={22} />
                       </button>
                     </td>
                   </tr>
                 )}
 
-                {filtered.map((cat) => (
-                  <tr key={cat.cat_id}>
+                {currentApps.map((cat) => (
+                  <tr key={cat.cat_id} className="border-b hover:bg-green-50 transition duration-150">
                     <td className="px-4 py-2">
                       {editId === cat.cat_id ? (
                         <input
@@ -323,18 +318,30 @@ export default function CategoryMasterPage() {
           </div>
           <div className="flex justify-between mt-4 text-sm items-center">
             <span>
-              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+              Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries
             </span>
             <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
                 Previous
               </button>
-              {[...Array(totalPages).keys()].map(num => (
-                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
+              {[...Array(totalPages).keys()].map((num) => (
+                <button
+                  key={num + 1}
+                  onClick={() => setCurrentPage(num + 1)}
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                >
                   {num + 1}
                 </button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
                 Next
               </button>
             </div>

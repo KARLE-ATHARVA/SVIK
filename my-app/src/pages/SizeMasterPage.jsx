@@ -43,9 +43,9 @@ export default function SizeMasterPage() {
   const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({ size_name: '', created_by: '' });
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [entriesPerPage] = useState(10); // fixed 10 entries per page
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState({ key: '',direction: 'ascending' });
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
   const [fadeIn, setFadeIn] = useState(false);
 
   const fetchSizes = async () => {
@@ -58,7 +58,7 @@ export default function SizeMasterPage() {
   };
 
   useEffect(() => {
-    setFadeIn(true)
+    setFadeIn(true);
     fetchSizes();
   }, []);
 
@@ -68,31 +68,30 @@ export default function SizeMasterPage() {
       (sz.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
   );
 
-    const sorted = React.useMemo(() => {
-      let sortableItems = [...filtered];
-      if (sortConfig.key !== '') {
-        sortableItems.sort((a, b) => {
-          if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
-          if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
-          return 0;
-        });
-      }
-      return sortableItems;
-    }, [filtered, sortConfig]);
+  const sorted = React.useMemo(() => {
+    let sortableItems = [...filtered];
+    if (sortConfig.key !== '') {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filtered, sortConfig]);
 
+  const totalPages = Math.ceil(sorted.length / entriesPerPage);
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentApps = sorted.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
-    const handleSort = (key) => {
+  const handleSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
     setSortConfig({ key, direction });
   };
-
 
   const startEditing = (sz) => {
     setEditId(sz.size_id);
@@ -203,7 +202,7 @@ export default function SizeMasterPage() {
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       <Sidebar theme="light" />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar theme="light"/>
+        <Topbar theme="light" />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
@@ -231,7 +230,7 @@ export default function SizeMasterPage() {
 
           <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-100 text-grey-800">
+              <thead className="bg-green-100 text-grey-800 sticky top-0">
                 <tr>
                   <th className="px-4 py-2 font-semibold text-left">Size Name</th>
                   <th className="px-4 py-2 font-semibold text-left">Updated By</th>
@@ -250,15 +249,9 @@ export default function SizeMasterPage() {
                         className="border rounded px-2 py-1 w-full"
                       />
                     </td>
-                    <td className="px-4 py-2">No</td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) => setNewData({ ...newData, created_by: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
                     <td colSpan="2" className="px-4 py-2 space-x-2 flex">
                       <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
                         <FaSave size={22} />
@@ -270,7 +263,7 @@ export default function SizeMasterPage() {
                   </tr>
                 )}
 
-                {filtered.map((sz) => (
+                {currentApps.map((sz) => (
                   <tr key={sz.size_id} className="border-b hover:bg-green-50 transition duration-150">
                     <td className="px-4 py-2">
                       {editId === sz.size_id ? (
@@ -321,25 +314,38 @@ export default function SizeMasterPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
           <div className="flex justify-between mt-4 text-sm items-center">
             <span>
-              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+              Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries
             </span>
             <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
                 Previous
               </button>
-              {[...Array(totalPages).keys()].map(num => (
-                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
+              {[...Array(totalPages).keys()].map((num) => (
+                <button
+                  key={num + 1}
+                  onClick={() => setCurrentPage(num + 1)}
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                >
                   {num + 1}
                 </button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+              >
                 Next
               </button>
             </div>
           </div>
-          
         </div>
       </div>
 
