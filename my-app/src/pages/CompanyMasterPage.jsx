@@ -449,7 +449,6 @@ export default function CompanyMasterPage() {
                           setNewData({ ...newData, block: e.target.checked })
                         }
                         disabled
-                        className="dark:bg-gray-800 dark:border-gray-600"
                       />
                     </td>
                     <td className="px-4 py-3 flex space-x-2">

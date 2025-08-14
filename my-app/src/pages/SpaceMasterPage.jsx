@@ -257,13 +257,13 @@ export default function SpaceMasterPage() {
                         onClick={saveAdding}
                         className="text-green-600 hover:text-green-800 dark:hover:text-green-500"
                       >
-                        <FaSave size={18} />
+                        <FaSave size={22} />
                       </button>
                       <button
                         onClick={cancelAdding}
                         className="text-gray-600 hover:text-gray-800 dark:hover:text-gray-400"
                       >
-                        <FaTimes size={18} />
+                        <FaTimes size={22} />
                       </button>
                     </td>
                   </tr>

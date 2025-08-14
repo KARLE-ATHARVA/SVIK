@@ -106,7 +106,7 @@ export default function UserMasterPage() {
 
   const startEditing = (user) => {
     setEditId(user.user_id);
-    setEditData({
+    setEditData({ 
       UserId: user.user_id,
       CompId: user.comp_id,
       UserName: user.user_name,

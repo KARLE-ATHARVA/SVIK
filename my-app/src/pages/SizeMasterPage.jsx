@@ -43,7 +43,7 @@ export default function SizeMasterPage() {
   const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => { } });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({ size_name: '', created_by: '' });
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [entriesPerPage] = useState(10); // fixed 10 entries per page
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
   const [fadeIn, setFadeIn] = useState(false);
@@ -58,7 +58,7 @@ export default function SizeMasterPage() {
   };
 
   useEffect(() => {
-    setFadeIn(true)
+    setFadeIn(true);
     fetchSizes();
   }, []);
 
@@ -80,10 +80,10 @@ export default function SizeMasterPage() {
     return sortableItems;
   }, [filtered, sortConfig]);
 
+  const totalPages = Math.ceil(sorted.length / entriesPerPage);
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentApps = sorted.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   const handleSort = (key) => {
     let direction = 'ascending';
@@ -92,7 +92,6 @@ export default function SizeMasterPage() {
     }
     setSortConfig({ key, direction });
   };
-
 
   const startEditing = (sz) => {
     setEditId(sz.size_id);
@@ -319,7 +318,7 @@ export default function SizeMasterPage() {
           </div>
           <div className="flex justify-between mt-4 text-sm items-center text-gray-700 dark:text-gray-300">
             <span>
-              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+              Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries
             </span>
             <div className="flex gap-1">
               <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
@@ -335,7 +334,6 @@ export default function SizeMasterPage() {
               </button>
             </div>
           </div>
-          
         </div>
       </div>
 
