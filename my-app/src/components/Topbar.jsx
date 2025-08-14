@@ -3,15 +3,15 @@ import {
   FiLogOut, FiBell, FiMessageSquare, FiMoon, FiStar,
   FiMaximize2, FiMinimize2
 } from 'react-icons/fi';
-import { MdLanguage } from 'react-icons/md';
+
 import { FaMoon } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext'; // <-- use global theme
+import { useTheme } from '../context/ThemeContext'; // <-- Import ThemeContext hook
 
 export default function Topbar() {
   const navigate = useNavigate();
-  const { darkMode, toggleDarkMode } = useTheme(); // <-- from context
-  const [language, setLanguage] = useState("EN");
+  const { darkMode, toggleDarkMode } = useTheme(); // <-- Use ThemeContext instead of props
+  
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [starred, setStarred] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
@@ -19,7 +19,6 @@ export default function Topbar() {
   const [showBookmarks, setShowBookmarks] = useState(false);
 
   const logout = () => navigate('/');
-
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -29,12 +28,7 @@ export default function Topbar() {
       setIsFullscreen(false);
     }
   };
-
-  const toggleLanguage = () => {
-    const nextLang = language === "EN" ? "FR" : "EN";
-    setLanguage(nextLang);
-    alert(`Language switched to ${nextLang === "EN" ? "English" : "French"}`);
-  };
+  
 
   return (
     <div className="flex justify-between items-center bg-white dark:bg-[#1f2937] border-b border-gray-200 dark:border-gray-700 shadow-sm px-4 md:px-6 py-2 z-40 relative">
@@ -45,13 +39,7 @@ export default function Topbar() {
         ) : (
           <FiMaximize2 onClick={toggleFullscreen} className="w-5 h-5 cursor-pointer hover:text-green-600" title="Enter Fullscreen" />
         )}
-
-        <div onClick={toggleLanguage} className="flex items-center gap-1 cursor-pointer hover:text-green-600" title="Toggle Language">
-          <MdLanguage className="w-5 h-5" />
-          <span>{language}</span>
-        </div>
-
-        {/* Bookmarks */}
+        
         <div className="relative">
           <FiStar onClick={() => { setStarred(!starred); setShowBookmarks(!showBookmarks); }} className={`w-5 h-5 cursor-pointer transition ${starred ? 'text-yellow-500' : 'hover:text-green-600'}`} title="Bookmarks" />
           {showBookmarks && (
@@ -65,8 +53,6 @@ export default function Topbar() {
             </div>
           )}
         </div>
-
-        {/* Notifications */}
         <div className="relative">
           <FiBell onClick={() => setShowNotifications(s => !s)} className="w-5 h-5 cursor-pointer hover:text-green-600" title="Notifications" />
           <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500" />
@@ -81,15 +67,11 @@ export default function Topbar() {
             </div>
           )}
         </div>
-
-        {/* Dark Mode Toggle */}
         {darkMode ? (
           <FaMoon onClick={toggleDarkMode} className="w-5 h-5 cursor-pointer text-white hover:text-green-600" title="Toggle Dark Mode" />
         ) : (
           <FiMoon onClick={toggleDarkMode} className="w-5 h-5 cursor-pointer hover:text-green-600" title="Toggle Dark Mode" />
         )}
-
-        {/* Messages */}
         <div className="relative">
           <FiMessageSquare onClick={() => setShowMessages(s => !s)} className="w-5 h-5 cursor-pointer hover:text-green-600" title="Messages" />
           {showMessages && (
@@ -103,8 +85,6 @@ export default function Topbar() {
             </div>
           )}
         </div>
-
-        {/* Logout */}
         <button onClick={logout} className="flex items-center gap-2 bg-green-50 text-green-800 px-3 py-1.5 rounded-md border border-green-200 hover:bg-green-100 transition">
           <FiLogOut className="w-4 h-4" />
           Log out

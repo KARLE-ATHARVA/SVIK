@@ -37,17 +37,20 @@ export default function MainContent() {
       </div>
 
       <StatsSection />
-
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700">Project Progress</h3>
-        <div className="w-full bg-gray-200 rounded-full h-4">
-          <div
-            className="bg-green-600 h-4 rounded-full transition-all duration-1000 ease-in-out"
-            style={{ width: '70%' }}
-          ></div>
-        </div>
-        <p className="mt-2 text-sm text-gray-600">70% Completed</p>
-      </div>
+<div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+  <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200">
+    Project Progress
+  </h3>
+  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+    <div
+      className="bg-green-600 h-4 rounded-full transition-all duration-1000 ease-in-out"
+      style={{ width: '70%' }}
+    ></div>
+  </div>
+  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+    70% Completed
+  </p>
+</div>
         
       <footer className="mt-auto py-4 text-center text-sm text-gray-500">
         © 2025 TiVi Dashboard. All rights reserved.

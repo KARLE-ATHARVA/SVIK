@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import Breadcrumbs from '../components/Breadcrumb';
+import Breadcrumb from '../components/Breadcrumb';
 import axios from 'axios';
-import { FaPlus, FaEdit, FaBan, FaCheck, FaSortUp, FaSortDown, FaAngleLeft, FaAngleRight } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaBan, FaCheck, FaSave, FaTimes, FaAngleLeft, FaAngleRight, FaTrash} from 'react-icons/fa';
 import TileModal from '../components/TileModal';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
@@ -16,13 +16,13 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
         <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+            className="bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
           </button>
           <button
-            className="bg-green-700 dark:bg-green-600 text-white px-4 py-2 rounded hover:bg-green-800 dark:hover:bg-green-700"
+            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
             onClick={onConfirm}
           >
             Yes
@@ -32,6 +32,8 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
     </div>
   );
 }
+
+const userId = localStorage.getItem('userid');
 
 export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
@@ -47,8 +49,7 @@ export default function TileMasterPage() {
     finishes: [],
     colors: []
   });
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
+  const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState(() => {});
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -63,16 +64,13 @@ export default function TileMasterPage() {
     color_name: ''
   });
   const [globalSearch, setGlobalSearch] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [tempFormData, setTempFormData] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [collapsed, setCollapsed] = useState(false);
-
-  const userId = localStorage.getItem('userid');
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [fadeIn, setFadeIn] = useState(false);
 
   useEffect(() => {
-    console.log('TileMasterPage mounted');
+    setFadeIn(true);
     fetchTiles();
     fetchReferenceData();
   }, []);
@@ -81,11 +79,10 @@ export default function TileMasterPage() {
     setIsLoading(true);
     try {
       const res = await axios.get(`${baseURL}/GetTileList`);
-      console.log('Tiles fetched:', res.data);
       setTiles(res.data || []);
     } catch (err) {
       console.error('Fetch Error:', err);
-      setMessage('Failed to fetch tiles.');
+      setError('Failed to fetch tiles: ' + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -95,12 +92,12 @@ export default function TileMasterPage() {
     setIsLoading(true);
     try {
       const [categories, applications, spaces, sizes, finishes, colors] = await Promise.all([
-        axios.get(`${baseURL}/GetCategoryList`).catch(err => { console.error('GetCategoryList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetApplicationList`).catch(err => { console.error('GetApplicationList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetSpaceList`).catch(err => { console.error('GetSpaceList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetSizeList`).catch(err => { console.error('GetSizeList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetFinishList`).catch(err => { console.error('GetFinishList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetColorList`).catch(err => { console.error('GetColorList error:', err); throw err; })
+        axios.get(`${baseURL}/GetCategoryList`),
+        axios.get(`${baseURL}/GetApplicationList`),
+        axios.get(`${baseURL}/GetSpaceList`),
+        axios.get(`${baseURL}/GetSizeList`),
+        axios.get(`${baseURL}/GetFinishList`),
+        axios.get(`${baseURL}/GetColorList`)
       ]);
       setReferenceData({
         categories: categories.data || [],
@@ -110,24 +107,15 @@ export default function TileMasterPage() {
         finishes: finishes.data || [],
         colors: colors.data || []
       });
-      console.log('Reference data fetched:', {
-        categories: categories.data,
-        applications: applications.data,
-        spaces: spaces.data,
-        sizes: sizes.data,
-        finishes: finishes.data,
-        colors: colors.data
-      });
     } catch (err) {
       console.error('Reference Data Fetch Error:', err);
-      setMessage('Failed to fetch reference data.');
+      setError('Failed to fetch reference data: ' + err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleEditClick = (tile) => {
-    console.log('Edit clicked for tile:', tile);
     setEditTileData({
       TileId: tile.tile_id || '',
       SkuName: tile.sku_name || '',
@@ -143,15 +131,12 @@ export default function TileMasterPage() {
   };
 
   const handleEditTileConfirm = (data) => {
-    console.log('Edit tile confirm:', data);
-    setTempFormData(data);
     setConfirmMessage('Do you want to save changes?');
     setConfirmAction(() => () => handleEditTile(data));
     setShowConfirm(true);
   };
 
   const handleEditTile = async (data) => {
-    console.log('Submitted Data:', data);
     try {
       const payload = new FormData();
       payload.append('TileId', editTileData.TileId);
@@ -173,50 +158,41 @@ export default function TileMasterPage() {
 
       setIsLoading(true);
       const res = await axios.post(`${baseURL}/EditTile`, payload);
-      console.log('EditTile response:', res.data);
       const responseText = res.data;
 
       if (responseText === 'success') {
-        setAlertMessage('Tile updated successfully!');
-        setShowAlert(true);
+        setMessage('Tile updated successfully!');
         setShowEditModal(false);
         fetchTiles();
       } else if (responseText === 'alreadyexists') {
-        setAlertMessage('Tile already exists!');
-        setShowAlert(true);
+        setError('Tile already exists!');
       } else {
-        setAlertMessage(responseText);
-        setShowAlert(true);
+        setError(responseText);
       }
     } catch (err) {
       console.error('Edit Error:', err);
-      setAlertMessage('An error occurred while updating tile.');
-      setShowAlert(true);
+      setError('An error occurred while updating tile: ' + err.message);
     } finally {
       setIsLoading(false);
+      setShowConfirm(false);
     }
   };
 
-  const handleBlockToggle = async (tileId, currentStatus) => {
-    console.log('Block toggle for tileId:', tileId, 'currentStatus:', currentStatus);
+  const handleBlockToggle = (tileId, currentStatus) => {
     setConfirmMessage(`Are you sure you want to ${currentStatus ? 'unblock' : 'block'} this tile?`);
     setConfirmAction(() => async () => {
       try {
         setIsLoading(true);
         const res = await axios.get(`${baseURL}/BlockTile/${userId}/${tileId}/${currentStatus ? 0 : 1}`);
-        console.log('BlockTile response:', res.data);
         if (res.data === 'success') {
-          setAlertMessage(`Tile ${currentStatus ? 'unblocked' : 'blocked'} successfully.`);
-          setShowAlert(true);
+          setMessage(`Tile ${currentStatus ? 'unblocked' : 'blocked'} successfully.`);
           fetchTiles();
         } else {
-          setAlertMessage('Failed to update block status.');
-          setShowAlert(true);
+          setError('Failed to update block status.');
         }
       } catch (err) {
         console.error('Block Error:', err);
-        setAlertMessage('Error while toggling block status.');
-        setShowAlert(true);
+        setError('Error while toggling block status: ' + err.message);
       } finally {
         setIsLoading(false);
         setShowConfirm(false);
@@ -227,43 +203,23 @@ export default function TileMasterPage() {
 
   const getIdFromName = (dataArray, name, idKey, nameKey) => {
     const item = dataArray.find(item => item && item[nameKey] === name);
-    const id = item ? item[idKey] : '';
-    console.log(`getIdFromName: ${nameKey}=${name}, ${idKey}=${id}`);
-    return id;
-  };
-
-  const closeAlert = () => {
-    console.log('Closing alert');
-    setShowAlert(false);
-    setAlertMessage('');
-  };
-
-  const closeConfirm = (confirm) => {
-    console.log('Confirm closed, confirmed:', confirm);
-    if (confirm && confirmAction) confirmAction();
-    setShowConfirm(false);
-    setConfirmMessage('');
-    setConfirmAction(() => {});
-    setTempFormData(null);
+    return item ? item[idKey] : '';
   };
 
   const handleSearchChange = (key, value) => {
-    console.log(`Search change: ${key}=${value}`);
-    setColumnSearches((prev) => ({ ...prev, [key]: value }));
+    setColumnSearches(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
   };
 
   const handleGlobalSearchChange = (e) => {
-    console.log('Global search:', e.target.value);
     setGlobalSearch(e.target.value.toLowerCase());
     setCurrentPage(1);
   };
 
   const handleSort = (key) => {
-    console.log('Sorting by:', key);
-    setSortConfig((prev) => ({
+    setSortConfig(prev => ({
       key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+      direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending',
     }));
     setCurrentPage(1);
   };
@@ -272,14 +228,14 @@ export default function TileMasterPage() {
     let filteredTiles = [...tiles];
 
     if (globalSearch) {
-      filteredTiles = filteredTiles.filter((tile) =>
-        Object.values(tile).some((value) =>
+      filteredTiles = filteredTiles.filter(tile =>
+        Object.values(tile).some(value =>
           String(value).toLowerCase().includes(globalSearch)
         )
       );
     }
 
-    filteredTiles = filteredTiles.filter((tile) =>
+    filteredTiles = filteredTiles.filter(tile =>
       Object.entries(columnSearches).every(([key, value]) =>
         !value || String(tile[key]).toLowerCase().includes(value.toLowerCase())
       )
@@ -290,9 +246,9 @@ export default function TileMasterPage() {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
         if (!isNaN(aVal) && !isNaN(bVal)) {
-          return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+          return sortConfig.direction === 'ascending' ? aVal - bVal : bVal - aVal;
         }
-        return sortConfig.direction === 'asc'
+        return sortConfig.direction === 'ascending'
           ? String(aVal).localeCompare(String(bVal))
           : String(bVal).localeCompare(String(aVal));
       });
@@ -301,219 +257,213 @@ export default function TileMasterPage() {
     return filteredTiles;
   };
 
-  const paginatedTiles = () => {
-    const filteredTiles = getSortedAndFilteredTiles();
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    return filteredTiles.slice(indexOfFirstItem, indexOfLastItem);
-  };
-
-  const totalPages = Math.ceil(getSortedAndFilteredTiles().length / itemsPerPage);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const nextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
-  const prevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
+  const filteredTiles = getSortedAndFilteredTiles();
+  const totalPages = Math.ceil(filteredTiles.length / entriesPerPage);
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      <Sidebar collapsed={collapsed} />
-      <div className="flex-1 flex flex-col">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+    // Update the main container and content areas for dark mode
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      <Sidebar theme="light" />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Topbar theme="light" />
+
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-green-800 dark:text-green-200">Products</h1>
-            <Breadcrumbs currentPage="Products" />
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Products</h2>
+            <Breadcrumb />
           </div>
-          <div className="mt-5">
-            <div className="flex justify-between items-center mb-5">
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
+              {error}
+              <button 
+                className="float-right font-bold" 
+                onClick={() => setError('')}
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {message && (
+            <div className="mb-4 p-3 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded">
+              {message}
+              <button 
+                className="float-right font-bold" 
+                onClick={() => setMessage('')}
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+            {/* Show Entries - Leftmost */}
+            <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5">
+              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
+              <select
+                value={entriesPerPage}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+              >
+                {[5, 10, 25, 50, 100].map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
+            </div>
+
+            {/* Search Input - Middle with controlled width */}
+            <div className="relative w-full sm:w-64">
               <input
                 type="text"
-                placeholder="Search Product Name..."
-                className="border dark:border-gray-600 p-2 rounded w-1/3 dark:bg-gray-800 dark:text-gray-200"
+                placeholder="Search..."
                 value={globalSearch}
                 onChange={handleGlobalSearchChange}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-1.5 pl-10 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
               />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Add Product Button - Rightmost */}
+            <div className="w-full sm:w-auto ml-auto">
               <Link
                 to="/add-tile"
-                className="bg-green-700 dark:bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-800 dark:hover:bg-green-700 transition duration-200 flex items-center"
-                onClick={() => console.log('Navigating to /add-tile')}
+                className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg transition-colors duration-200"
               >
                 <FaPlus className="mr-2" /> Add Product
               </Link>
             </div>
-            {message && (
-              <div className="mb-6 text-sm text-center text-green-600 dark:text-green-200 bg-green-100 dark:bg-green-900 p-3 rounded-md">
-                {message}
-              </div>
-            )}
-            {isLoading && <div className="text-center text-gray-600 dark:text-gray-400">Loading...</div>}
-            
-            <div className="mb-4 flex justify-between items-center">
-              <div className="flex items-center text-gray-800 dark:text-gray-200">
-                <span className="mr-2">Show Entries:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="border dark:border-gray-600 p-1 rounded dark:bg-gray-800 dark:text-gray-200"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                </select>
-              </div>
-            </div>
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
-              <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200">
-                  <tr>
-                    {['sku_name', 'sku_code', 'cat_name', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
-                      <th
-                        key={key}
-                        className="px-4 py-2 font-semibold text-left"
-                      >
+          </div>
+
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
+                <tr>
+                  {['sku_name', 'sku_code', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
+                    <th
+                      key={key}
+                      className="px-4 py-2 font-semibold text-left cursor-pointer"
+                      onClick={() => key !== 'actions' && handleSort(key)}
+                    >
+                      <div className="flex items-center">
                         {key === 'actions' ? 'Actions' : key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                         {key !== 'actions' && (
-                          <div className="flex items-center mt-1">
-                            <input
-                              type="text"
-                              placeholder={`Search`}
-                              value={columnSearches[key]}
-                              onChange={(e) => handleSearchChange(key, e.target.value)}
-                              className="mt-1 w-full border dark:border-gray-600 p-1 rounded text-sm dark:bg-gray-700 dark:text-gray-200"
-                            />
-                            <div className="ml-2 flex flex-col items-center">
-                              <FaSortUp
-                                onClick={() => handleSort(key)}
-                                className={`cursor-pointer ${sortConfig.key === key && sortConfig.direction === 'asc' ? 'text-green-600' : ''}`}
-                              />
-                              <FaSortDown
-                                onClick={() => handleSort(key)}
-                                className={`cursor-pointer -mt-1 ${sortConfig.key === key && sortConfig.direction === 'desc' ? 'text-green-600' : ''}`}
-                              />
-                            </div>
-                          </div>
+                          <span className="ml-1">
+                            {sortConfig.key === key && (
+                              sortConfig.direction === 'ascending' ? '↑' : '↓'
+                            )}
+                          </span>
                         )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginatedTiles().map((tile, index) => (
-                    <tr key={index} className="hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150 text-gray-900 dark:text-gray-200">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.sku_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.sku_code}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.cat_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.app_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.space_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.size_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.finish_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {tile.color_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-4">
-                        <button
-                          onClick={() => handleEditClick(tile)}
-                          className="text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-300"
-                          disabled={isLoading}
-                          aria-label="Edit Tile"
-                        >
-                          <FaEdit size={18}/>
-                        </button>
-                        <button
-                          onClick={() => handleBlockToggle(tile.tile_id, tile.block)}
-                          className="text-red-600 hover:text-red-800 dark:hover:text-red-300 transition duration-150"
-                          disabled={isLoading}
-                          aria-label={tile.block ? 'Unblock Tile' : 'Block Tile'}
-                        >
-                          {tile.block ? <FaCheck size={18}/> : <FaBan size={18}/>}
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                      {key !== 'actions' && (
+                        <input
+                          type="text"
+                          placeholder={`Search...`}
+                          value={columnSearches[key]}
+                          onChange={(e) => handleSearchChange(key, e.target.value)}
+                          className="mt-1 w-full border rounded px-2 py-1 text-xs bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-4 flex justify-between items-center text-gray-800 dark:text-gray-200">
-              <div className="text-sm">
-                Showing {paginatedTiles().length} of {getSortedAndFilteredTiles().length} entries
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={prevPage}
-                  disabled={currentPage === 1}
-                  className="px-2 py-1 bg-gray-300 dark:bg-gray-600 rounded disabled:opacity-50"
-                >
-                  <FaAngleLeft />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-                  <button
-                    key={number}
-                    onClick={() => paginate(number)}
-                    className={`px-3 py-1 rounded ${currentPage === number ? 'bg-green-600 text-white' : 'bg-gray-300 dark:bg-gray-600'}`}
-                  >
-                    {number}
-                  </button>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
+                {currentTiles.map((tile, index) => (
+                  <tr key={index} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
+                    <td className="px-4 py-2">{tile.sku_name}</td>
+                    <td className="px-4 py-2">{tile.sku_code}</td>
+                    <td className="px-4 py-2">{tile.app_name}</td>
+                    <td className="px-4 py-2">{tile.space_name}</td>
+                    <td className="px-4 py-2">{tile.size_name}</td>
+                    <td className="px-4 py-2">{tile.finish_name}</td>
+                    <td className="px-4 py-2">{tile.color_name}</td>
+                    <td className="px-4 py-2 space-x-2 flex">
+                      <button
+                        onClick={() => handleEditClick(tile)}
+                        className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
+                        disabled={isLoading}
+                      >
+                        <FaEdit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleBlockToggle(tile.tile_id, tile.block)}
+                        className={`${tile.block ? 'text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300' : 'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'}`}
+                        disabled={isLoading}
+                      >
+                        {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
+                      </button>
+                    </td>
+                  </tr>
                 ))}
-                <button
-                  onClick={nextPage}
-                  disabled={currentPage === totalPages}
-                  className="px-2 py-1 bg-gray-300 dark:bg-gray-600 rounded disabled:opacity-50"
-                >
-                  <FaAngleRight />
-                </button>
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
-        </div>
-        {showEditModal && (
-          <TileModal
-            title="Edit Tile"
-            defaultValues={editTileData || {}}
-            referenceData={referenceData}
-            onSubmit={handleEditTileConfirm}
-            onClose={() => setShowEditModal(false)}
-            isOpen={showEditModal}
-            isEdit={true}
-          />
-        )}
-        {showAlert && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg text-center w-[90%] max-w-md">
-              <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">{alertMessage}</p>
+
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+            <span>
+              Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries
+            </span>
+            <div className="flex gap-1">
               <button
-                onClick={closeAlert}
-                className="bg-green-600 dark:bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 dark:hover:bg-green-600"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
               >
-                OK
+                <FaAngleLeft />
+              </button>
+              {[...Array(totalPages).keys()].map(num => (
+                <button
+                  key={num + 1}
+                  onClick={() => setCurrentPage(num + 1)}
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}
+                >
+                  {num + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
+              >
+                <FaAngleRight />
               </button>
             </div>
           </div>
-        )}
-        {showConfirm && (
-          <ConfirmationModal
-            message={confirmMessage}
-            onConfirm={() => closeConfirm(true)}
-            onCancel={() => closeConfirm(false)}
-          />
-        )}
+        </div>
       </div>
+
+      {showEditModal && (
+        <TileModal
+          title="Edit Tile"
+          defaultValues={editTileData || {}}
+          referenceData={referenceData}
+          onSubmit={handleEditTileConfirm}
+          onClose={() => setShowEditModal(false)}
+          isOpen={showEditModal}
+          isEdit={true}
+        />
+      )}
+
+      {showConfirm && (
+        <ConfirmationModal
+          message={confirmMessage}
+          onConfirm={confirmAction}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
     </div>
   );
 }

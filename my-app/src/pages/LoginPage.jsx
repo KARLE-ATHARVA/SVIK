@@ -87,8 +87,7 @@ export default function LoginPage() {
         },
       });
     }
-  } 
-
+  };
 
   const registerAccount = () => navigate('/register');
 

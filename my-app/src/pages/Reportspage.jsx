@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import Breadcrumbs from '../components/Breadcrumb'; 
+import Breadcrumbs from '../components/Breadcrumb';
 
 export default function Reportspage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,7 +13,13 @@ export default function Reportspage() {
     { name: "Admin Activity Log", path: "/adminActivity" }
   ];
 
-  const filteredTables = reportTables.filter((table) =>
+  // Sort alphabetically (case-insensitive)
+  const sortedTables = [...reportTables].sort((a, b) =>
+    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+  );
+
+  // Filter after sorting
+  const filteredTables = sortedTables.filter((table) =>
     table.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -37,7 +43,7 @@ export default function Reportspage() {
                 placeholder="Search logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full mb-4 px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full mb-4 px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
 
               <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-green-500 dark:scrollbar-thumb-green-600 scrollbar-track-gray-200 dark:scrollbar-track-gray-700 rounded-md">
@@ -45,8 +51,9 @@ export default function Reportspage() {
                   {filteredTables.map((table, index) => (
                     <li
                       key={index}
-                      className={`text-sm font-light px-4 py-[6px] border-b dark:border-gray-700
-                        ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}`}
+                      className={`text-sm font-light px-4 py-[4px] border-b border-gray-200 dark:border-gray-700
+                               hover:bg-green-100 dark:hover:bg-gray-700 transition duration-150
+                               ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}`}
                     >
                       <Link
                         to={table.path}

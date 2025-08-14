@@ -3,21 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown, FaSun, FaMoon } from 'react-icons/fa';
 import axios from 'axios';
+import { useTheme } from '../context/ThemeContext'; // Import your custom hook
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
+// Confirmation modal component
 function ConfirmationModal({ message, onConfirm, onCancel }) {
+  const { darkMode } = useTheme();
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500" onClick={onCancel}>
+          <button className="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-600" onClick={onCancel}>
             Cancel
           </button>
-          <button className="bg-green-700 dark:bg-green-600 text-white px-4 py-2 rounded hover:bg-green-800 dark:hover:bg-green-700" onClick={onConfirm}>
+          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>
             Yes
           </button>
         </div>
@@ -26,9 +30,11 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
+// Main component
 export default function ApplicationMasterPage() {
   const navigate = useNavigate();
   const userId = localStorage.getItem('userid');
+  const { darkMode, toggleDarkMode } = useTheme();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [apps, setApps] = useState([]);
@@ -43,11 +49,10 @@ export default function ApplicationMasterPage() {
   const [fadeIn, setFadeIn] = useState(false);
 
   const headers = [
-    { key: 'app_id', label: 'App ID' },
-    { key: 'app_name', label: 'App Name' },
-    { key: 'block', label: 'Block' },
+    { key: 'app_name', label: 'Application Name' },
     { key: 'updated_by', label: 'Updated By' },
     { key: 'updated_date', label: 'Updated Date' },
+    { key: 'block', label: 'Block' },
   ];
 
   useEffect(() => {
@@ -94,6 +99,13 @@ export default function ApplicationMasterPage() {
       direction = 'descending';
     }
     setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'ascending' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />;
+    }
+    return null;
   };
 
   const startEditing = (app) => {
@@ -216,7 +228,7 @@ export default function ApplicationMasterPage() {
         <Topbar />
         <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-green-800 dark:text-green-200">Applications</h2>
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-500">Applications</h2>
             <Breadcrumb />
           </div>
 
@@ -226,46 +238,56 @@ export default function ApplicationMasterPage() {
               placeholder="Search ..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border border-gray-300 dark:border-gray-600 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-800 dark:text-gray-200"
+              className="border border-gray-300 dark:border-gray-600 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
             />
-            {!isAdding && (
-              <button
-                className="bg-green-700 dark:bg-green-600 text-white px-4 py-1 rounded hover:bg-green-800 dark:hover:bg-green-700 flex items-center"
-                onClick={startAdding}
-              >
-                <FaPlus className="mr-2" /> Add New Application
-              </button>
-            )}
+            <div className="flex space-x-2">
+                {!isAdding && (
+                <button
+                    className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
+                    onClick={startAdding}
+                >
+                    <FaPlus className="mr-2" /> Add New Application
+                </button>
+                )}
+                
+            </div>
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
             <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
               <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-2 font-semibold text-left">Application Name</th>
-                  <th className="px-4 py-2 font-semibold text-left">Updated By</th>
-                  <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
-                  <th className="px-4 py-2 font-semibold text-left">Block</th>
-                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
+                    {headers.map(header => (
+                        <th 
+                            key={header.key}
+                            className="px-4 py-2 font-semibold text-left cursor-pointer"
+                            onClick={() => handleSort(header.key)}
+                        >
+                            <div className="flex items-center">
+                                {header.label}
+                                {getSortIcon(header.key)}
+                            </div>
+                        </th>
+                    ))}
+                    <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {isAdding && (
                   <tr className="border-b dark:border-gray-700 hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
-                    <td className="px-4 py-2">New</td>
                     <td className="px-4 py-2">
                       <input
                         value={newData.app_name}
                         onChange={(e) => setNewData({ ...newData, app_name: e.target.value })}
-                        className="border dark:border-gray-600 rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200"
+                        className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
                       />
                     </td>
-                    <td className="px-4 py-2">—</td>
-                    <td className="px-4 py-2">{userId}</td>
-                    <td className="px-4 py-2">—</td>
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
                     <td className="px-4 py-2 flex gap-2">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:hover:text-green-500"><FaSave size={18} /></button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:hover:text-gray-400"><FaTimes size={18} /></button>
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:hover:text-green-500"><FaSave size={22} /></button>
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"><FaTimes size={22} /></button>
                     </td>
                   </tr>
                 )}
@@ -277,7 +299,7 @@ export default function ApplicationMasterPage() {
                         <input
                           value={editData.app_name}
                           onChange={(e) => handleEditChange('app_name', e.target.value)}
-                          className="border dark:border-gray-600 rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200"
+                          className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
                         />
                       ) : (
                         app.app_name
@@ -298,13 +320,13 @@ export default function ApplicationMasterPage() {
                     <td className="px-4 py-2 flex gap-2">
                       {editId === app.app_id ? (
                         <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800 dark:hover:text-green-500"><FaSave size={18} /></button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800 dark:hover:text-gray-400"><FaTimes size={18} /></button>
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800 dark:text-green-500 dark:hover:text-green-400"><FaSave size={22} /></button>
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"><FaTimes size={22} /></button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEditing(app)} className="text-yellow-500 hover:text-yellow-700 dark:hover:text-yellow-300"><FaEdit size={18} /></button>
-                          <button onClick={() => confirmDelete(app.app_id)} className="text-red-500 hover:text-red-700 dark:hover:text-red-300"><FaTrash size={18} /></button>
+                          <button onClick={() => startEditing(app)} className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"><FaEdit size={18} /></button>
+                          <button onClick={() => confirmDelete(app.app_id)} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"><FaTrash size={18} /></button>
                         </>
                       )}
                     </td>
@@ -319,15 +341,15 @@ export default function ApplicationMasterPage() {
               Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
             </span>
             <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50">
+              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:disabled:text-gray-500">
                 Previous
               </button>
               {[...Array(totalPages).keys()].map(num => (
-                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border dark:border-gray-700 rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'dark:text-gray-200'}`}>
+                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white dark:bg-green-500' : 'dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'}`}>
                   {num + 1}
                 </button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50">
+              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:disabled:text-gray-500">
                 Next
               </button>
             </div>

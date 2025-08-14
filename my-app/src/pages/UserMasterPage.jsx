@@ -2,19 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import Breadcrumbs from '../components/Breadcrumb';
+import Breadcrumb from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import axios from 'axios';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 dark:bg-opacity-70 z-50">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-[400px]">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-600"
+            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
             onClick={onCancel}
           >
             Cancel
@@ -31,13 +32,15 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
+const userId = localStorage.getItem('userid');
+
 export default function UserMasterPage() {
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [users, setUsers] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
   const [newData, setNewData] = useState({
     CompId: '',
@@ -45,80 +48,61 @@ export default function UserMasterPage() {
     EmailId: '',
     ContNumber: '',
     ProfileId: '',
-    RequestBy: '',
-    block: false,
-  });
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
+    RequestBy: userId,
+    block: false
   });
   const [error, setError] = useState('');
-
-  // Pagination state
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
+  const [fadeIn, setFadeIn] = useState(false);
 
-  // Dark mode state and logic
-  const [isDarkMode, setIsDarkMode] = useState(
-    () => localStorage.getItem('theme') === 'dark'
-  );
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(prevMode => !prevMode);
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get(`${baseURL}/GetUserList`);
+      setUsers(res.data);
+    } catch (err) {
+      console.error('Error fetching users', err);
+      setError('Error fetching users: ' + err.message);
+    }
   };
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (isDarkMode) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
-
-  // Current timestamp in IST
-  const currentDateTime = '2025-08-03T15:30:00+05:30';
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch(`${baseURL}/GetUserList`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        const data = await response.json();
-        console.log('API Response:', data);
-        if (Array.isArray(data)) {
-          const mappedUsers = data.map(user => ({
-            user_id: user.user_id || 0,
-            comp_id: user.comp_id || '',
-            user_name: user.user_name || '',
-            email_id: user.email_id || '',
-            cont_number: user.cont_number || '',
-            profile_id: user.profile_id || 0,
-            block: user.block || false,
-            created_by: user.created_by || 0,
-            created_date: user.created_date || currentDateTime,
-            modify_by: user.modify_by || 0,
-            modify_date: user.modify_date || currentDateTime,
-            updated_by: user.updated_by || '',
-            updated_date: user.updated_date || currentDateTime,
-          }));
-          setUsers(mappedUsers);
-        } else {
-          setError('Failed to fetch user list: Invalid response format');
-        }
-      } catch (err) {
-        setError('Error fetching user list: ' + err.message);
-      }
-    };
+    setFadeIn(true);
     fetchUsers();
   }, []);
+
+  const filtered = users.filter(
+    (user) =>
+      user.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
+  );
+
+  const sorted = React.useMemo(() => {
+    let sortableItems = [...filtered];
+    if (sortConfig.key !== '') {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filtered, sortConfig]);
+
+  const totalPages = Math.ceil(sorted.length / entriesPerPage);
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentUsers = sorted.slice(indexOfFirst, indexOfLast);
+
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
 
   const startEditing = (user) => {
     setEditId(user.user_id);
@@ -129,8 +113,8 @@ export default function UserMasterPage() {
       EmailId: user.email_id,
       ContNumber: user.cont_number,
       ProfileId: user.profile_id,
-      RequestBy: user.modify_by,
-      block: user.block,
+      RequestBy: userId,
+      block: user.block
     });
   };
 
@@ -143,52 +127,35 @@ export default function UserMasterPage() {
     setEditData({ ...editData, [field]: value });
   };
 
-  const saveEdit = async () => {
-    const formData = new FormData();
-    Object.keys(editData).forEach(key => {
-      formData.append(key, editData[key]);
-    });
-
-    try {
-      const response = await fetch(`${baseURL}/EditUser`, {
-        method: 'POST',
-        body: formData,
-      });
-      const result = await response.text();
-      if (result === 'success') {
-        setUsers(users.map(user =>
-          user.user_id === editId
-            ? {
-                ...user,
-                comp_id: parseInt(editData.CompId) || user.comp_id,
-                user_name: editData.UserName || user.user_name,
-                email_id: editData.EmailId || user.email_id,
-                cont_number: editData.ContNumber || user.cont_number,
-                profile_id: parseInt(editData.ProfileId) || user.profile_id,
-                modify_by: parseInt(editData.RequestBy) || user.modify_by,
-                modify_date: currentDateTime,
-                block: editData.block || user.block,
-              }
-            : user
-        ).sort((a, b) => a.user_id - b.user_id));
-        setEditId(null);
-        setEditData({});
-        setConfirmation({ show: false, message: '', onConfirm: () => {} });
-      } else if (result === 'alreadyexists') {
-        setError('User already exists');
-      } else {
-        setError(result);
-      }
-    } catch (err) {
-      setError('Error editing user: ' + err.message);
-    }
-  };
-
   const confirmSave = () => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: saveEdit,
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('UserId', editData.UserId);
+          formData.append('CompId', editData.CompId);
+          formData.append('UserName', editData.UserName);
+          formData.append('EmailId', editData.EmailId);
+          formData.append('ContNumber', editData.ContNumber);
+          formData.append('ProfileId', editData.ProfileId);
+          formData.append('RequestBy', editData.RequestBy);
+          formData.append('block', editData.block ? '1' : '0');
+
+          const res = await axios.post(`${baseURL}/EditUser`, formData);
+          if (res.data === 'success') {
+            fetchUsers();
+            cancelEditing();
+          } else {
+            setError(res.data === 'alreadyexists' ? 'User already exists' : res.data);
+          }
+        } catch (err) {
+          console.error('Edit failed', err);
+          setError('Edit failed: ' + err.message);
+        }
+        setConfirmation({ ...confirmation, show: false });
+      },
     });
   };
 
@@ -198,25 +165,39 @@ export default function UserMasterPage() {
       message: 'Are you sure you want to delete this user?',
       onConfirm: async () => {
         try {
-          const response = await fetch(`${baseURL}/DeleteUser/${id}`, {
-            method: 'POST',
-          });
-          const result = await response.text();
-          if (result === 'success') {
-            setUsers(users.filter(user => user.user_id !== id));
-            setConfirmation({ show: false, message: '', onConfirm: () => {} });
-          } else {
-            setError('Error deleting user: ' + result);
-          }
+          const res = await axios.get(`${baseURL}/DeleteUser/${id}`);
+          if (res.data === 'success') fetchUsers();
         } catch (err) {
-          setError('Error deleting user: ' + err.message);
+          console.error('Delete failed', err);
+          setError('Delete failed: ' + err.message);
         }
+        setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
+  const toggleBlock = async (user) => {
+    try {
+      const status = user.block ? 0 : 1;
+      const res = await axios.get(`${baseURL}/BlockUser/${userId}/${user.user_id}/${status}`);
+      if (res.data === 'success') fetchUsers();
+    } catch (err) {
+      console.error('Block toggle failed', err);
+      setError('Block toggle failed: ' + err.message);
+    }
+  };
+
   const startAdding = () => {
     setIsAdding(true);
+    setNewData({
+      CompId: '',
+      UserName: '',
+      EmailId: '',
+      ContNumber: '',
+      ProfileId: '',
+      RequestBy: userId,
+      block: false
+    });
   };
 
   const cancelAdding = () => {
@@ -227,393 +208,276 @@ export default function UserMasterPage() {
       EmailId: '',
       ContNumber: '',
       ProfileId: '',
-      RequestBy: '',
-      block: false,
+      RequestBy: userId,
+      block: false
     });
   };
 
-  const saveAdding = async () => {
+  const saveAdding = () => {
     if (!newData.UserName || !newData.EmailId) {
       setError('Please fill all required fields');
       return;
     }
 
-    const formData = new FormData();
-    Object.keys(newData).forEach(key => {
-      formData.append(key, newData[key]);
-    });
-
-    try {
-      const response = await fetch(`${baseURL}/AddUser`, {
-        method: 'POST',
-        body: formData,
-      });
-      const result = await response.text();
-      if (result === 'success') {
-        const newUser = {
-          user_id: users.length ? Math.max(...users.map(u => u.user_id)) + 1 : 1,
-          comp_id: parseInt(newData.CompId) || 0,
-          user_name: newData.UserName,
-          email_id: newData.EmailId,
-          cont_number: newData.ContNumber || '',
-          profile_id: parseInt(newData.ProfileId) || 0,
-          block: newData.block || false,
-          created_by: parseInt(newData.RequestBy) || 0,
-          created_date: currentDateTime,
-          modify_by: parseInt(newData.RequestBy) || 0,
-          modify_date: currentDateTime,
-          updated_by: newData.UserName || '',
-          updated_date: currentDateTime,
-        };
-        setUsers([...users, newUser].sort((a, b) => a.user_id - b.user_id));
-        cancelAdding();
-        setConfirmation({ show: false, message: '', onConfirm: () => {} });
-      } else if (result === 'alreadyexists') {
-        setError('User already exists');
-      } else {
-        setError(result);
-      }
-    } catch (err) {
-      setError('Error adding user: ' + err.message);
-    }
-  };
-
-  const confirmAdd = () => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new user?',
-      onConfirm: saveAdding,
+      onConfirm: async () => {
+        try {
+          const formData = new FormData();
+          formData.append('CompId', newData.CompId);
+          formData.append('UserName', newData.UserName);
+          formData.append('EmailId', newData.EmailId);
+          formData.append('ContNumber', newData.ContNumber);
+          formData.append('ProfileId', newData.ProfileId);
+          formData.append('RequestBy', newData.RequestBy);
+          formData.append('block', newData.block ? '1' : '0');
+
+          const res = await axios.post(`${baseURL}/AddUser`, formData);
+          if (res.data === 'success') {
+            fetchUsers();
+            cancelAdding();
+          } else {
+            setError(res.data === 'alreadyexists' ? 'User already exists' : res.data);
+          }
+        } catch (err) {
+          console.error('Add failed', err);
+          setError('Add failed: ' + err.message);
+        }
+        setConfirmation({ ...confirmation, show: false });
+      },
     });
   };
 
-  const toggleBlock = async (user) => {
-    const status = user.block ? 0 : 1;
-    try {
-      const response = await fetch(
-        `${baseURL}/BlockUser/${user.modify_by || 0}/${user.user_id}/${status}`,
-        {
-          method: 'POST',
-        }
-      );
-      const result = await response.text();
-      if (result === 'success') {
-        setUsers(users.map(u =>
-          u.user_id === user.user_id
-            ? { ...u, block: status === 1, modify_date: currentDateTime }
-            : u
-        ));
-      } else {
-        setError('Error toggling block status: ' + result);
-      }
-    } catch (err) {
-      setError('Error toggling block status: ' + err.message);
-    }
-  };
-
-  const filteredUsers = users.filter(user => {
-    const userName = user.user_name || '';
-    const emailId = user.email_id || '';
-    return (
-      userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emailId.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
-
-  // Reset to first page when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, users, rowsPerPage]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
-  const indexOfFirst = (currentPage - 1) * rowsPerPage;
-  const indexOfLast = Math.min(indexOfFirst + rowsPerPage, filteredUsers.length);
-  const currentUsers = filteredUsers.slice(indexOfFirst, indexOfFirst + rowsPerPage);
-
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-      <Sidebar collapsed={collapsed} />
+      <Sidebar theme="light" />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div className="flex-1 p-6 overflow-auto">
+        <Topbar theme="light" />
+
+        <div className="flex flex-col flex-1 p-6 overflow-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">User </h2>
+            <Breadcrumb />
+          </div>
+
           {error && (
-            <div className="bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4">
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
               {error}
               <button
-                className="ml-4 text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100"
+                className="float-right font-bold"
                 onClick={() => setError('')}
               >
-                Close
+                ×
               </button>
             </div>
           )}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-green-800 dark:text-green-200">User</h2>
-            <Breadcrumbs currentPage="User Master" />
-          </div>
-          <div className="mb-4 flex justify-between items-center">
-            <input
-              type="text"
-              placeholder="Search by User Name or Email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-white dark:border-gray-600"
-            />
-            <div className="flex items-center space-x-4">
-              
 
-              {!isAdding && (
+          <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+            {/* Show Entries - Leftmost */}
+            <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5">
+              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
+              <select
+                value={entriesPerPage}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+              >
+                {[5, 10, 25, 50, 100].map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
+            </div>
+
+            {/* Search Input - Middle with controlled width */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+              />
+            </div>
+
+            {/* Add New User Button - Rightmost */}
+            {!isAdding && (
+              <div className="w-full sm:w-auto ml-auto">
                 <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                  className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg transition-colors duration-200"
                   onClick={startAdding}
                 >
                   <FaPlus className="mr-2" /> Add New User
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-
-          <div className="mb-2 flex items-center justify-between">
-            <div>
-              <label className="mr-2 text-sm text-gray-800 dark:text-gray-200">Show</label>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
-                className="border rounded px-2 py-1 dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="ml-2 text-sm text-gray-800 dark:text-gray-200">entries</span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-              <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200">
+              <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
                 <tr>
-                  <th className="px-4 py-2 font-semibold text-left">User ID</th>
-                  <th className="px-4 py-2 font-semibold text-left">Company ID</th>
-                  <th className="px-4 py-2 font-semibold text-left">User Name</th>
+                  <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('user_name')}>
+                    User Name
+                    {sortConfig.key === 'user_name' && (
+                      <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
                   <th className="px-4 py-2 font-semibold text-left">Email</th>
-                  <th className="px-4 py-2 font-semibold text-left">Contact Number</th>
+                  <th className="px-4 py-2 font-semibold text-left">Contact</th>
+                  <th className="px-4 py-2 font-semibold text-left">Company ID</th>
                   <th className="px-4 py-2 font-semibold text-left">Profile ID</th>
-                  <th className="px-4 py-2 font-semibold text-left">Created By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated By</th>
+                  <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
                   <th className="px-4 py-2 font-semibold text-left">Block</th>
                   <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-900 dark:text-gray-100">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
                 {isAdding && (
-                  <tr className="bg-gray-50 dark:bg-gray-700">
-                    <td className="px-4 py-2">New</td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={newData.CompId}
-                        onChange={e =>
-                          setNewData({ ...newData, CompId: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
-                      />
-                    </td>
+                  <tr className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
                     <td className="px-4 py-2">
                       <input
                         value={newData.UserName}
-                        onChange={e =>
-                          setNewData({ ...newData, UserName: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                        onChange={(e) => setNewData({ ...newData, UserName: e.target.value })}
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        placeholder="User Name"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <input
                         value={newData.EmailId}
-                        onChange={e =>
-                          setNewData({ ...newData, EmailId: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                        onChange={(e) => setNewData({ ...newData, EmailId: e.target.value })}
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        placeholder="Email"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <input
-                        type="text"
                         value={newData.ContNumber}
-                        onChange={e =>
-                          setNewData({ ...newData, ContNumber: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                        onChange={(e) => setNewData({ ...newData, ContNumber: e.target.value })}
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        placeholder="Contact"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <input
-                        type="number"
+                        value={newData.CompId}
+                        onChange={(e) => setNewData({ ...newData, CompId: e.target.value })}
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        placeholder="Company ID"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
                         value={newData.ProfileId}
-                        onChange={e =>
-                          setNewData({ ...newData, ProfileId: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                        onChange={(e) => setNewData({ ...newData, ProfileId: e.target.value })}
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        placeholder="Profile ID"
                       />
                     </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={newData.RequestBy}
-                        onChange={e =>
-                          setNewData({ ...newData, RequestBy: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={e =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                        disabled
-                      />
-                    </td>
-
-                    <td className="px-4 py-2 flex space-x-2">
-                      <button
-                        onClick={confirmAdd}
-                        className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
-                      >
-                        <FaSave size={20} />
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
+                    <td className="px-4 py-2">--</td>
+                    <td colSpan="2" className="px-4 py-2 space-x-2 flex">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
+                        <FaSave size={22} />
                       </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                      >
-                        <FaTimes size={20} />
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
+                        <FaTimes size={22} />
                       </button>
                     </td>
                   </tr>
                 )}
-                {currentUsers.map(user => (
-                  <tr key={user.user_id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-4 py-3">{user.user_id}</td>
-                    <td className="px-4 py-3">
-                      {editId === user.user_id ? (
-                        <input
-                          type="number"
-                          value={editData.CompId}
-                          onChange={e => handleEditChange('CompId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
-                        />
-                      ) : (
-                        user.comp_id
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
+
+                {currentUsers.map((user) => (
+                  <tr key={user.user_id} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
+                    <td className="px-4 py-2">
                       {editId === user.user_id ? (
                         <input
                           value={editData.UserName}
-                          onChange={e => handleEditChange('UserName', e.target.value)}
-                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                          onChange={(e) => handleEditChange('UserName', e.target.value)}
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.user_name
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       {editId === user.user_id ? (
                         <input
                           value={editData.EmailId}
-                          onChange={e => handleEditChange('EmailId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                          onChange={(e) => handleEditChange('EmailId', e.target.value)}
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.email_id
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       {editId === user.user_id ? (
                         <input
-                          type="text"
                           value={editData.ContNumber}
-                          onChange={e => handleEditChange('ContNumber', e.target.value)}
-                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                          onChange={(e) => handleEditChange('ContNumber', e.target.value)}
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.cont_number
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       {editId === user.user_id ? (
                         <input
-                          type="number"
+                          value={editData.CompId}
+                          onChange={(e) => handleEditChange('CompId', e.target.value)}
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        />
+                      ) : (
+                        user.comp_id
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {editId === user.user_id ? (
+                        <input
                           value={editData.ProfileId}
-                          onChange={e => handleEditChange('ProfileId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
+                          onChange={(e) => handleEditChange('ProfileId', e.target.value)}
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.profile_id
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      {editId === user.user_id ? (
-                        <input
-                          type="number"
-                          value={editData.RequestBy}
-                          onChange={e => handleEditChange('RequestBy', e.target.value)}
-                          className="border rounded px-2 py-1 w-full dark:bg-gray-600 dark:text-white dark:border-gray-500"
-                        />
-                      ) : (
-                        user.created_by
-                      )}
+                    <td className="px-4 py-2">{user.updated_by}</td>
+                    <td className="px-4 py-2">{new Date(user.updated_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        onClick={() => toggleBlock(user)}
+                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
+                          user.block ? 'bg-red-600' : 'bg-green-600'
+                        }`}
+                      >
+                        {user.block ? 'Yes' : 'No'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">
-                      {editId === user.user_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={e => handleEditChange('block', e.target.checked)}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => toggleBlock(user)}
-                          className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
-                            user.block ? 'bg-red-600' : 'bg-green-600'
-                          }`}
-                        >
-                          {user.block ? 'Yes' : 'No'}
-                        </button>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3 flex space-x-2">
+                    <td className="px-4 py-2 space-x-2 flex">
                       {editId === user.user_id ? (
                         <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
-                          >
-                            <FaSave size={20} />
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
+                            <FaSave size={18} />
                           </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                          >
-                            <FaTimes size={20} />
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
+                            <FaTimes size={18} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button
-                            onClick={() => startEditing(user)}
-                            className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
-                          >
-                            <FaEdit size={20} />
+                          <button onClick={() => startEditing(user)} className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300">
+                            <FaEdit size={18} />
                           </button>
-                          <button
-                            onClick={() => confirmDelete(user.user_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash size={20} />
+                          <button onClick={() => confirmDelete(user.user_id)} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                            <FaTrash size={18} />
                           </button>
                         </>
                       )}
@@ -622,51 +486,47 @@ export default function UserMasterPage() {
                 ))}
               </tbody>
             </table>
-            {filteredUsers.length === 0 && !isAdding && (
-              <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
-                No users found
-              </div>
-            )}
           </div>
 
+          {/* Pagination Controls */}
           <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredUsers.length === 0 ? 0 : indexOfFirst + 1} to {indexOfLast} of {filteredUsers.length} entries
-            </div>
+            <span>
+              Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries
+            </span>
             <div className="flex gap-1">
               <button
-                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:disabled:text-gray-500"
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
               >
                 Previous
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+              {[...Array(totalPages).keys()].map((num) => (
                 <button
-                  key={num}
-                  onClick={() => setCurrentPage(num)}
-                  className={`px-3 py-1 border rounded ${currentPage === num ? 'bg-green-600 text-white' : 'dark:bg-gray-700 dark:text-white dark:border-gray-600'}`}
+                  key={num + 1}
+                  onClick={() => setCurrentPage(num + 1)}
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}
                 >
-                  {num}
+                  {num + 1}
                 </button>
               ))}
               <button
-                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:disabled:text-gray-500"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
               >
                 Next
               </button>
             </div>
           </div>
-
         </div>
       </div>
+
       {confirmation.show && (
         <ConfirmationModal
           message={confirmation.message}
           onConfirm={confirmation.onConfirm}
-          onCancel={() => setConfirmation({ show: false, message: '', onConfirm: () => {} })}
+          onCancel={() => setConfirmation({ ...confirmation, show: false })}
         />
       )}
     </div>
