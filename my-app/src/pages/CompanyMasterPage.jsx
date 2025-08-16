@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSun, FaMoon } from 'react-icons/fa';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
@@ -61,6 +61,31 @@ export default function CompanyMasterPage() {
   // Current timestamp in IST
   const currentDateTime = '2025-08-05T23:32:00+05:30';
 
+  // State for dark mode
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Check local storage for a previous dark mode preference
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    setDarkMode(isDarkMode);
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', newDarkMode);
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -98,7 +123,7 @@ export default function CompanyMasterPage() {
       }
     };
     fetchCompanies();
-  }, []);
+  }, [currentDateTime]);
 
   const startEditing = (comp) => {
     setEditId(comp.comp_id);
@@ -330,29 +355,29 @@ export default function CompanyMasterPage() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex-1 p-6 overflow-auto">
-          
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Company</h2>
+            <Breadcrumbs currentPage="Company Master" />
+            
+          </div>
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 dark:bg-red-900 dark:border-red-700 dark:text-red-300">
               {error}
               <button
-                className="ml-4 text-red-700 hover:text-red-900"
+                className="ml-4 text-red-700 hover:text-red-900 dark:text-red-300 dark:hover:text-red-100"
                 onClick={() => setError('')}
               >
                 Close
               </button>
             </div>
           )}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Company</h2>
-            <Breadcrumbs currentPage="Company Master" />
-          </div>
           <div className="mb-4 flex justify-between items-center">
             <input
               type="text"
               placeholder="Search by Company Name..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value || '')}
-              className="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600 w-1/3"
+              className="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600 w-1/3 dark:bg-gray-800 dark:text-gray-100"
             />
             {!isAdding && (
               <button
@@ -362,11 +387,10 @@ export default function CompanyMasterPage() {
                 <FaPlus className="mr-2" /> Add New Company
               </button>
             )}
-            
           </div>
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
+          <div className="overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-800">
             <table className="min-w-full text-sm">
-              <thead className="bg-green-100 text-gray-800">
+              <thead className="bg-green-100 text-gray-800 dark:bg-green-900 dark:text-gray-100">
                 <tr>
                   <th className="px-4 py-2 font-semibold text-left">Comp ID</th>
                   <th className="px-4 py-2 font-semibold text-left">Plan ID</th>
@@ -382,7 +406,7 @@ export default function CompanyMasterPage() {
                   <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                 {isAdding && (
                   <tr className="border-b border-gray-200 dark:border-gray-700">
                     <td className="px-4 py-3">New</td>
@@ -488,8 +512,7 @@ export default function CompanyMasterPage() {
                         <input
                           type="checkbox"
                           checked={editData.block}
-                          onChange={e => handleEditChange('block', e.target.checked)
-                          }
+                          onChange={e => handleEditChange('block', e.target.checked)}
                           className="dark:bg-gray-800 dark:border-gray-600"
                         />
                       ) : (

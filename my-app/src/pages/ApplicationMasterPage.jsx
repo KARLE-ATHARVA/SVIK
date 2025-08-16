@@ -5,21 +5,20 @@ import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
 import axios from 'axios';
+import { useTheme } from '../context/ThemeContext';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
+  const { darkMode } = useTheme();
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400" onClick={onCancel}>
-            Cancel
-          </button>
-          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>
-            Yes
-          </button>
+          <button className="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-600" onClick={onCancel}>Cancel</button>
+          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>Yes</button>
         </div>
       </div>
     </div>
@@ -29,6 +28,7 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
 export default function ApplicationMasterPage() {
   const navigate = useNavigate();
   const userId = localStorage.getItem('userid');
+  const { darkMode } = useTheme();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [apps, setApps] = useState([]);
@@ -43,11 +43,10 @@ export default function ApplicationMasterPage() {
   const [fadeIn, setFadeIn] = useState(false);
 
   const headers = [
-    { key: 'app_id', label: 'App ID' },
-    { key: 'app_name', label: 'App Name' },
-    { key: 'block', label: 'Block' },
+    { key: 'app_name', label: 'Application Name' },
     { key: 'updated_by', label: 'Updated By' },
     { key: 'updated_date', label: 'Updated Date' },
+    { key: 'block', label: 'Block' }
   ];
 
   useEffect(() => {
@@ -96,6 +95,13 @@ export default function ApplicationMasterPage() {
     setSortConfig({ key, direction });
   };
 
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'ascending' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />;
+    }
+    return null;
+  };
+
   const startEditing = (app) => {
     setEditId(app.app_id);
     setEditData({ ...app });
@@ -123,19 +129,20 @@ export default function ApplicationMasterPage() {
 
           const res = await axios.post(`${baseURL}/EditApplication`, formData);
 
+          const original = apps.find((a) => a.app_id === editData.app_id);
+          if (original.block !== editData.block) {
+            await axios.get(`${baseURL}/BlockApplication/${userId}/${editData.app_id}/${editData.block ? 1 : 0}`);
+          }
+
           if (res.data === 'success') {
             fetchApps();
             cancelEditing();
-          } else {
-            alert(res.data === 'alreadyexists' ? 'Application already exists!' : `Error: ${res.data}`);
           }
         } catch (err) {
           console.error(err);
-          alert('Error saving application');
         }
-
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
@@ -144,32 +151,14 @@ export default function ApplicationMasterPage() {
       show: true,
       message: 'Are you sure you want to delete this application?',
       onConfirm: async () => {
-        try {
-          await axios.get(`${baseURL}/BlockApplication/${userId}/${appId}/1`);
-          fetchApps();
-        } catch (err) {
-          console.error(err);
-          alert('Error deleting application');
-        }
+        await axios.get(`${baseURL}/BlockApplication/${userId}/${appId}/1`);
+        fetchApps();
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
-  const toggleBlock = async (app) => {
-    try {
-      await axios.get(`${baseURL}/BlockApplication/${userId}/${app.app_id}/${app.block ? 0 : 1}`);
-      fetchApps();
-    } catch (err) {
-      console.error(err);
-      alert('Error toggling block status');
-    }
-  };
-
-  const startAdding = () => {
-    setIsAdding(true);
-    setNewData({ app_name: '', created_by: userId });
-  };
+  const startAdding = () => setIsAdding(true);
 
   const cancelAdding = () => {
     setIsAdding(false);
@@ -181,155 +170,124 @@ export default function ApplicationMasterPage() {
       alert('Please enter application name');
       return;
     }
-
     setConfirmation({
       show: true,
       message: 'Are you sure you want to add this application?',
       onConfirm: async () => {
-        try {
-          const formData = new FormData();
-          formData.append('AppName', newData.app_name);
-          formData.append('RequestBy', newData.created_by);
-
-          const res = await axios.post(`${baseURL}/AddApplication`, formData);
-
-          if (res.data === 'success') {
-            fetchApps();
-            cancelAdding();
-          } else {
-            alert(res.data === 'alreadyexists' ? 'Application already exists!' : `Error: ${res.data}`);
-          }
-        } catch (err) {
-          console.error(err);
-          alert('Error adding application');
-        }
-
+        const formData = new FormData();
+        formData.append('AppName', newData.app_name);
+        formData.append('RequestBy', userId);
+        await axios.post(`${baseURL}/AddApplication`, formData);
+        fetchApps();
+        cancelAdding();
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1">
         <Topbar />
-        <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-green-800">Applications</h2>
-            <Breadcrumb />
+
+        <div className={`flex flex-col flex-1 overflow-hidden p-5 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex justify-between items-center mb-4 mt-2">
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-500">Applications</h2>
+          <Breadcrumb  />
+
           </div>
 
-          <div className="mb-4 flex justify-between items-center">
-            <input
-              type="text"
-              placeholder="Search ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="border border-gray-300 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600"
-            />
-            {!isAdding && (
-              <button
-                className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-800 flex items-center"
-                onClick={startAdding}
-              >
-                <FaPlus className="mr-2" /> Add New Application
-              </button>
-            )}
-          </div>
-
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-md">
-            <table className="min-w-full text-sm text-gray-800">
-              <thead className="bg-green-100 sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-2 font-semibold text-left">Application Name</th>
-                  <th className="px-4 py-2 font-semibold text-left">Updated By</th>
-                  <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
-                  <th className="px-4 py-2 font-semibold text-left">Block</th>
-                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isAdding && (
-                  <tr className="border-b hover:bg-green-50 transition duration-150">
-
-                    <td className="px-4 py-2">
-                      <input
-                        value={newData.app_name}
-                        onChange={(e) => setNewData({ ...newData, app_name: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td className="px-4 py-2">--</td>
-                    <td className="px-4 py-2">--</td>
-                    <td className="px-4 py-2">--</td>
-                    <td className="px-4 py-2 flex gap-2">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800"><FaSave size={22} /></button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800"><FaTimes size={22} /></button>
-                    </td>
-                  </tr>
-                )}
-
-                {currentApps.map((app) => (
-                  <tr key={app.app_id} className="border-b hover:bg-green-50 transition duration-150">
-                    <td className="px-4 py-2">
-                      {editId === app.app_id ? (
-                        <input
-                          value={editData.app_name}
-                          onChange={(e) => handleEditChange('app_name', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
-                        />
-                      ) : (
-                        app.app_name
-                      )}
-                    </td>
-                    <td className="px-4 py-2">{app.updated_by}</td>
-                    <td className="px-4 py-2">{new Date(app.updated_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        onClick={() => toggleBlock(app)}
-                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
-                          app.block ? 'bg-red-600' : 'bg-green-600'
-                        }`}
-                      >
-                        {app.block ? 'Yes' : 'No'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 flex gap-2">
-                      {editId === app.app_id ? (
-                        <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800"><FaSave size={22} /></button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800"><FaTimes size={22} /></button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => startEditing(app)} className="text-yellow-500 hover:text-yellow-700"><FaEdit size={18} /></button>
-                          <button onClick={() => confirmDelete(app.app_id)} className="text-red-500 hover:text-red-700"><FaTrash size={18} /></button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-between mt-4 text-sm items-center">
-            <span>
-              Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
-            </span>
-            <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
-                Previous
-              </button>
-              {[...Array(totalPages).keys()].map(num => (
-                <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}>
-                  {num + 1}
+          {/* reduced height outer container */}
+          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col  max-h-[75vh] overflow-hidden">
+            <div className="mb-4 flex justify-between items-center">
+              <input
+                type="text"
+                placeholder="Search ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border border-gray-300 dark:border-gray-600 rounded px-5 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
+              />
+              {!isAdding && (
+                <button onClick={startAdding} className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium">
+                  <FaPlus className="mr-2" /> Add New Application
                 </button>
-              ))}
-              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">
-                Next
-              </button>
+              )}
+            </div>
+
+            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+              <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
+                <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
+                  <tr>
+                    {headers.map((header) => (
+                      <th key={header.key} className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort(header.key)}>
+                        <div className="flex items-center">{header.label}{getSortIcon(header.key)}</div>
+                      </th>
+                    ))}
+                    <th className="px-4 py-2 font-semibold text-left">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isAdding && (
+                    <tr className="border-b dark:border-gray-700">
+                      <td className="px-4 py-2">
+                        <input value={newData.app_name} onChange={(e) => setNewData({ ...newData, app_name: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" />
+                      </td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2 flex gap-2">
+                        <button onClick={saveAdding} className="text-green-600"><FaSave size={22} /></button>
+                        <button onClick={cancelAdding} className="text-gray-600"><FaTimes size={22} /></button>
+                      </td>
+                    </tr>
+                  )}
+                  {currentApps.map((app) => (
+                    <tr key={app.app_id} className="border-b dark:border-gray-700">
+                      <td className="px-4 py-2">
+                        {editId === app.app_id ? (
+                          <input value={editData.app_name} onChange={(e) => handleEditChange('app_name', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" />
+                        ) : app.app_name}
+                      </td>
+                      <td className="px-4 py-2">{app.updated_by}</td>
+                      <td className="px-4 py-2">{new Date(app.updated_date).toLocaleDateString()}</td>
+                      <td className="px-4 py-2">
+                        {editId === app.app_id ? (
+                          <span onClick={() => setEditData({ ...editData, block: !editData.block })} className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${editData.block ? 'bg-red-600' : 'bg-green-600'}`}>{editData.block ? 'Yes' : 'No'}</span>
+                        ) : (
+                          <span className={`px-3 py-1 rounded-full text-white text-xs ${app.block ? 'bg-red-600' : 'bg-green-600'}`}>{app.block ? 'Yes' : 'No'}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 flex gap-2">
+                        {editId === app.app_id ? (
+                          <>
+                            <button onClick={confirmSave} className="text-green-600"><FaSave size={22} /></button>
+                            <button onClick={cancelEditing} className="text-gray-600"><FaTimes size={22} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => startEditing(app)} className="text-yellow-500"><FaEdit size={18} /></button>
+                            <button onClick={() => confirmDelete(app.app_id)} className="text-red-500"><FaTrash size={18} /></button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+              <span>Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries</span>
+              <div className="flex gap-1">
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600">Previous</button>
+                {[...Array(totalPages).keys()].map((num) => (
+                  <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white dark:bg-green-500' : 'dark:border-gray-600 dark:text-gray-200'}`}>
+                    {num + 1}
+                  </button>
+                ))}
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600">Next</button>
+              </div>
             </div>
           </div>
         </div>

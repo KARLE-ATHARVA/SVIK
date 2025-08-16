@@ -43,15 +43,13 @@ export default function LoginHistory() {
       console.error('Failed to fetch login history:', error.response?.data || error.message);
     }
   };
- 
- const formatDateTime = (dateString) => {
-  if (!dateString) return '-';
-  return DateTime.fromISO(dateString, { zone: 'America/Los_Angeles' }) 
-    .setZone('Asia/Kolkata')
-    .toFormat('yyyy-MM-dd hh:mm a');
-};
 
-
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    return DateTime.fromISO(dateString, { zone: 'America/Los_Angeles' })
+      .setZone('Asia/Kolkata')
+      .toFormat('yyyy-MM-dd hh:mm a');
+  };
 
   const filtered = loginHistory.filter(
     (log) =>
@@ -82,27 +80,32 @@ export default function LoginHistory() {
     setSortConfig({ key, direction });
   };
 
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return null;
+    return sortConfig.direction === 'ascending' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />;
+  };
+
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentLogs = sorted.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-1 ml-70">
+      <div className="flex flex-col flex-1">
         <Topbar />
-        <div className={`flex flex-col flex-1 overflow-y-auto p-6 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="flex justify-between mb-4 items-center">
-            <h1 className="text-2xl font-bold text-green-800">Login History</h1>
+        <div className={`flex flex-col flex-1 p-6 overflow-auto transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-green-800 dark:text-green-200">Login History</h1>
             <Breadcrumb />
           </div>
 
-          <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
-            <div className="flex items-center gap-2">
+          <div className="mb-4 flex justify-between items-center text-gray-800 dark:text-gray-200">
+            <div className="flex items-center space-x-2 text-sm">
               <span>Show</span>
               <select
-                className="border border-gray-300 rounded px-2 py-1"
+                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 bg-white dark:bg-gray-800"
                 value={entriesPerPage}
                 onChange={(e) => {
                   setEntriesPerPage(Number(e.target.value));
@@ -119,58 +122,83 @@ export default function LoginHistory() {
             </div>
             <input
               type="text"
-              placeholder="Search Name, Logs..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded w-full max-w-xs"
+              className="border border-gray-300 dark:border-gray-600 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-800 dark:text-gray-200"
             />
           </div>
 
-          <div className="overflow-x-auto bg-white shadow rounded">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-700 text-white text-xs uppercase sticky top-0 z-10">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+            <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
+              <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('name')}>
-                    Name {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
+                  <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('name')}>
+                    <div className="flex items-center">
+                      Name
+                      {getSortIcon('name')}
+                    </div>
                   </th>
-                  <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('loginDate')}>
-                    Login Date {sortConfig.key === 'loginDate' && (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
+                  <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('loginDate')}>
+                    <div className="flex items-center">
+                      Login Date
+                      {getSortIcon('loginDate')}
+                    </div>
                   </th>
-                  <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('logoutDate')}>
-                    Logout Date {sortConfig.key === 'logoutDate' && (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
+                  <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('logoutDate')}>
+                    <div className="flex items-center">
+                      Logout Date
+                      {getSortIcon('logoutDate')}
+                    </div>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {currentLogs.map((log, index) => (
-                  <tr key={index} className="border-b hover:bg-green-50 transition duration-150">
-                    <td className="px-4 py-2">{log.name}</td>
-                    <td className="px-4 py-2">{formatDateTime(log.loginDate)}</td>
-                    <td className="px-4 py-2">{log.logoutDate ? formatDateTime(log.logoutDate) : '-'}</td>
+                {currentLogs.length === 0 ? (
+                  <tr className="border-b dark:border-gray-700">
+                    <td colSpan={3} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 italic">
+                      No records found.
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  currentLogs.map((log, index) => (
+                    <tr key={index} className="border-b dark:border-gray-700 hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
+                      <td className="px-4 py-2">{log.name}</td>
+                      <td className="px-4 py-2">{formatDateTime(log.loginDate)}</td>
+                      <td className="px-4 py-2">{log.logoutDate ? formatDateTime(log.logoutDate) : '-'}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
-          <div className="flex justify-between mt-4 text-sm items-center">
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
             <span>
               Showing {filtered.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
             </span>
             <div className="flex gap-1">
-              <button onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50"
+              >
                 Previous
               </button>
               {[...Array(totalPages).keys()].map((num) => (
                 <button
                   key={num + 1}
                   onClick={() => setCurrentPage(num + 1)}
-                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                  className={`px-3 py-1 border dark:border-gray-700 rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'dark:text-gray-200'}`}
                 >
                   {num + 1}
                 </button>
               ))}
-              <button onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50">
+              <button
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50"
+              >
                 Next
               </button>
             </div>
@@ -179,4 +207,4 @@ export default function LoginHistory() {
       </div>
     </div>
   );
-} 
+}

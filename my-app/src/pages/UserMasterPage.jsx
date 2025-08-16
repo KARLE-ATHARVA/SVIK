@@ -11,11 +11,11 @@ const baseURL = process.env.REACT_APP_API_BASE_URL;
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
             onClick={onCancel}
           >
             Cancel
@@ -42,12 +42,12 @@ export default function UserMasterPage() {
   const [editData, setEditData] = useState({});
   const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({ 
-    CompId: '', 
-    UserName: '', 
-    EmailId: '', 
-    ContNumber: '', 
-    ProfileId: '', 
+  const [newData, setNewData] = useState({
+    CompId: '',
+    UserName: '',
+    EmailId: '',
+    ContNumber: '',
+    ProfileId: '',
     RequestBy: userId,
     block: false
   });
@@ -189,12 +189,12 @@ export default function UserMasterPage() {
 
   const startAdding = () => {
     setIsAdding(true);
-    setNewData({ 
-      CompId: '', 
-      UserName: '', 
-      EmailId: '', 
-      ContNumber: '', 
-      ProfileId: '', 
+    setNewData({
+      CompId: '',
+      UserName: '',
+      EmailId: '',
+      ContNumber: '',
+      ProfileId: '',
       RequestBy: userId,
       block: false
     });
@@ -202,12 +202,12 @@ export default function UserMasterPage() {
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ 
-      CompId: '', 
-      UserName: '', 
-      EmailId: '', 
-      ContNumber: '', 
-      ProfileId: '', 
+    setNewData({
+      CompId: '',
+      UserName: '',
+      EmailId: '',
+      ContNumber: '',
+      ProfileId: '',
       RequestBy: userId,
       block: false
     });
@@ -250,22 +250,22 @@ export default function UserMasterPage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar theme="light" />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar theme="light" />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-green-800">User </h2>
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">User </h2>
             <Breadcrumb />
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
               {error}
-              <button 
-                className="float-right font-bold" 
+              <button
+                className="float-right font-bold"
                 onClick={() => setError('')}
               >
                 ×
@@ -273,51 +273,51 @@ export default function UserMasterPage() {
             </div>
           )}
 
-<div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
-  {/* Show Entries - Leftmost */}
-  <div className="flex items-center bg-white rounded-lg border border-gray-300 px-3 py-1.5">
-    <span className="text-sm text-gray-600 mr-2 whitespace-nowrap">Show</span>
-    <select
-      value={entriesPerPage}
-      onChange={(e) => {
-        setEntriesPerPage(Number(e.target.value));
-        setCurrentPage(1);
-      }}
-      className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm"
-    >
-      {[5, 10, 25, 50, 100].map(option => (
-        <option key={option} value={option}>{option}</option>
-      ))}
-    </select>
-    <span className="text-sm text-gray-600 ml-2 whitespace-nowrap">entries</span>
-  </div>
+          <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+            {/* Show Entries - Leftmost */}
+            <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5">
+              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
+              <select
+                value={entriesPerPage}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+              >
+                {[5, 10, 25, 50, 100].map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
+            </div>
 
-  {/* Search Input - Middle with controlled width */}
-  <div className="relative w-full sm:w-64">
-    <input
-      type="text"
-      placeholder="Search by name or email..."
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      className="w-full border border-gray-300 rounded-lg px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-    />
-  </div>
+            {/* Search Input - Middle with controlled width */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+              />
+            </div>
 
-  {/* Add New User Button - Rightmost */}
-  {!isAdding && (
-    <div className="w-full sm:w-auto ml-auto">
-      <button
-        className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg transition-colors duration-200"
-        onClick={startAdding}
-      >
-        <FaPlus className="mr-2" /> Add New User
-      </button>
-    </div>
-  )}
-</div>
-          <div className="overflow-x-auto bg-white rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-100 text-grey-800 sticky top-0">
+            {/* Add New User Button - Rightmost */}
+            {!isAdding && (
+              <div className="w-full sm:w-auto ml-auto">
+                <button
+                  className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg transition-colors duration-200"
+                  onClick={startAdding}
+                >
+                  <FaPlus className="mr-2" /> Add New User
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
                 <tr>
                   <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('user_name')}>
                     User Name
@@ -335,14 +335,14 @@ export default function UserMasterPage() {
                   <th className="px-4 py-2 font-semibold text-left">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
                 {isAdding && (
-                  <tr className="border-b hover:bg-green-50 transition duration-150">
+                  <tr className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
                     <td className="px-4 py-2">
                       <input
                         value={newData.UserName}
                         onChange={(e) => setNewData({ ...newData, UserName: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         placeholder="User Name"
                       />
                     </td>
@@ -350,7 +350,7 @@ export default function UserMasterPage() {
                       <input
                         value={newData.EmailId}
                         onChange={(e) => setNewData({ ...newData, EmailId: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         placeholder="Email"
                       />
                     </td>
@@ -358,7 +358,7 @@ export default function UserMasterPage() {
                       <input
                         value={newData.ContNumber}
                         onChange={(e) => setNewData({ ...newData, ContNumber: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         placeholder="Contact"
                       />
                     </td>
@@ -366,7 +366,7 @@ export default function UserMasterPage() {
                       <input
                         value={newData.CompId}
                         onChange={(e) => setNewData({ ...newData, CompId: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         placeholder="Company ID"
                       />
                     </td>
@@ -374,7 +374,7 @@ export default function UserMasterPage() {
                       <input
                         value={newData.ProfileId}
                         onChange={(e) => setNewData({ ...newData, ProfileId: e.target.value })}
-                        className="border rounded px-2 py-1 w-full"
+                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         placeholder="Profile ID"
                       />
                     </td>
@@ -382,10 +382,10 @@ export default function UserMasterPage() {
                     <td className="px-4 py-2">--</td>
                     <td className="px-4 py-2">--</td>
                     <td colSpan="2" className="px-4 py-2 space-x-2 flex">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800">
+                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
                         <FaSave size={22} />
                       </button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800">
+                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
                         <FaTimes size={22} />
                       </button>
                     </td>
@@ -393,13 +393,13 @@ export default function UserMasterPage() {
                 )}
 
                 {currentUsers.map((user) => (
-                  <tr key={user.user_id} className="border-b hover:bg-green-50 transition duration-150">
+                  <tr key={user.user_id} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
                     <td className="px-4 py-2">
                       {editId === user.user_id ? (
                         <input
                           value={editData.UserName}
                           onChange={(e) => handleEditChange('UserName', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.user_name
@@ -410,7 +410,7 @@ export default function UserMasterPage() {
                         <input
                           value={editData.EmailId}
                           onChange={(e) => handleEditChange('EmailId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.email_id
@@ -421,7 +421,7 @@ export default function UserMasterPage() {
                         <input
                           value={editData.ContNumber}
                           onChange={(e) => handleEditChange('ContNumber', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.cont_number
@@ -432,7 +432,7 @@ export default function UserMasterPage() {
                         <input
                           value={editData.CompId}
                           onChange={(e) => handleEditChange('CompId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.comp_id
@@ -443,7 +443,7 @@ export default function UserMasterPage() {
                         <input
                           value={editData.ProfileId}
                           onChange={(e) => handleEditChange('ProfileId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full"
+                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                         />
                       ) : (
                         user.profile_id
@@ -464,19 +464,19 @@ export default function UserMasterPage() {
                     <td className="px-4 py-2 space-x-2 flex">
                       {editId === user.user_id ? (
                         <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800">
+                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
                             <FaSave size={18} />
                           </button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800">
+                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
                             <FaTimes size={18} />
                           </button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => startEditing(user)} className="text-yellow-500 hover:text-yellow-700">
+                          <button onClick={() => startEditing(user)} className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300">
                             <FaEdit size={18} />
                           </button>
-                          <button onClick={() => confirmDelete(user.user_id)} className="text-red-500 hover:text-red-700">
+                          <button onClick={() => confirmDelete(user.user_id)} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                             <FaTrash size={18} />
                           </button>
                         </>
@@ -489,7 +489,7 @@ export default function UserMasterPage() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex justify-between mt-4 text-sm items-center">
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
             <span>
               Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries
             </span>
@@ -497,7 +497,7 @@ export default function UserMasterPage() {
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
               >
                 Previous
               </button>
@@ -505,7 +505,7 @@ export default function UserMasterPage() {
                 <button
                   key={num + 1}
                   onClick={() => setCurrentPage(num + 1)}
-                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}
                 >
                   {num + 1}
                 </button>
@@ -513,7 +513,7 @@ export default function UserMasterPage() {
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
               >
                 Next
               </button>

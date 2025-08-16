@@ -12,11 +12,11 @@ const baseURL = process.env.REACT_APP_API_BASE_URL;
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
           <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+            className="bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
@@ -264,19 +264,20 @@ export default function TileMasterPage() {
   const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    // Update the main container and content areas for dark mode
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar theme="light" />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar theme="light" />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-green-800">Products</h2>
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Products</h2>
             <Breadcrumb />
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
               {error}
               <button 
                 className="float-right font-bold" 
@@ -288,7 +289,7 @@ export default function TileMasterPage() {
           )}
 
           {message && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            <div className="mb-4 p-3 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded">
               {message}
               <button 
                 className="float-right font-bold" 
@@ -299,54 +300,55 @@ export default function TileMasterPage() {
             </div>
           )}
 
-<div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
-  {/* Show Entries - Leftmost */}
-  <div className="flex items-center bg-white rounded-lg border border-gray-300 px-3 py-1.5">
-    <span className="text-sm text-gray-600 mr-2 whitespace-nowrap">Show</span>
-    <select
-      value={entriesPerPage}
-      onChange={(e) => {
-        setEntriesPerPage(Number(e.target.value));
-        setCurrentPage(1);
-      }}
-      className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm"
-    >
-      {[5, 10, 25, 50, 100].map(option => (
-        <option key={option} value={option}>{option}</option>
-      ))}
-    </select>
-    <span className="text-sm text-gray-600 ml-2 whitespace-nowrap">entries</span>
-  </div>
+          <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+            {/* Show Entries - Leftmost */}
+            <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5">
+              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
+              <select
+                value={entriesPerPage}
+                onChange={(e) => {
+                  setEntriesPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+              >
+                {[5, 10, 25, 50, 100].map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
+            </div>
 
-  {/* Search Input - Middle with controlled width */}
-  <div className="relative w-full sm:w-64">
-    <input
-      type="text"
-      placeholder="Search..."
-      value={globalSearch}
-      onChange={handleGlobalSearchChange}
-      className="w-full border border-gray-300 rounded-lg px-4 py-1.5 pl-10 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-    />
-    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-      <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-      </svg>
-    </div>
-  </div>
+            {/* Search Input - Middle with controlled width */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={globalSearch}
+                onChange={handleGlobalSearchChange}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-1.5 pl-10 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
 
-  {/* Add Product Button - Rightmost */}
-  <div className="w-full sm:w-auto ml-auto">
-    <Link
-      to="/add-tile"
-      className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg transition-colors duration-200"
-    >
-      <FaPlus className="mr-2" /> Add Product
-    </Link>
-  </div>
-</div>
-          <div className="overflow-x-auto bg-white rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-100 text-grey-800 sticky top-0">
+            {/* Add Product Button - Rightmost */}
+            <div className="w-full sm:w-auto ml-auto">
+              <Link
+                to="/add-tile"
+                className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg transition-colors duration-200"
+              >
+                <FaPlus className="mr-2" /> Add Product
+              </Link>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
                 <tr>
                   {['sku_name', 'sku_code', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
                     <th
@@ -370,7 +372,7 @@ export default function TileMasterPage() {
                           placeholder={`Search...`}
                           value={columnSearches[key]}
                           onChange={(e) => handleSearchChange(key, e.target.value)}
-                          className="mt-1 w-full border rounded px-2 py-1 text-xs"
+                          className="mt-1 w-full border rounded px-2 py-1 text-xs bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                           onClick={(e) => e.stopPropagation()}
                         />
                       )}
@@ -378,12 +380,11 @@ export default function TileMasterPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
                 {currentTiles.map((tile, index) => (
-                  <tr key={index} className="border-b hover:bg-green-50 transition duration-150">
+                  <tr key={index} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
                     <td className="px-4 py-2">{tile.sku_name}</td>
                     <td className="px-4 py-2">{tile.sku_code}</td>
-
                     <td className="px-4 py-2">{tile.app_name}</td>
                     <td className="px-4 py-2">{tile.space_name}</td>
                     <td className="px-4 py-2">{tile.size_name}</td>
@@ -392,14 +393,14 @@ export default function TileMasterPage() {
                     <td className="px-4 py-2 space-x-2 flex">
                       <button
                         onClick={() => handleEditClick(tile)}
-                        className="text-yellow-500 hover:text-yellow-700"
+                        className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
                         disabled={isLoading}
                       >
                         <FaEdit size={18} />
                       </button>
                       <button
                         onClick={() => handleBlockToggle(tile.tile_id, tile.block)}
-                        className={`${tile.block ? 'text-green-600 hover:text-green-800' : 'text-red-500 hover:text-red-700'}`}
+                        className={`${tile.block ? 'text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300' : 'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'}`}
                         disabled={isLoading}
                       >
                         {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
@@ -411,7 +412,7 @@ export default function TileMasterPage() {
             </table>
           </div>
 
-          <div className="flex justify-between mt-4 text-sm items-center">
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
             <span>
               Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries
             </span>
@@ -419,7 +420,7 @@ export default function TileMasterPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
               >
                 <FaAngleLeft />
               </button>
@@ -427,7 +428,7 @@ export default function TileMasterPage() {
                 <button
                   key={num + 1}
                   onClick={() => setCurrentPage(num + 1)}
-                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : ''}`}
+                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}
                 >
                   {num + 1}
                 </button>
@@ -435,7 +436,7 @@ export default function TileMasterPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 border rounded disabled:opacity-50"
+                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
               >
                 <FaAngleRight />
               </button>

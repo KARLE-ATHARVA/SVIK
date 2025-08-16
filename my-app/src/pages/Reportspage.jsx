@@ -51,9 +51,9 @@ export default function Reportspage() {
                   {filteredTables.map((table, index) => (
                     <li
                       key={index}
-                      className={`text-sm font-light px-4 py-[4px] border-b border-gray-200 
-                        hover:bg-green-100 transition duration-150
-                        ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                      className={`text-sm font-light px-4 py-[4px] border-b border-gray-200 dark:border-gray-700
+                               hover:bg-green-100 dark:hover:bg-gray-700 transition duration-150
+                               ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}`}
                     >
                       <Link
                         to={table.path}
