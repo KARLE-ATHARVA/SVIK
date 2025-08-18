@@ -1,6 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SidebarProvider } from './context/SidebarContext';
+import { ThemeProvider } from './context/ThemeContext';
+import './index.css'; 
+
 import LoginPage from './pages/LoginPage';
 import Dashboard from './components/Dashboard';
 import Reportspage from './pages/Reportspage';
@@ -22,35 +25,40 @@ import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
 import RegisterPage from './pages/RegisterPage';
 import AddTilePage from './pages/AddTilePage';
+import EditTilePage from './pages/EditTilePage';
 
 export default function App() {
   return (
-    <SidebarProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/masterTables" element={<MasterTablesPage />} />
-          <Route path="/reportsPage" element={<Reportspage />} />
-          <Route path="/loginHistory" element={<LoginHistory />} />
-          <Route path="/adminActivity" element={<AdminActivityLog />} />
-          <Route path="/userActivity" element={<UserActivityLog />} />
-          <Route path="/sizeMaster" element={<SizeMasterPage />} />
-          <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
-          <Route path="/tileMaster" element={<TileMasterPage />} />
-          <Route path="/profileMaster" element={<ProfileMasterPage />} />
-          <Route path="/colorMaster" element={<ColorMasterPage />} />
-          <Route path="/categoryMaster" element={<CategoryMasterPage />} />
-          <Route path="/spaceMaster" element={<SpaceMasterPage />} />
-          <Route path="/finishMaster" element={<FinishMasterPage />} />
-          <Route path="/userMaster" element={<UserMasterPage />} />
-          <Route path="/companyMaster" element={<CompanyMasterPage />} />
-          <Route path="/loginMaster" element={<LoginMasterPage />} />
-          <Route path="/planMaster" element={<PlanMasterPage />} />
-          <Route path="/add-tile" element={<AddTilePage />} /> {/* Updated path to match /add-tile */}
-        </Routes>
-      </Router>
-    </SidebarProvider>
+    <ThemeProvider>
+      <SidebarProvider>
+        <Router>
+          
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/masterTables" element={<MasterTablesPage />} />
+            <Route path="/reportsPage" element={<Reportspage />} />
+            <Route path="/loginHistory" element={<LoginHistory />} />
+            <Route path="/adminActivity" element={<AdminActivityLog />} />
+            <Route path="/userActivity" element={<UserActivityLog />} />
+            <Route path="/sizeMaster" element={<SizeMasterPage />} />
+            <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
+            <Route path="/tileMaster" element={<TileMasterPage />} />
+            <Route path="/profileMaster" element={<ProfileMasterPage />} />
+            <Route path="/colorMaster" element={<ColorMasterPage />} />
+            <Route path="/categoryMaster" element={<CategoryMasterPage />} />
+            <Route path="/spaceMaster" element={<SpaceMasterPage />} />
+            <Route path="/finishMaster" element={<FinishMasterPage />} />
+            <Route path="/userMaster" element={<UserMasterPage />} />
+            <Route path="/companyMaster" element={<CompanyMasterPage />} />
+            <Route path="/loginMaster" element={<LoginMasterPage />} />
+            <Route path="/planMaster" element={<PlanMasterPage />} />
+            <Route path="/add-tile" element={<AddTilePage />} />
+            <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
+          </Routes>
+        </Router>
+      </SidebarProvider>
+    </ThemeProvider>
   );
 }
