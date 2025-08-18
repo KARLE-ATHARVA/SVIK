@@ -12,12 +12,12 @@ export default function AddTilePage() {
   const [formData, setFormData] = useState({
     SkuName: '',
     SkuCode: '',
-    CatName: '',
-    AppName: '',
-    SpaceName: '',
-    SizeName: '',
-    FinishName: '',
-    ColorName: '',
+    CatId: '',
+    AppId: '',
+    SpaceId: '',
+    SizeId: '',
+    FinishId: '',
+    ColorId: '',
   });
   const [referenceData, setReferenceData] = useState({
     categories: [],
@@ -73,36 +73,30 @@ export default function AddTilePage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
-    // Clear validation error when user starts typing
+
     if (validationErrors[name]) {
       setValidationErrors(prev => {
-        const newErrors = {...prev};
+        const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
       });
     }
   };
 
-  const getIdFromName = (dataArray, name, idKey, nameKey) => {
-    const item = dataArray.find((item) => item && item[nameKey] === name);
-    return item ? item[idKey] : '';
-  };
-
   const validateForm = () => {
     const errors = {};
-    const fields = [
+    const requiredFields = [
       { name: 'SkuName', label: 'SKU Name' },
       { name: 'SkuCode', label: 'SKU Code' },
-      { name: 'CatName', label: 'Category' },
-      { name: 'AppName', label: 'Application' },
-      { name: 'SpaceName', label: 'Space' },
-      { name: 'SizeName', label: 'Size' },
-      { name: 'FinishName', label: 'Finish' },
-      { name: 'ColorName', label: 'Color' }
+      { name: 'CatId', label: 'Category' },
+      { name: 'AppId', label: 'Application' },
+      { name: 'SpaceId', label: 'Space' },
+      { name: 'SizeId', label: 'Size' },
+      { name: 'FinishId', label: 'Finish' },
+      { name: 'ColorId', label: 'Color' }
     ];
 
-    fields.forEach(field => {
+    requiredFields.forEach(field => {
       const value = formData[field.name];
       if (!value || value.trim() === '') {
         errors[field.name] = `${field.label} is required.`;
@@ -117,10 +111,13 @@ export default function AddTilePage() {
     return Object.keys(errors).length === 0;
   };
 
+
+
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsSubmitted(true);
-    
+
     if (validateForm()) {
       setConfirmMessage('Are you sure you want to save this tile?');
       setConfirmAction(() => () => addTile());
@@ -133,18 +130,30 @@ export default function AddTilePage() {
       const payload = new FormData();
       payload.append('SkuName', formData.SkuName);
       payload.append('SkuCode', formData.SkuCode);
-      payload.append('CatId', getIdFromName(referenceData.categories, formData.CatName, 'cat_id', 'cat_name'));
-      payload.append('CatName', formData.CatName);
-      payload.append('AppId', getIdFromName(referenceData.applications, formData.AppName, 'app_id', 'app_name'));
-      payload.append('AppName', formData.AppName);
-      payload.append('SpaceId', getIdFromName(referenceData.spaces, formData.SpaceName, 'space_id', 'space_name'));
-      payload.append('SpaceName', formData.SpaceName);
-      payload.append('SizeId', getIdFromName(referenceData.sizes, formData.SizeName, 'size_id', 'size_name'));
-      payload.append('SizeName', formData.SizeName);
-      payload.append('FinishId', getIdFromName(referenceData.finishes, formData.FinishName, 'finish_id', 'finish_name'));
-      payload.append('FinishName', formData.FinishName);
-      payload.append('ColorId', getIdFromName(referenceData.colors, formData.ColorName, 'color_id', 'color_name'));
-      payload.append('ColorName', formData.ColorName);
+
+      const getName = (list, idKey, nameKey, id) => {
+        const item = list.find((x) => x[idKey] === id);
+        return item ? item[nameKey] : '';
+      };
+
+      payload.append('CatId', formData.CatId);
+      payload.append('CatName', getName(referenceData.categories, 'cat_id', 'cat_name', formData.CatId));
+
+      payload.append('AppId', formData.AppId);
+      payload.append('AppName', getName(referenceData.applications, 'app_id', 'app_name', formData.AppId));
+
+      payload.append('SpaceId', formData.SpaceId);
+      payload.append('SpaceName', getName(referenceData.spaces, 'space_id', 'space_name', formData.SpaceId));
+
+      payload.append('SizeId', formData.SizeId);
+      payload.append('SizeName', getName(referenceData.sizes, 'size_id', 'size_name', formData.SizeId));
+
+      payload.append('FinishId', formData.FinishId);
+      payload.append('FinishName', getName(referenceData.finishes, 'finish_id', 'finish_name', formData.FinishId));
+
+      payload.append('ColorId', formData.ColorId);
+      payload.append('ColorName', getName(referenceData.colors, 'color_id', 'color_name', formData.ColorId));
+
       payload.append('RequestBy', userId || '');
 
       setIsLoading(true);
@@ -185,15 +194,29 @@ export default function AddTilePage() {
     setConfirmAction(() => {});
   };
 
+  const dropdownFields = [
+    { label: 'Category', name: 'CatId', data: referenceData.categories, idKey: 'cat_id', nameKey: 'cat_name' },
+    { label: 'Application', name: 'AppId', data: referenceData.applications, idKey: 'app_id', nameKey: 'app_name' },
+    { label: 'Space', name: 'SpaceId', data: referenceData.spaces, idKey: 'space_id', nameKey: 'space_name' },
+    { label: 'Size', name: 'SizeId', data: referenceData.sizes, idKey: 'size_id', nameKey: 'size_name' },
+    { label: 'Finish', name: 'FinishId', data: referenceData.finishes, idKey: 'finish_id', nameKey: 'finish_name' },
+    { label: 'Color', name: 'ColorId', data: referenceData.colors, idKey: 'color_id', nameKey: 'color_name' }
+  ];
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Topbar />
-        <div className="p-5 flex-1 overflow-hidden">
+
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto p-5">
           <Breadcrumbs currentPage="Add Tile" />
-          <div className="flex justify-center items-start px-4 py-4 h-full">
-            <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col h-full border border-gray-200 dark:border-gray-700">
+
+          <div className="flex justify-center items-start px-4 py-4">
+            <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg 
+                            p-6 flex flex-col border border-gray-200 dark:border-gray-700 
+                            overflow-y-auto max-h-[calc(100vh-150px)]">
               <h2 className="text-2xl font-bold text-green-700 dark:text-green-400 mb-2">
                 Add New Tile
               </h2>
@@ -201,75 +224,78 @@ export default function AddTilePage() {
                 Fill in the details below to create a new tile record. All fields are required.
               </p>
 
-              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-green-500 dark:scrollbar-thumb-green-600 scrollbar-track-gray-200 dark:scrollbar-track-gray-700 rounded-md">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    {/* SKU Name */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SKU Name</label>
-                      <input
-                        type="text"
-                        name="SkuName"
-                        value={formData.SkuName}
-                        onChange={handleChange}
-                        placeholder="Enter SKU Name"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-green-500"
-                        required
-                      />
-                      {isSubmitted && validationErrors.SkuName && (
-                        <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuName}</p>
-                      )}
-                    </div>
-
-                    {/* SKU Code */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SKU Code</label>
-                      <input
-                        type="text"
-                        name="SkuCode"
-                        value={formData.SkuCode}
-                        onChange={handleChange}
-                        placeholder="Enter SKU Code"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-green-500"
-                        required
-                      />
-                      {isSubmitted && validationErrors.SkuCode && (
-                        <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuCode}</p>
-                      )}
-                    </div>
-
-                    {/* Select dropdowns */}
-                    {[
-                      { label: 'Category', name: 'CatName', data: referenceData.categories, idKey: 'cat_id', nameKey: 'cat_name' },
-                      { label: 'Application', name: 'AppName', data: referenceData.applications, idKey: 'app_id', nameKey: 'app_name' },
-                      { label: 'Space', name: 'SpaceName', data: referenceData.spaces, idKey: 'space_id', nameKey: 'space_name' },
-                      { label: 'Size', name: 'SizeName', data: referenceData.sizes, idKey: 'size_id', nameKey: 'size_name' },
-                      { label: 'Finish', name: 'FinishName', data: referenceData.finishes, idKey: 'finish_id', nameKey: 'finish_name' },
-                      { label: 'Color', name: 'ColorName', data: referenceData.colors, idKey: 'color_id', nameKey: 'color_name' }
-                    ].map((field, idx) => (
-                      <div key={idx}>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{field.label}</label>
-                        <select
-                          name={field.name}
-                          value={formData[field.name]}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-green-500"
-                          required
-                          style={{ appearance: 'none' }}
-                        >
-                          <option value="">Select {field.label}</option>
-                          {field.data.map((item) => (
-                            <option key={item[field.idKey]} value={item[field.nameKey]}>
-                              {item[field.nameKey]}
-                            </option>
-                          ))}
-                        </select>
-                        {isSubmitted && validationErrors[field.name] && (
-                          <p className="mt-1 text-xs text-orange-600">{validationErrors[field.name]}</p>
-                        )}
-                      </div>
-                    ))}
+              <form onSubmit={handleSubmit} className="flex flex-col">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {/* SKU Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      SKU Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="SkuName"
+                      value={formData.SkuName}
+                      onChange={handleChange}
+                      placeholder="Enter SKU Name"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                                 text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+                                 focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                    {isSubmitted && validationErrors.SkuName && (
+                      <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuName}</p>
+                    )}
                   </div>
+
+                  {/* SKU Code */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      SKU Code <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="SkuCode"
+                      value={formData.SkuCode}
+                      onChange={handleChange}
+                      placeholder="Enter SKU Code"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                                 text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+                                 focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                    {isSubmitted && validationErrors.SkuCode && (
+                      <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuCode}</p>
+                    )}
+                  </div>
+
+                  {/* Dropdowns */}
+                  {dropdownFields.map((field, idx) => (
+                    <div key={idx} className="relative overflow-visible">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {field.label} <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name={field.name}
+                        value={formData[field.name]}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                                   text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+                                   focus:ring-2 focus:ring-green-500 appearance-none 
+                                   max-h-48 overflow-y-auto"
+                        required
+                      >
+                        <option value="">Select {field.label}</option>
+                        {field.data.map((item) => (
+                          <option key={item[field.idKey]} value={item[field.idKey]}>
+                            {item[field.nameKey]}
+                          </option>
+                        ))}
+                      </select>
+                      {isSubmitted && validationErrors[field.name] && (
+                        <p className="mt-1 text-xs text-orange-600">{validationErrors[field.name]}</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
 
                 {/* Actions */}
@@ -277,14 +303,17 @@ export default function AddTilePage() {
                   <button
                     type="button"
                     onClick={() => navigate(-1)}
-                    className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                    className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
+                               text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 
+                               hover:bg-gray-50 dark:hover:bg-gray-600"
                     disabled={isLoading}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm 
+                               focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                     disabled={isLoading}
                   >
                     {isLoading ? 'Saving...' : 'Save'}
@@ -297,7 +326,7 @@ export default function AddTilePage() {
 
         {/* Alert */}
         {showAlert && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
               <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{alertMessage}</p>
               <button
@@ -312,7 +341,7 @@ export default function AddTilePage() {
 
         {/* Confirm */}
         {showConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
               <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{confirmMessage}</p>
               <div className="flex justify-center gap-3">
@@ -335,7 +364,7 @@ export default function AddTilePage() {
 
         {/* Loader */}
         {isLoading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
             <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>
           </div>
         )}

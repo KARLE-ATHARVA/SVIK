@@ -25,6 +25,7 @@ import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
 import RegisterPage from './pages/RegisterPage';
 import AddTilePage from './pages/AddTilePage';
+import EditTilePage from './pages/EditTilePage';
 
 export default function App() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/loginMaster" element={<LoginMasterPage />} />
             <Route path="/planMaster" element={<PlanMasterPage />} />
             <Route path="/add-tile" element={<AddTilePage />} />
+            <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
           </Routes>
         </Router>
       </SidebarProvider>

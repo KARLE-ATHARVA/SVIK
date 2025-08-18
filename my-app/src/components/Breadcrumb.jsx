@@ -6,7 +6,13 @@ export default function Breadcrumb() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const pathnames = location.pathname.split('/').filter(x => x);
+  // Split pathname and filter empty segments
+  let pathnames = location.pathname.split('/').filter(x => x);
+
+  // If the last segment is a numeric ID, drop it
+  if (pathnames.length > 1 && /^\d+$/.test(pathnames[pathnames.length - 1])) {
+    pathnames = pathnames.slice(0, -1);
+  }
 
   const handleClick = (index) => {
     const to = '/' + pathnames.slice(0, index + 1).join('/');
@@ -14,9 +20,8 @@ export default function Breadcrumb() {
   };
 
   const formatName = (name) => {
-    // Remove 'Master' (case-insensitive) and capitalize first letter
-    return name.replace(/master/i, '').trim().charAt(0).toUpperCase() +
-           name.replace(/master/i, '').trim().slice(1);
+    const cleaned = name.replace(/master/i, '').trim();
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   };
 
   return (

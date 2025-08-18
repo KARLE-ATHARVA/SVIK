@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
@@ -35,7 +34,6 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
 const userId = localStorage.getItem('userid');
 
 export default function UserMasterPage() {
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [users, setUsers] = useState([]);
   const [editId, setEditId] = useState(null);
@@ -55,12 +53,11 @@ export default function UserMasterPage() {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
-  const [fadeIn, setFadeIn] = useState(false);
 
   const fetchUsers = async () => {
     try {
       const res = await axios.get(`${baseURL}/GetUserList`);
-      setUsers(res.data);
+      setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching users', err);
       setError('Error fetching users: ' + err.message);
@@ -68,30 +65,32 @@ export default function UserMasterPage() {
   };
 
   useEffect(() => {
-    setFadeIn(true);
     fetchUsers();
   }, []);
 
-  const filtered = users.filter(
-    (user) =>
-      user.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
-  );
+  const filtered = users.filter((user) => {
+    const name = (user?.user_name ?? '').toLowerCase();
+    const email = (user?.email_id ?? '').toLowerCase();
+    const blocked = (user?.block ? 'yes' : 'no').toLowerCase();
+    const q = (searchTerm ?? '').toLowerCase();
+    return name.includes(q) || email.includes(q) || blocked.includes(q);
+  });
 
-  const sorted = React.useMemo(() => {
-    let sortableItems = [...filtered];
-    if (sortConfig.key !== '') {
-      sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
-        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+  const sorted = useMemo(() => {
+    const items = [...filtered];
+    if (sortConfig.key) {
+      items.sort((a, b) => {
+        const aVal = (a?.[sortConfig.key] ?? '').toString().toLowerCase();
+        const bVal = (b?.[sortConfig.key] ?? '').toString().toLowerCase();
+        if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
         return 0;
       });
     }
-    return sortableItems;
+    return items;
   }, [filtered, sortConfig]);
 
-  const totalPages = Math.ceil(sorted.length / entriesPerPage);
+  const totalPages = Math.ceil(sorted.length / entriesPerPage) || 0;
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentUsers = sorted.slice(indexOfFirst, indexOfLast);
@@ -106,15 +105,15 @@ export default function UserMasterPage() {
 
   const startEditing = (user) => {
     setEditId(user.user_id);
-    setEditData({ 
+    setEditData({
       UserId: user.user_id,
-      CompId: user.comp_id,
-      UserName: user.user_name,
-      EmailId: user.email_id,
-      ContNumber: user.cont_number,
-      ProfileId: user.profile_id,
+      CompId: user.comp_id ?? '',
+      UserName: user.user_name ?? '',
+      EmailId: user.email_id ?? '',
+      ContNumber: user.cont_number ?? '',
+      ProfileId: user.profile_id ?? '',
       RequestBy: userId,
-      block: user.block
+      block: !!user.block
     });
   };
 
@@ -124,81 +123,72 @@ export default function UserMasterPage() {
   };
 
   const handleEditChange = (field, value) => {
-    setEditData({ ...editData, [field]: value });
+    setEditData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const confirmSave = () => {
-    setConfirmation({
-      show: true,
-      message: 'Are you sure you want to save changes?',
-      onConfirm: async () => {
-        try {
-          const formData = new FormData();
-          formData.append('UserId', editData.UserId);
-          formData.append('CompId', editData.CompId);
-          formData.append('UserName', editData.UserName);
-          formData.append('EmailId', editData.EmailId);
-          formData.append('ContNumber', editData.ContNumber);
-          formData.append('ProfileId', editData.ProfileId);
-          formData.append('RequestBy', editData.RequestBy);
-          formData.append('block', editData.block ? '1' : '0');
+const confirmSave = () => {
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to save changes?',
+    onConfirm: async () => {
+      try {
+        // Build form-data for the EditUser API
+        const formData = new FormData();
+        Object.entries(editData).forEach(([k, v]) =>
+          formData.append(k, k === 'block' ? (v ? '1' : '0') : v)
+        );
 
-          const res = await axios.post(`${baseURL}/EditUser`, formData);
-          if (res.data === 'success') {
-            fetchUsers();
-            cancelEditing();
-          } else {
-            setError(res.data === 'alreadyexists' ? 'User already exists' : res.data);
-          }
-        } catch (err) {
-          console.error('Edit failed', err);
-          setError('Edit failed: ' + err.message);
+        // Call EditUser
+        const res = await axios.post(`${baseURL}/EditUser`, formData);
+
+        // If the block status has changed, toggle it via BlockUser API
+        const original = users.find((u) => u.user_id === editData.UserId);
+        if (original && original.block !== editData.block) {
+          await axios.get(
+            `${baseURL}/BlockUser/${userId}/${editData.UserId}/${editData.block ? 1 : 0}`
+          );
         }
-        setConfirmation({ ...confirmation, show: false });
-      },
-    });
-  };
 
-  const confirmDelete = (id) => {
+        if (res.data === 'success') {
+          await fetchUsers();
+          cancelEditing();
+        } else {
+          setError(
+            res.data === 'alreadyexists'
+              ? 'User already exists'
+              : res.data ?? 'Edit failed'
+          );
+        }
+      } catch (err) {
+        console.error('Edit failed', err);
+        setError('Edit failed: ' + err.message);
+      }
+      setConfirmation((prev) => ({ ...prev, show: false }));
+    }
+  });
+};
+
+  const confirmDelete = (id, blockStatus) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this user?',
       onConfirm: async () => {
         try {
-          const res = await axios.get(`${baseURL}/DeleteUser/${id}`);
-          if (res.data === 'success') fetchUsers();
+          // If not blocked already, block the user
+          if (!blockStatus) {
+            await axios.get(`${baseURL}/BlockUser/${userId}/${id}/1`);
+          }
+          await fetchUsers();
         } catch (err) {
           console.error('Delete failed', err);
           setError('Delete failed: ' + err.message);
         }
-        setConfirmation({ ...confirmation, show: false });
-      },
+        setConfirmation((prev) => ({ ...prev, show: false }));
+      }
     });
   };
 
-  const toggleBlock = async (user) => {
-    try {
-      const status = user.block ? 0 : 1;
-      const res = await axios.get(`${baseURL}/BlockUser/${userId}/${user.user_id}/${status}`);
-      if (res.data === 'success') fetchUsers();
-    } catch (err) {
-      console.error('Block toggle failed', err);
-      setError('Block toggle failed: ' + err.message);
-    }
-  };
-
-  const startAdding = () => {
-    setIsAdding(true);
-    setNewData({
-      CompId: '',
-      UserName: '',
-      EmailId: '',
-      ContNumber: '',
-      ProfileId: '',
-      RequestBy: userId,
-      block: false
-    });
-  };
+  const startAdding = () => setIsAdding(true);
 
   const cancelAdding = () => {
     setIsAdding(false);
@@ -218,34 +208,28 @@ export default function UserMasterPage() {
       setError('Please fill all required fields');
       return;
     }
-
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save this new user?',
       onConfirm: async () => {
         try {
           const formData = new FormData();
-          formData.append('CompId', newData.CompId);
-          formData.append('UserName', newData.UserName);
-          formData.append('EmailId', newData.EmailId);
-          formData.append('ContNumber', newData.ContNumber);
-          formData.append('ProfileId', newData.ProfileId);
-          formData.append('RequestBy', newData.RequestBy);
-          formData.append('block', newData.block ? '1' : '0');
-
+          Object.entries(newData).forEach(([k, v]) =>
+            formData.append(k, k === 'block' ? (v ? '1' : '0') : v)
+          );
           const res = await axios.post(`${baseURL}/AddUser`, formData);
           if (res.data === 'success') {
-            fetchUsers();
+            await fetchUsers();
             cancelAdding();
           } else {
-            setError(res.data === 'alreadyexists' ? 'User already exists' : res.data);
+            setError(res.data === 'alreadyexists' ? 'User already exists' : (res.data ?? 'Add failed'));
           }
         } catch (err) {
           console.error('Add failed', err);
           setError('Add failed: ' + err.message);
         }
-        setConfirmation({ ...confirmation, show: false });
-      },
+        setConfirmation((prev) => ({ ...prev, show: false }));
+      }
     });
   };
 
@@ -257,278 +241,153 @@ export default function UserMasterPage() {
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">User </h2>
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">User</h2>
             <Breadcrumb />
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
-              {error}
-              <button
-                className="float-right font-bold"
-                onClick={() => setError('')}
-              >
-                ×
-              </button>
-            </div>
-          )}
-
-          <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
-            {/* Show Entries - Leftmost */}
-            <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5">
-              <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
-              <select
-                value={entriesPerPage}
-                onChange={(e) => {
-                  setEntriesPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-              >
-                {[5, 10, 25, 50, 100].map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-              <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
-            </div>
-
-            {/* Search Input - Middle with controlled width */}
-            <div className="relative w-full sm:w-64">
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
-              />
-            </div>
-
-            {/* Add New User Button - Rightmost */}
-            {!isAdding && (
-              <div className="w-full sm:w-auto ml-auto">
-                <button
-                  className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg transition-colors duration-200"
-                  onClick={startAdding}
-                >
-                  <FaPlus className="mr-2" /> Add New User
-                </button>
+          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
+                {error}
+                <button className="float-right font-bold" onClick={() => setError('')}>×</button>
               </div>
             )}
-          </div>
-          <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-              <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
-                <tr>
-                  <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('user_name')}>
-                    User Name
-                    {sortConfig.key === 'user_name' && (
-                      <span className="ml-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
-                    )}
-                  </th>
-                  <th className="px-4 py-2 font-semibold text-left">Email</th>
-                  <th className="px-4 py-2 font-semibold text-left">Contact</th>
-                  <th className="px-4 py-2 font-semibold text-left">Company ID</th>
-                  <th className="px-4 py-2 font-semibold text-left">Profile ID</th>
-                  <th className="px-4 py-2 font-semibold text-left">Updated By</th>
-                  <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
-                  <th className="px-4 py-2 font-semibold text-left">Block</th>
-                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
-                {isAdding && (
-                  <tr className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
-                    <td className="px-4 py-2">
-                      <input
-                        value={newData.UserName}
-                        onChange={(e) => setNewData({ ...newData, UserName: e.target.value })}
-                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        placeholder="User Name"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        value={newData.EmailId}
-                        onChange={(e) => setNewData({ ...newData, EmailId: e.target.value })}
-                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        placeholder="Email"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        value={newData.ContNumber}
-                        onChange={(e) => setNewData({ ...newData, ContNumber: e.target.value })}
-                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        placeholder="Contact"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        value={newData.CompId}
-                        onChange={(e) => setNewData({ ...newData, CompId: e.target.value })}
-                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        placeholder="Company ID"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        value={newData.ProfileId}
-                        onChange={(e) => setNewData({ ...newData, ProfileId: e.target.value })}
-                        className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        placeholder="Profile ID"
-                      />
-                    </td>
-                    <td className="px-4 py-2">--</td>
-                    <td className="px-4 py-2">--</td>
-                    <td className="px-4 py-2">--</td>
-                    <td colSpan="2" className="px-4 py-2 space-x-2 flex">
-                      <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
-                        <FaSave size={22} />
-                      </button>
-                      <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
-                        <FaTimes size={22} />
-                      </button>
-                    </td>
-                  </tr>
-                )}
 
-                {currentUsers.map((user) => (
-                  <tr key={user.user_id} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
-                    <td className="px-4 py-2">
-                      {editId === user.user_id ? (
-                        <input
-                          value={editData.UserName}
-                          onChange={(e) => handleEditChange('UserName', e.target.value)}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        />
-                      ) : (
-                        user.user_name
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {editId === user.user_id ? (
-                        <input
-                          value={editData.EmailId}
-                          onChange={(e) => handleEditChange('EmailId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        />
-                      ) : (
-                        user.email_id
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {editId === user.user_id ? (
-                        <input
-                          value={editData.ContNumber}
-                          onChange={(e) => handleEditChange('ContNumber', e.target.value)}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        />
-                      ) : (
-                        user.cont_number
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {editId === user.user_id ? (
-                        <input
-                          value={editData.CompId}
-                          onChange={(e) => handleEditChange('CompId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        />
-                      ) : (
-                        user.comp_id
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {editId === user.user_id ? (
-                        <input
-                          value={editData.ProfileId}
-                          onChange={(e) => handleEditChange('ProfileId', e.target.value)}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                        />
-                      ) : (
-                        user.profile_id
-                      )}
-                    </td>
-                    <td className="px-4 py-2">{user.updated_by}</td>
-                    <td className="px-4 py-2">{new Date(user.updated_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        onClick={() => toggleBlock(user)}
-                        className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${
-                          user.block ? 'bg-red-600' : 'bg-green-600'
-                        }`}
-                      >
-                        {user.block ? 'Yes' : 'No'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 space-x-2 flex">
-                      {editId === user.user_id ? (
-                        <>
-                          <button onClick={confirmSave} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
-                            <FaSave size={18} />
-                          </button>
-                          <button onClick={cancelEditing} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300">
-                            <FaTimes size={18} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={() => startEditing(user)} className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300">
-                            <FaEdit size={18} />
-                          </button>
-                          <button onClick={() => confirmDelete(user.user_id)} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                            <FaTrash size={18} />
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
-            <span>
-              Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries
-            </span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
-              >
-                Previous
-              </button>
-              {[...Array(totalPages).keys()].map((num) => (
-                <button
-                  key={num + 1}
-                  onClick={() => setCurrentPage(num + 1)}
-                  className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}
+            <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
+              <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1">
+                <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
+                <select
+                  value={entriesPerPage}
+                  onChange={(e) => {
+                    setEntriesPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="border-none focus:ring-2 focus:ring-green-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
                 >
-                  {num + 1}
-                </button>
-              ))}
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
-              >
-                Next
-              </button>
+                  {[5, 10, 25, 50, 100].map(option => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="border border-gray-300 dark:border-gray-600 rounded px-5 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
+                />
+              </div>
+
+              {!isAdding && (
+                <div className="w-full sm:w-auto ml-auto">
+                  <button
+                    className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium"
+                    onClick={startAdding}
+                  >
+                    <FaPlus className="mr-2" /> Add New User
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('user_name')}>User Name</th>
+                    <th className="px-4 py-2 font-semibold text-left">Email</th>
+                    <th className="px-4 py-2 font-semibold text-left">Contact</th>
+
+                    <th className="px-4 py-2 font-semibold text-left">Updated By</th>
+                    <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
+                    <th className="px-4 py-2 font-semibold text-left">Block</th>
+                    <th className="px-4 py-2 font-semibold text-left">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
+                  {isAdding && (
+                    <tr>
+                      <td className="px-4 py-2"><input value={newData.UserName} onChange={(e) => setNewData({ ...newData, UserName: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.EmailId} onChange={(e) => setNewData({ ...newData, EmailId: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.ContNumber} onChange={(e) => setNewData({ ...newData, ContNumber: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.CompId} onChange={(e) => setNewData({ ...newData, CompId: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.ProfileId} onChange={(e) => setNewData({ ...newData, ProfileId: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2 space-x-2 flex">
+                        <button onClick={saveAdding} className="text-green-600"><FaSave size={20} /></button>
+                        <button onClick={cancelAdding} className="text-gray-600"><FaTimes size={20} /></button>
+                      </td>
+                    </tr>
+                  )}
+
+                  {currentUsers.map((user) => (
+                    <tr key={user.user_id}>
+                      <td className="px-4 py-2">
+                        {editId === user.user_id ? (
+                          <input value={editData.UserName} onChange={(e) => handleEditChange('UserName', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" />
+                        ) : user.user_name}
+                      </td>
+                      <td className="px-4 py-2">{editId === user.user_id ? <input value={editData.EmailId} onChange={(e) => handleEditChange('EmailId', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /> : user.email_id}</td>
+                      <td className="px-4 py-2">{editId === user.user_id ? <input value={editData.ContNumber} onChange={(e) => handleEditChange('ContNumber', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /> : user.cont_number}</td>
+
+                      <td className="px-4 py-2">{user.updated_by ?? '--'}</td>
+                      <td className="px-4 py-2">{user.updated_date ? new Date(user.updated_date).toLocaleDateString() : '--'}</td>
+                      <td className="px-4 py-2">
+                        {editId === user.user_id ? (
+                          <span onClick={() => handleEditChange('block', !editData.block)} className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${editData.block ? 'bg-red-600' : 'bg-green-600'}`}>
+                            {editData.block ? 'Yes' : 'No'}
+                          </span>
+                        ) : (
+                          <span className={`px-3 py-1 rounded-full text-white text-xs ${user.block ? 'bg-red-600' : 'bg-green-600'}`}>
+                            {user.block ? 'Yes' : 'No'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 space-x-2 flex">
+                        {editId === user.user_id ? (
+                          <>
+                            <button onClick={confirmSave} className="text-green-600"><FaSave size={22} /></button>
+                            <button onClick={cancelEditing} className="text-gray-600"><FaTimes size={22} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => startEditing(user)} className="text-yellow-500"><FaEdit size={18} /></button>
+                            <button onClick={() => confirmDelete(user.user_id, user.block)} className="text-red-500"><FaTrash size={18} /></button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+              <span>Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries</span>
+              <div className="flex gap-1">
+                <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200">Previous</button>
+                {[...Array(totalPages).keys()].map((num) => (
+                  <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>{num + 1}</button>
+                ))}
+                <button onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))} disabled={currentPage === totalPages || totalPages === 0} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200">Next</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {confirmation.show && (
-        <ConfirmationModal
-          message={confirmation.message}
-          onConfirm={confirmation.onConfirm}
-          onCancel={() => setConfirmation({ ...confirmation, show: false })}
-        />
-      )}
+        {confirmation.show && (
+          <ConfirmationModal message={confirmation.message} onConfirm={confirmation.onConfirm} onCancel={() => setConfirmation((prev) => ({ ...prev, show: false }))} />
+        )}
+      </div>
     </div>
   );
 }
