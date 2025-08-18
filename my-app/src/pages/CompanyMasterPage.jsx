@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSun, FaMoon } from 'react-icons/fa';
 
-const baseURL = process.env.REACT_APP_API_BASE_URL;
+const baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000'; // Fallback if env var is undefined
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -21,7 +21,7 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
           </button>
           <button
             className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
-            onClick={onConfirm}
+            onConfirm={onConfirm}
           >
             Yes
           </button>
@@ -57,9 +57,34 @@ export default function CompanyMasterPage() {
     onConfirm: () => {},
   });
   const [error, setError] = useState('');
+  const [darkMode, setDarkMode] = useState(false);
 
-  // Current timestamp in IST
-  const currentDateTime = '2025-08-05T23:32:00+05:30';
+  // Get current timestamp in IST
+  const getCurrentIST = () => {
+    return new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+  };
+
+  useEffect(() => {
+    // Check local storage for dark mode preference
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    setDarkMode(isDarkMode);
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', newDarkMode);
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -71,8 +96,7 @@ export default function CompanyMasterPage() {
           },
         });
         const data = await response.json();
-        console.log('API Response:', data);
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           const mappedCompanies = data.map(comp => ({
             comp_id: comp.CompId || 0,
             plan_id: comp.PlanId || 0,
@@ -85,20 +109,21 @@ export default function CompanyMasterPage() {
             country: comp.Country || '',
             block: comp.Block || false,
             created_by: comp.CreatedBy || 0,
-            created_date: comp.CreatedDate || currentDateTime,
+            created_date: comp.CreatedDate || getCurrentIST(),
             modify_by: comp.ModifyBy || 0,
-            modify_date: comp.ModifyDate || currentDateTime,
+            modify_date: comp.ModifyDate || getCurrentIST(),
           }));
           setCompanies(mappedCompanies);
         } else {
-          setError('Failed to fetch company list: Invalid response format');
+          setCompanies([]);
+          setError('No companies found');
         }
       } catch (err) {
         setError('Error fetching company list: ' + err.message);
       }
     };
     fetchCompanies();
-  }, []);
+  }, []); // Empty dependency array to run only on mount
 
   const startEditing = (comp) => {
     setEditId(comp.comp_id);
@@ -150,20 +175,20 @@ export default function CompanyMasterPage() {
           comp.comp_id === editId
             ? {
                 ...comp,
-                plan_id: parseInt(editData.plan_id) || comp.plan_id,
+                plan_id: editData.plan_id || comp.plan_id,
                 comp_name: editData.comp_name || comp.comp_name,
                 comp_address: editData.comp_address || comp.comp_address,
                 comp_address1: editData.comp_address1 || comp.comp_address1,
-                pin_code: parseInt(editData.pin_code) || comp.pin_code,
+                pin_code: editData.pin_code || comp.pin_code,
                 city: editData.city || comp.city,
                 state: editData.state || comp.state,
                 country: editData.country || comp.country,
-                modify_by: parseInt(editData.modify_by) || comp.modify_by,
-                modify_date: currentDateTime,
+                modify_by: editData.modify_by || comp.modify_by,
+                modify_date: getCurrentIST(),
                 block: editData.block || comp.block,
               }
             : comp
-        ).sort((a, b) => a.comp_id - b.comp_id));
+        ));
         setEditId(null);
         setEditData({});
         setConfirmation({ show: false, message: '', onConfirm: () => {} });
@@ -260,21 +285,21 @@ export default function CompanyMasterPage() {
       if (result === 'success') {
         const newCompany = {
           comp_id: companies.length ? Math.max(...companies.map(c => c.comp_id)) + 1 : 1,
-          plan_id: parseInt(newData.PlanId) || 0,
+          plan_id: newData.PlanId || 0,
           comp_name: newData.CompName,
           comp_address: newData.Address || '',
           comp_address1: newData.Address1 || '',
-          pin_code: parseInt(newData.PinCode) || 0,
+          pin_code: newData.PinCode || 0,
           city: newData.City || '',
           state: newData.State || '',
           country: newData.Country || '',
           block: newData.block || false,
-          created_by: parseInt(newData.RequestBy) || 0,
-          created_date: currentDateTime,
-          modify_by: parseInt(newData.RequestBy) || 0,
-          modify_date: currentDateTime,
+          created_by: newData.RequestBy || 0,
+          created_date: getCurrentIST(),
+          modify_by: newData.RequestBy || 0,
+          modify_date: getCurrentIST(),
         };
-        setCompanies([...companies, newCompany].sort((a, b) => a.comp_id - b.comp_id));
+        setCompanies([...companies, newCompany]);
         cancelAdding();
         setConfirmation({ show: false, message: '', onConfirm: () => {} });
       } else if (result === 'alreadyexists') {
@@ -308,7 +333,7 @@ export default function CompanyMasterPage() {
       if (result === 'success') {
         setCompanies(companies.map(c =>
           c.comp_id === comp.comp_id
-            ? { ...c, block: status === 1, modify_date: currentDateTime }
+            ? { ...c, block: status === 1, modify_date: getCurrentIST() }
             : c
         ));
       } else {
@@ -330,233 +355,234 @@ export default function CompanyMasterPage() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
         <div className="flex-1 p-6 overflow-auto">
-          
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Company</h2>
+            <div className="flex items-center space-x-4">
+              <Breadcrumbs currentPage="Company Master" />
+            </div>
+          </div>
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 dark:bg-red-900 dark:border-red-700 dark:text-red-300">
               {error}
               <button
-                className="ml-4 text-red-700 hover:text-red-900"
+                className="ml-4 text-red-700 hover:text-red-900 dark:text-red-300 dark:hover:text-red-100"
                 onClick={() => setError('')}
               >
                 Close
               </button>
             </div>
           )}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Company</h2>
-            <Breadcrumbs currentPage="Company Master" />
-          </div>
-          <div className="mb-4 flex justify-between items-center">
-            <input
-              type="text"
-              placeholder="Search by Company Name..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value || '')}
-              className="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600 w-1/3"
-            />
-            {!isAdding && (
-              <button
-                className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                onClick={startAdding}
-              >
-                <FaPlus className="mr-2" /> Add New Company
-              </button>
-            )}
-            
-          </div>
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full text-sm">
-              <thead className="bg-green-100 text-gray-800">
-                <tr>
-                  <th className="px-4 py-2 font-semibold text-left">Comp ID</th>
-                  <th className="px-4 py-2 font-semibold text-left">Plan ID</th>
-                  <th className="px-4 py-2 font-semibold text-left">Company Name</th>
-                  <th className="px-4 py-2 font-semibold text-left">Address</th>
-                  <th className="px-4 py-2 font-semibold text-left">Address 2</th>
-                  <th className="px-4 py-2 font-semibold text-left">Pin Code</th>
-                  <th className="px-4 py-2 font-semibold text-left">City</th>
-                  <th className="px-4 py-2 font-semibold text-left">State</th>
-                  <th className="px-4 py-2 font-semibold text-left">Country</th>
-                  <th className="px-4 py-2 font-semibold text-left">Created By</th>
-                  <th className="px-4 py-2 font-semibold text-left">Block</th>
-                  <th className="px-4 py-2 font-semibold text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isAdding && (
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <td className="px-4 py-3">New</td>
-                    {[
-                      'PlanId',
-                      'CompName',
-                      'Address',
-                      'Address1',
-                      'PinCode',
-                      'City',
-                      'State',
-                      'Country',
-                    ].map(field => (
-                      <td key={field} className="px-4 py-3">
-                        <input
-                          value={newData[field]}
-                          onChange={e =>
-                            setNewData({ ...newData, [field]: e.target.value })
-                          }
-                          className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                          type={field === 'PinCode' ? 'number' : 'text'}
-                        />
-                      </td>
-                    ))}
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.RequestBy}
-                        onChange={e =>
-                          setNewData({ ...newData, RequestBy: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={e =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                        disabled
-                      />
-                    </td>
-                    <td className="px-4 py-3 flex space-x-2">
-                      <button
-                        onClick={confirmAdd}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <FaSave size={22} />
-                      </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                      >
-                        <FaTimes size={22} />
-                      </button>
-                    </td>
+          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
+            <div className="mb-4 flex justify-between items-center">
+              <input
+                type="text"
+                placeholder="Search by Company Name..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value || '')}
+                className="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600 w-1/3 dark:bg-gray-800 dark:text-gray-100"
+              />
+              {!isAdding && (
+                <button
+                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
+                  onClick={startAdding}
+                >
+                  <FaPlus className="mr-2" /> Add New Company
+                </button>
+              )}
+            </div>
+            <div className="overflow-x-auto bg-white rounded-lg shadow dark:bg-gray-800">
+              <table className="min-w-full text-sm">
+                <thead className="bg-green-100 text-gray-800 dark:bg-green-900 dark:text-gray-100">
+                  <tr>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Comp ID</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Plan ID</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Company Name</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Address</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Address 2</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Pin Code</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">City</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">State</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Country</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Created By</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Block</th>
+                    <th scope="col" className="px-4 py-2 font-semibold text-left">Actions</th>
                   </tr>
-                )}
-                {filteredCompanies.map(comp => (
-                  <tr key={comp.comp_id} className="border-b border-gray-200 dark:border-gray-700">
-                    <td className="px-4 py-3">{comp.comp_id}</td>
-                    {[
-                      'plan_id',
-                      'comp_name',
-                      'comp_address',
-                      'comp_address1',
-                      'pin_code',
-                      'city',
-                      'state',
-                      'country',
-                    ].map(field => (
-                      <td key={field} className="px-4 py-3">
-                        {editId === comp.comp_id ? (
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                  {isAdding && (
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-4 py-3">New</td>
+                      {[
+                        'PlanId',
+                        'CompName',
+                        'Address',
+                        'Address1',
+                        'PinCode',
+                        'City',
+                        'State',
+                        'Country',
+                      ].map(field => (
+                        <td key={field} className="px-4 py-3">
                           <input
-                            value={editData[field]}
+                            value={newData[field]}
                             onChange={e =>
-                              handleEditChange(field, e.target.value)
+                              setNewData({ ...newData, [field]: e.target.value })
                             }
                             className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                            type={field === 'pin_code' ? 'number' : 'text'}
+                            type={field === 'PinCode' ? 'number' : 'text'}
                           />
-                        ) : (
-                          comp[field]
-                        )}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3">
-                      {editId === comp.comp_id ? (
+                        </td>
+                      ))}
+                      <td className="px-4 py-3">
                         <input
                           type="number"
-                          value={editData.modify_by}
-                          onChange={e => handleEditChange('modify_by', e.target.value)}
+                          value={newData.RequestBy}
+                          onChange={e =>
+                            setNewData({ ...newData, RequestBy: e.target.value })
+                          }
                           className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                         />
-                      ) : (
-                        comp.created_by
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {editId === comp.comp_id ? (
+                      </td>
+                      <td className="px-4 py-2">
                         <input
                           type="checkbox"
-                          checked={editData.block}
-                          onChange={e => handleEditChange('block', e.target.checked)
+                          checked={newData.block}
+                          onChange={e =>
+                            setNewData({ ...newData, block: e.target.checked })
                           }
-                          className="dark:bg-gray-800 dark:border-gray-600"
+                          disabled
                         />
-                      ) : (
+                      </td>
+                      <td className="px-4 py-3 flex space-x-2">
                         <button
-                          onClick={() => toggleBlock(comp)}
-                          className={`px-2 py-1 rounded ${
-                            comp.block
-                              ? 'bg-red-600'
-                              : 'bg-green-600'
-                          } text-white`}
+                          onClick={confirmAdd}
+                          className="text-green-600 hover:text-green-800"
                         >
-                          {comp.block ? 'Yes' : 'No'}
+                          <FaSave size={22} />
                         </button>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 flex space-x-2">
-                      {editId === comp.comp_id ? (
-                        <>
+                        <button
+                          onClick={cancelAdding}
+                          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                          <FaTimes size={22} />
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                  {filteredCompanies.map(comp => (
+                    <tr key={comp.comp_id} className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="px-4 py-3">{comp.comp_id}</td>
+                      {[
+                        'plan_id',
+                        'comp_name',
+                        'comp_address',
+                        'comp_address1',
+                        'pin_code',
+                        'city',
+                        'state',
+                        'country',
+                      ].map(field => (
+                        <td key={field} className="px-4 py-3">
+                          {editId === comp.comp_id ? (
+                            <input
+                              value={editData[field]}
+                              onChange={e =>
+                                handleEditChange(field, e.target.value)
+                              }
+                              className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                              type={field === 'pin_code' ? 'number' : 'text'}
+                            />
+                          ) : (
+                            comp[field]
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3">
+                        {editId === comp.comp_id ? (
+                          <input
+                            type="number"
+                            value={editData.modify_by}
+                            onChange={e => handleEditChange('modify_by', e.target.value)}
+                            className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                          />
+                        ) : (
+                          comp.created_by
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {editId === comp.comp_id ? (
+                          <input
+                            type="checkbox"
+                            checked={editData.block}
+                            onChange={e => handleEditChange('block', e.target.checked)}
+                            className="dark:bg-gray-800 dark:border-gray-600"
+                          />
+                        ) : (
                           <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
+                            onClick={() => toggleBlock(comp)}
+                            className={`px-2 py-1 rounded ${
+                              comp.block
+                                ? 'bg-red-600'
+                                : 'bg-green-600'
+                            } text-white`}
                           >
-                            <FaSave size={22} />
+                            {comp.block ? 'Yes' : 'No'}
                           </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                          >
-                            <FaTimes size={22} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => startEditing(comp)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
-                            <FaEdit size={22} />
-                          </button>
-                          <button
-                            onClick={() => confirmDelete(comp.comp_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash size={22} />
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredCompanies.length === 0 && !isAdding && (
-              <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
-                No companies found
-              </div>
-            )}
+                        )}
+                      </td>
+                      <td className="px-4 py-3 flex space-x-2">
+                        {editId === comp.comp_id ? (
+                          <>
+                            <button
+                              onClick={confirmSave}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              <FaSave size={22} />
+                            </button>
+                            <button
+                              onClick={cancelEditing}
+                              className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                              <FaTimes size={22} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => startEditing(comp)}
+                              className="text-yellow-500 hover:text-yellow-700"
+                            >
+                              <FaEdit size={22} />
+                            </button>
+                            <button
+                              onClick={() => confirmDelete(comp.comp_id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <FaTrash size={22} />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredCompanies.length === 0 && !isAdding && (
+                <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
+                  No companies found
+                </div>
+              )}
+            </div>
           </div>
         </div>
+        {confirmation.show && (
+          <ConfirmationModal
+            message={confirmation.message}
+            onConfirm={confirmation.onConfirm}
+            onCancel={() => setConfirmation({ show: false, message: '', onConfirm: () => {} })}
+          />
+        )}
       </div>
-      {confirmation.show && (
-        <ConfirmationModal
-          message={confirmation.message}
-          onConfirm={confirmation.onConfirm}
-          onCancel={() => setConfirmation({ show: false, message: '', onConfirm: () => {} })}
-        />
-      )}
     </div>
   );
 }
