@@ -11,12 +11,12 @@ export default function AddTilePage() {
   const [formData, setFormData] = useState({
     SkuName: '',
     SkuCode: '',
-    CatName: '',
-    AppName: '',
-    SpaceName: '',
-    SizeName: '',
-    FinishName: '',
-    ColorName: '',
+    CatId: '',
+    AppId: '',
+    SpaceId: '',
+    SizeId: '',
+    FinishId: '',
+    ColorId: '',
   });
   const [referenceData, setReferenceData] = useState({
     categories: [],
@@ -32,6 +32,8 @@ export default function AddTilePage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState(() => {});
+  const [validationErrors, setValidationErrors] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const userId = localStorage.getItem('userid');
   const navigate = useNavigate();
 
@@ -43,12 +45,12 @@ export default function AddTilePage() {
     setIsLoading(true);
     try {
       const [categories, applications, spaces, sizes, finishes, colors] = await Promise.all([
-        axios.get(`${baseURL}/GetCategoryList`).catch(err => { console.error('GetCategoryList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetApplicationList`).catch(err => { console.error('GetApplicationList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetSpaceList`).catch(err => { console.error('GetSpaceList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetSizeList`).catch(err => { console.error('GetSizeList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetFinishList`).catch(err => { console.error('GetFinishList error:', err); throw err; }),
-        axios.get(`${baseURL}/GetColorList`).catch(err => { console.error('GetColorList error:', err); throw err; })
+        axios.get(`${baseURL}/GetCategoryList`),
+        axios.get(`${baseURL}/GetApplicationList`),
+        axios.get(`${baseURL}/GetSpaceList`),
+        axios.get(`${baseURL}/GetSizeList`),
+        axios.get(`${baseURL}/GetFinishList`),
+        axios.get(`${baseURL}/GetColorList`)
       ]);
       setReferenceData({
         categories: categories.data || [],
@@ -70,18 +72,53 @@ export default function AddTilePage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
-  const getIdFromName = (dataArray, name, idKey, nameKey) => {
-    const item = dataArray.find((item) => item && item[nameKey] === name);
-    return item ? item[idKey] : '';
+  const validateForm = () => {
+    const errors = {};
+    const requiredFields = [
+      { name: 'SkuName', label: 'SKU Name' },
+      { name: 'SkuCode', label: 'SKU Code' },
+      { name: 'CatId', label: 'Category' },
+      { name: 'AppId', label: 'Application' },
+      { name: 'SpaceId', label: 'Space' },
+      { name: 'SizeId', label: 'Size' },
+      { name: 'FinishId', label: 'Finish' },
+      { name: 'ColorId', label: 'Color' }
+    ];
+
+    requiredFields.forEach(field => {
+      const value = formData[field.name];
+      if (!value || value.trim() === '') {
+        errors[field.name] = `${field.label} is required.`;
+      } else if (field.name === 'SkuCode' && !/^[a-zA-Z0-9-]+$/.test(value)) {
+        errors[field.name] = 'SKU Code must contain only letters, numbers, and hyphens.';
+      } else if (field.name === 'SkuName' && value.length < 2) {
+        errors[field.name] = 'SKU Name must be at least 2 characters long.';
+      }
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setConfirmMessage('Are you sure you want to save this tile?');
-    setConfirmAction(() => () => addTile());
-    setShowConfirm(true);
+    setIsSubmitted(true);
+
+    if (validateForm()) {
+      setConfirmMessage('Are you sure you want to save this tile?');
+      setConfirmAction(() => () => addTile());
+      setShowConfirm(true);
+    }
   };
 
   const addTile = async () => {
@@ -89,18 +126,30 @@ export default function AddTilePage() {
       const payload = new FormData();
       payload.append('SkuName', formData.SkuName);
       payload.append('SkuCode', formData.SkuCode);
-      payload.append('CatId', getIdFromName(referenceData.categories, formData.CatName, 'cat_id', 'cat_name'));
-      payload.append('CatName', formData.CatName);
-      payload.append('AppId', getIdFromName(referenceData.applications, formData.AppName, 'app_id', 'app_name'));
-      payload.append('AppName', formData.AppName);
-      payload.append('SpaceId', getIdFromName(referenceData.spaces, formData.SpaceName, 'space_id', 'space_name'));
-      payload.append('SpaceName', formData.SpaceName);
-      payload.append('SizeId', getIdFromName(referenceData.sizes, formData.SizeName, 'size_id', 'size_name'));
-      payload.append('SizeName', formData.SizeName);
-      payload.append('FinishId', getIdFromName(referenceData.finishes, formData.FinishName, 'finish_id', 'finish_name'));
-      payload.append('FinishName', formData.FinishName);
-      payload.append('ColorId', getIdFromName(referenceData.colors, formData.ColorName, 'color_id', 'color_name'));
-      payload.append('ColorName', formData.ColorName);
+
+      const getName = (list, idKey, nameKey, id) => {
+        const item = list.find((x) => x[idKey] === id);
+        return item ? item[nameKey] : '';
+      };
+
+      payload.append('CatId', formData.CatId);
+      payload.append('CatName', getName(referenceData.categories, 'cat_id', 'cat_name', formData.CatId));
+
+      payload.append('AppId', formData.AppId);
+      payload.append('AppName', getName(referenceData.applications, 'app_id', 'app_name', formData.AppId));
+
+      payload.append('SpaceId', formData.SpaceId);
+      payload.append('SpaceName', getName(referenceData.spaces, 'space_id', 'space_name', formData.SpaceId));
+
+      payload.append('SizeId', formData.SizeId);
+      payload.append('SizeName', getName(referenceData.sizes, 'size_id', 'size_name', formData.SizeId));
+
+      payload.append('FinishId', formData.FinishId);
+      payload.append('FinishName', getName(referenceData.finishes, 'finish_id', 'finish_name', formData.FinishId));
+
+      payload.append('ColorId', formData.ColorId);
+      payload.append('ColorName', getName(referenceData.colors, 'color_id', 'color_name', formData.ColorId));
+
       payload.append('RequestBy', userId || '');
 
       setIsLoading(true);
@@ -141,287 +190,166 @@ export default function AddTilePage() {
     setConfirmAction(() => {});
   };
 
-  // Validation messages for each field
-  const getValidationMessage = (fieldName, value) => {
-    if (!value || value.trim() === '') {
-      return `${fieldName} is required.`;
-    }
-    if (fieldName === 'SkuCode' && !/^[a-zA-Z0-9-]+$/.test(value)) {
-      return 'SKU Code must contain only letters, numbers, and hyphens.';
-    }
-    if (fieldName === 'SkuName' && value.length < 2) {
-      return 'SKU Name must be at least 2 characters long.';
-    }
-    return '';
-  };
+  const dropdownFields = [
+    { label: 'Category', name: 'CatId', data: referenceData.categories, idKey: 'cat_id', nameKey: 'cat_name' },
+    { label: 'Application', name: 'AppId', data: referenceData.applications, idKey: 'app_id', nameKey: 'app_name' },
+    { label: 'Space', name: 'SpaceId', data: referenceData.spaces, idKey: 'space_id', nameKey: 'space_name' },
+    { label: 'Size', name: 'SizeId', data: referenceData.sizes, idKey: 'size_id', nameKey: 'size_name' },
+    { label: 'Finish', name: 'FinishId', data: referenceData.finishes, idKey: 'finish_id', nameKey: 'finish_name' },
+    { label: 'Color', name: 'ColorId', data: referenceData.colors, idKey: 'color_id', nameKey: 'color_name' }
+  ];
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-100 to-gray-200">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col h-screen">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Topbar />
-        <div className="p-6 flex-1 overflow-hidden">
+
+        {/* Main content */}
+        <div className="flex-1 overflow-y-auto p-5">
           <Breadcrumbs currentPage="Add Tile" />
-          <div className="mt-5">
-            <div className="bg-white shadow-xl rounded-xl p-4 h-full flex flex-col border border-gray-100">
-              <div className="card-header pb- border-b-2 border-indigo-200">
-                <h5 className="text-2xl font-semibold text-gray-800">Add Tile</h5>
-                <p className="text-sm text-gray-500 mb-2">Fill the form to add a new tile product. All fields are required.</p>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <form className="theme-form space-y-8 h-full" onSubmit={handleSubmit}>
-                  <div className="max-h-[calc(100vh-300px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-indigo-300 scrollbar-track-gray-100">
-                    <h6 className="text-lg font-medium text-gray-700 mb-5">Tile Information</h6>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="SkuName">SKU Name</label>
-                      <div className="col-sm-9">
-                        <input
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="SkuName"
-                          type="text"
-                          placeholder="Enter SKU Name"
-                          name="SkuName"
-                          value={formData.SkuName}
-                          onChange={handleChange}
-                          required
-                        />
-                        {getValidationMessage('SKU Name', formData.SkuName) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('SKU Name', formData.SkuName)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="SkuCode">SKU Code</label>
-                      <div className="col-sm-9">
-                        <input
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="SkuCode"
-                          type="text"
-                          placeholder="Enter SKU Code"
-                          name="SkuCode"
-                          value={formData.SkuCode}
-                          onChange={handleChange}
-                          required
-                        />
-                        {getValidationMessage('SKU Code', formData.SkuCode) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('SKU Code', formData.SkuCode)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <hr className="border-t-2 border-gray-200 my-6" />
-                    <h6 className="text-lg font-medium text-gray-700 mb-5">Tile Attributes</h6>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="CatName">Category</label>
-                      <div className="col-sm-9">
-                        <select
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="CatName"
-                          name="CatName"
-                          value={formData.CatName}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Select Category</option>
-                          {referenceData.categories.map((item) => (
-                            <option key={item.cat_id} value={item.cat_name}>
-                              {item.cat_name}
-                            </option>
-                          ))}
-                        </select>
-                        {getValidationMessage('Category', formData.CatName) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('Category', formData.CatName)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="AppName">Application</label>
-                      <div className="col-sm-9">
-                        <select
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="AppName"
-                          name="AppName"
-                          value={formData.AppName}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Select Application</option>
-                          {referenceData.applications.map((item) => (
-                            <option key={item.app_id} value={item.app_name}>
-                              {item.app_name}
-                            </option>
-                          ))}
-                        </select>
-                        {getValidationMessage('Application', formData.AppName) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('Application', formData.AppName)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="SpaceName">Space</label>
-                      <div className="col-sm-9">
-                        <select
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="SpaceName"
-                          name="SpaceName"
-                          value={formData.SpaceName}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Select Space</option>
-                          {referenceData.spaces.map((item) => (
-                            <option key={item.space_id} value={item.space_name}>
-                              {item.space_name}
-                            </option>
-                          ))}
-                        </select>
-                        {getValidationMessage('Space', formData.SpaceName) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('Space', formData.SpaceName)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="SizeName">Size</label>
-                      <div className="col-sm-9">
-                        <select
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="SizeName"
-                          name="SizeName"
-                          value={formData.SizeName}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Select Size</option>
-                          {referenceData.sizes.map((item) => (
-                            <option key={item.size_id} value={item.size_name}>
-                              {item.size_name}
-                            </option>
-                          ))}
-                        </select>
-                        {getValidationMessage('Size', formData.SizeName) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('Size', formData.SizeName)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="FinishName">Finish</label>
-                      <div className="col-sm-9">
-                        <select
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="FinishName"
-                          name="FinishName"
-                          value={formData.FinishName}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Select Finish</option>
-                          {referenceData.finishes.map((item) => (
-                            <option key={item.finish_id} value={item.finish_name}>
-                              {item.finish_name}
-                            </option>
-                          ))}
-                        </select>
-                        {getValidationMessage('Finish', formData.FinishName) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('Finish', formData.FinishName)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mb-5 row">
-                      <label className="col-sm-3 col-form-label text-right pr-4 text-gray-700 font-medium" htmlFor="ColorName">Color</label>
-                      <div className="col-sm-9">
-                        <select
-                          className="form-control w-full border-2 border-gray-200 rounded-lg p-3 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition duration-200"
-                          id="ColorName"
-                          name="ColorName"
-                          value={formData.ColorName}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Select Color</option>
-                          {referenceData.colors.map((item) => (
-                            <option key={item.color_id} value={item.color_name}>
-                              {item.color_name}
-                            </option>
-                          ))}
-                        </select>
-                        {getValidationMessage('Color', formData.ColorName) && (
-                          <div className="mt-1 text-sm text-orange-600 flex items-center">
-                            <span className="mr-1">⚠</span>
-                            {getValidationMessage('Color', formData.ColorName)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+
+          <div className="flex justify-center items-start px-4 py-4">
+            <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg 
+                            p-6 flex flex-col border border-gray-200 dark:border-gray-700 
+                            overflow-y-auto max-h-[calc(100vh-150px)]">
+              <h2 className="text-2xl font-bold text-green-700 dark:text-green-400 mb-2">
+                Add New Tile
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Fill in the details below to create a new tile record. All fields are required.
+              </p>
+
+              <form onSubmit={handleSubmit} className="flex flex-col">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {/* SKU Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      SKU Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="SkuName"
+                      value={formData.SkuName}
+                      onChange={handleChange}
+                      placeholder="Enter SKU Name"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                                 text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+                                 focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                    {isSubmitted && validationErrors.SkuName && (
+                      <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuName}</p>
+                    )}
                   </div>
-                </form>
-              </div>
-              <div className="card-footer p-4 border-t-2 border-gray-100 flex justify-end gap-4 bg-gray-50">
-                <button
-                  type="submit"
-                  onClick={handleSubmit}
-                  className="btn bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-2 rounded-lg shadow-md hover:from-indigo-600 hover:to-purple-700 transition duration-300 disabled:opacity-50"
-                  disabled={isLoading}
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => navigate(-1)}
-                  className="btn bg-gradient-to-r from-gray-400 to-gray-500 text-white px-6 py-2 rounded-lg shadow-md hover:from-gray-500 hover:to-gray-600 transition duration-300 disabled:opacity-50"
-                  disabled={isLoading}
-                >
-                  Cancel
-                </button>
-              </div>
+
+                  {/* SKU Code */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      SKU Code <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="SkuCode"
+                      value={formData.SkuCode}
+                      onChange={handleChange}
+                      placeholder="Enter SKU Code"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                                 text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+                                 focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                    {isSubmitted && validationErrors.SkuCode && (
+                      <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuCode}</p>
+                    )}
+                  </div>
+
+                  {/* Dropdowns */}
+                  {dropdownFields.map((field, idx) => (
+                    <div key={idx} className="relative overflow-visible">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {field.label} <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name={field.name}
+                        value={formData[field.name]}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                                   text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+                                   focus:ring-2 focus:ring-green-500 appearance-none 
+                                   max-h-48 overflow-y-auto"
+                        required
+                      >
+                        <option value="">Select {field.label}</option>
+                        {field.data.map((item) => (
+                          <option key={item[field.idKey]} value={item[field.idKey]}>
+                            {item[field.nameKey]}
+                          </option>
+                        ))}
+                      </select>
+                      {isSubmitted && validationErrors[field.name] && (
+                        <p className="mt-1 text-xs text-orange-600">{validationErrors[field.name]}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
+                               text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 
+                               hover:bg-gray-50 dark:hover:bg-gray-600"
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm 
+                               focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
+
+        {/* Alert */}
         {showAlert && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-2xl text-center w-[90%] max-w-md transform transition-all duration-300">
-              <p className="mb-4 text-xl font-semibold text-gray-800">{alertMessage}</p>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
+              <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{alertMessage}</p>
               <button
                 onClick={closeAlert}
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-5 py-2 rounded-lg hover:from-indigo-600 hover:to-purple-700 transition duration-300"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
               >
                 OK
               </button>
             </div>
           </div>
         )}
+
+        {/* Confirm */}
         {showConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-2xl text-center w-[90%] max-w-md transform transition-all duration-300">
-              <p className="mb-4 text-xl font-semibold text-gray-800">{confirmMessage}</p>
-              <div className="flex justify-center gap-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
+              <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{confirmMessage}</p>
+              <div className="flex justify-center gap-3">
                 <button
                   onClick={() => closeConfirm(true)}
-                  className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-5 py-2 rounded-lg hover:from-green-600 hover:to-teal-700 transition duration-300"
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                 >
                   Yes
                 </button>
                 <button
                   onClick={() => closeConfirm(false)}
-                  className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-5 py-2 rounded-lg hover:from-red-600 hover:to-pink-700 transition duration-300"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
                   No
                 </button>
@@ -429,9 +357,11 @@ export default function AddTilePage() {
             </div>
           </div>
         )}
+
+        {/* Loader */}
         {isLoading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="text-white text-xl font-semibold animate-pulse">Loading...</div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+            <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>
           </div>
         )}
       </div>
