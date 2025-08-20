@@ -5,6 +5,9 @@ import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
 import axios from 'axios';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
@@ -53,6 +56,7 @@ export default function ProfileMasterPage() {
       setProfiles(res.data);
     } catch (error) {
       console.error('Error fetching profiles:', error);
+      toast.error('Failed to fetch profiles');
     }
   };
 
@@ -114,15 +118,16 @@ export default function ProfileMasterPage() {
           const res = await axios.post(`${baseURL}/EditProfile`, formData);
 
           if (res.data === 'success') {
-            fetchProfiles();
-            cancelEditing();
-          } else {
-            alert(res.data === 'alreadyexists' ? 'Profile already exists!' : `Error: ${res.data}`);
-          }
-        } catch (err) {
-          console.error(err);
-          alert('Error saving profile');
-        }
+                                          fetchProfiles();
+                                          cancelEditing();
+                                          toast.success('Updated successfully!');
+                                        } else {
+                                          toast.error(res.data === 'alreadyexists' ? 'Profile already exists!' : `Error: ${res.data}`);
+                                        }
+                                      } catch (err) {
+                                        console.error('Edit failed', err);
+                                        toast.error('Error saving profile');
+                                      }
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -134,12 +139,13 @@ export default function ProfileMasterPage() {
       message: 'Are you sure you want to delete this profile?',
       onConfirm: async () => {
         try {
-          await axios.get(`${baseURL}/BlockProfile/${userId}/${profileId}/1`);
-          fetchProfiles();
-        } catch (err) {
-          console.error(err);
-          alert('Error deleting profile');
-        }
+                  await axios.get(`${baseURL}/BlockProfile/${userId}/${profileId}/1`);
+                  fetchProfiles();
+                  toast.success('Deleted successfully!');
+                } catch (err) {
+                  console.error('Delete failed', err);
+                  toast.error('Error deleting profile');
+                }
         setConfirmation({ ...confirmation, show: false });
       },
     });
@@ -167,7 +173,7 @@ export default function ProfileMasterPage() {
 
   const saveAdding = () => {
     if (!newData.name) {
-      alert('Please enter a name.');
+      toast.error('Please enter a name');
       return;
     }
     setConfirmation({
@@ -180,15 +186,16 @@ export default function ProfileMasterPage() {
           formData.append('RequestBy', newData.created_by);
           const res = await axios.post(`${baseURL}/AddProfile`, formData);
           if (res.data === 'success') {
-            fetchProfiles();
-            cancelAdding();
-          } else {
-            alert(res.data === 'alreadyexists' ? 'Profile already exists!' : `Error: ${res.data}`);
-          }
-        } catch (err) {
-          console.error(err);
-          alert('Error adding profile');
-        }
+                            fetchProfiles();
+                            cancelAdding();
+                            toast.success('Added successfully!');
+                          } else {
+                            toast.error(res.data === 'alreadyexists' ? 'Profile already exists!' : `Error: ${res.data}`);
+                          }
+                        } catch (err) {
+                          console.error('Add failed', err);
+                          toast.error('Error adding profile');
+                        } 
         setConfirmation({ ...confirmation, show: false });
       },
     });

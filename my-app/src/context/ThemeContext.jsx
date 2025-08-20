@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import  { React,createContext, useContext, useEffect, useState } from "react";
 
 const ThemeContext = createContext({ darkMode: false, toggleDarkMode: () => {} });
 
@@ -11,7 +11,7 @@ export const ThemeProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    const root = document.documentElement; // <html>
+    const root = document.documentElement; 
     root.classList.toggle("dark", darkMode);
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);

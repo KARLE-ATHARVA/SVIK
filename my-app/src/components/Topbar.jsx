@@ -4,9 +4,16 @@ import {
   FiMaximize2, FiMinimize2
 } from 'react-icons/fi';
 
+import { MdLanguage } from 'react-icons/md';
 import { FaMoon } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast, ToastContainer, Slide } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useTheme } from '../context/ThemeContext'; // <-- Import ThemeContext hook
+
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 export default function Topbar() {
   const navigate = useNavigate();
@@ -18,7 +25,64 @@ export default function Topbar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
 
-  const logout = () => navigate('/');
+  const logout = async () => {
+    try {
+      const userId = localStorage.getItem("userid");
+
+      if (!userId) {
+        toast.warn("No user found. Please log in again.", {
+          style: { fontSize: '14px', padding: '10px 20px', borderRadius: '10px' }
+        });
+        navigate("/");
+        return;
+      }
+
+      const toastId = toast.loading('Signing out...', {
+        style: { fontSize: '14px', padding: '10px 20px', borderRadius: '10px' }
+      });
+
+      const response = await axios.post(`${baseURL}/UserLogout`, {
+        userId: Number(userId),
+      }, {
+        headers: { "Content-Type": "application/json" }
+      });
+
+      if (response.data && typeof response.data === "string") {
+        if (response.data.includes("Logout successful")) {
+          localStorage.clear();
+          toast.update(toastId, {
+            render: "Logout successful!",
+            type: "success",
+            isLoading: false,
+            autoClose: 2000,
+            style: { fontSize: '14px', padding: '10px 20px', borderRadius: '10px' }
+          });
+          setTimeout(() => navigate("/"), 2000);
+        } else {
+          toast.update(toastId, {
+            render: response.data,
+            type: "error",
+            isLoading: false,
+            autoClose: 3000,
+            style: { fontSize: '14px', padding: '10px 20px', borderRadius: '10px' }
+          });
+        }
+      } else {
+        toast.update(toastId, {
+          render: "Unexpected response from server.",
+          type: "error",
+          isLoading: false,
+          autoClose: 3000,
+          style: { fontSize: '14px', padding: '10px 20px', borderRadius: '10px' }
+        });
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast.error(`Logout failed: ${error.message}`, {
+        style: { fontSize: '14px', padding: '10px 20px', borderRadius: '10px' }
+      });
+    }
+  };
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -31,6 +95,21 @@ export default function Topbar() {
   
 
   return (
+    <>
+          <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        transition={Slide}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+        toastClassName="text-sm"
+      />
     <div className="flex justify-between items-center bg-white dark:bg-[#1f2937] border-b border-gray-200 dark:border-gray-700 shadow-sm px-4 md:px-6 py-2 z-40 relative">
       <div className="hidden md:flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-300" />
       <div className="flex items-center space-x-4 text-gray-700 dark:text-gray-200 relative text-sm">
@@ -91,5 +170,6 @@ export default function Topbar() {
         </button>
       </div>
     </div>
+    </>
   );
 }

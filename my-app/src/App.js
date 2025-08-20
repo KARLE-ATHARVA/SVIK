@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SidebarProvider } from './context/SidebarContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './index.css'; 
 
 import LoginPage from './pages/LoginPage';
@@ -25,13 +27,18 @@ import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
 import RegisterPage from './pages/RegisterPage';
 import AddTilePage from './pages/AddTilePage';
+import EditTilePage from './pages/EditTilePage';
 
 export default function App() {
   return (
     <ThemeProvider>
       <SidebarProvider>
         <Router>
-          
+          {/* ToastContainer added at root so all components can use toast */}
+          <ToastContainer 
+            
+          />
+
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -54,6 +61,7 @@ export default function App() {
             <Route path="/loginMaster" element={<LoginMasterPage />} />
             <Route path="/planMaster" element={<PlanMasterPage />} />
             <Route path="/add-tile" element={<AddTilePage />} />
+            <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
           </Routes>
         </Router>
       </SidebarProvider>

@@ -2,7 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { ThemeProvider } from './context/ThemeContext'; // create this
+import { ThemeProvider } from './context/ThemeContext';
+
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -10,5 +11,7 @@ root.render(
     <ThemeProvider>
       <App />
     </ThemeProvider>
+    {/* 👇 Add the ToastContainer here, outside of the ThemeProvider */}
+    
   </React.StrictMode>
 );

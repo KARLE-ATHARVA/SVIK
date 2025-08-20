@@ -1,16 +1,45 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaBoxOpen } from 'react-icons/fa';
 import { FiGrid, FiActivity, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useSidebar } from '../context/SidebarContext';
 import BrandLogo from '../assets/brand_logo.PNG';
+import axios from 'axios';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 export default function Sidebar({ darkMode }) {
   const { sidebarCollapsed, toggleSidebar } = useSidebar();
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userId = localStorage.getItem('userid');
+        if (!userId) return;
+
+        const res = await axios.get(`${baseURL}/GetUserList`);
+        if (res.data && Array.isArray(res.data)) {
+          const user = res.data.find(u => String(u.user_id) === String(userId));
+          if (user) {
+            setUserData(user);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const getInitial = (name) => {
+    if (!name) return '';
+    return name.trim().charAt(0).toUpperCase();
+  };
 
   return (
     <div className="relative overflow-visible z-50">
-      {/* Sidebar container */}
       <div
         className={`${
           sidebarCollapsed ? 'w-16' : 'w-60'
@@ -35,35 +64,29 @@ export default function Sidebar({ darkMode }) {
 
           {/* User card */}
           {!sidebarCollapsed && (
-            <div className="flex flex-col items-center text-center mb-6">
-              <div className="relative w-20 h-20 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center shadow-inner mb-2">
-                <div className="w-16 h-16 rounded-full bg-gray-300 dark:bg-gray-500" />
-                <span className="absolute bottom-0 right-0 bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full shadow">
-                  New
-                </span>
+            <>
+              <div className="flex flex-col items-center text-center mb-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 shadow-md">
+                <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-green-700 dark:from-green-600 dark:to-green-800 flex items-center justify-center shadow-lg mb-3">
+                  <span className="text-3xl font-bold text-white">
+                    {getInitial(userData?.user_name)}
+                  </span>
+
+                </div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                  {userData?.user_name || ''}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Super Admin Department
+                </p>
               </div>
-              <h2 className="text-sm font-medium text-gray-800 dark:text-gray-100">Emay Walter</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Human Resources Department</p>
-              <div className="flex w-full text-center text-xs divide-x divide-gray-300 dark:divide-gray-700">
-                <div className="flex-1 px-2">
-                  <p className="font-bold text-gray-800 dark:text-gray-100">19.8k</p>
-                  <p className="text-gray-500 dark:text-gray-400">Follow</p>
-                </div>
-                <div className="flex-1 px-2">
-                  <p className="font-bold text-gray-800 dark:text-gray-100">2 yr</p>
-                  <p className="text-gray-500 dark:text-gray-400">Experience</p>
-                </div>
-                <div className="flex-1 px-2">
-                  <p className="font-bold text-gray-800 dark:text-gray-100">95.2k</p>
-                  <p className="text-gray-500 dark:text-gray-400">Follower</p>
-                </div>
-              </div>
-            </div>
+
+              {/* Divider */}
+              <hr className="border-t border-gray-300 dark:border-gray-700 mb-4" />
+            </>
           )}
 
           {/* Navigation */}
           <nav className="space-y-2 mt-2">
-            {/* Products */}
             <Link
               to="/tileMaster"
               title="Products"
@@ -73,7 +96,6 @@ export default function Sidebar({ darkMode }) {
               {!sidebarCollapsed && <span className="text-sm font-medium">Products</span>}
             </Link>
 
-            {/* Masters */}
             <Link
               to="/masterTables"
               title="Masters"
@@ -83,7 +105,6 @@ export default function Sidebar({ darkMode }) {
               {!sidebarCollapsed && <span className="text-sm font-medium">Masters</span>}
             </Link>
 
-            {/* Logs */}
             <Link
               to="/reportsPage"
               title="Logs"
