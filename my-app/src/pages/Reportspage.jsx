@@ -43,7 +43,7 @@ export default function Reportspage() {
                 placeholder="Search logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full mb-4 px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full mb-4 px-4 py-1.5 text-base border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
 
               <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-green-500 dark:scrollbar-thumb-green-600 scrollbar-track-gray-200 dark:scrollbar-track-gray-700 rounded-md">

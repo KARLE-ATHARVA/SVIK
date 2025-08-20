@@ -23,7 +23,6 @@ import SpaceMasterPage from './pages/SpaceMasterPage';
 import FinishMasterPage from './pages/FinishMasterPage';
 import UserMasterPage from './pages/UserMasterPage';
 import CompanyMasterPage from './pages/CompanyMasterPage';
-import LoginMasterPage from './pages/LoginMasterPage';
 import PlanMasterPage from './pages/PlanMasterPage';
 import RegisterPage from './pages/RegisterPage';
 import AddTilePage from './pages/AddTilePage';
@@ -58,7 +57,6 @@ export default function App() {
             <Route path="/finishMaster" element={<FinishMasterPage />} />
             <Route path="/userMaster" element={<UserMasterPage />} />
             <Route path="/companyMaster" element={<CompanyMasterPage />} />
-            <Route path="/loginMaster" element={<LoginMasterPage />} />
             <Route path="/planMaster" element={<PlanMasterPage />} />
             <Route path="/add-tile" element={<AddTilePage />} />
             <Route path="/edit-tile/:tileId" element={<EditTilePage />} />

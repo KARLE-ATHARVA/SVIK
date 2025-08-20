@@ -239,7 +239,7 @@ export default function AddTilePage() {
                       value={formData.SkuName}
                       onChange={handleChange}
                       placeholder="Enter SKU Name"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -260,7 +260,7 @@ export default function AddTilePage() {
                       value={formData.SkuCode}
                       onChange={handleChange}
                       placeholder="Enter SKU Code"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -280,7 +280,7 @@ export default function AddTilePage() {
                         name={field.name}
                         value={formData[field.name]}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                        className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                    text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                    focus:ring-2 focus:ring-green-500 appearance-none 
                                    max-h-48 overflow-y-auto"
@@ -305,7 +305,7 @@ export default function AddTilePage() {
                   <button
                     type="button"
                     onClick={() => navigate(-1)}
-                    className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
+                    className="px-4 py-1 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
                                text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 
                                hover:bg-gray-50 dark:hover:bg-gray-600"
                     disabled={isLoading}
@@ -314,7 +314,7 @@ export default function AddTilePage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm 
+                    className="px-4 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm 
                                focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                     disabled={isLoading}
                   >
@@ -333,7 +333,7 @@ export default function AddTilePage() {
               <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{alertMessage}</p>
               <button
                 onClick={closeAlert}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                className="px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-700"
               >
                 OK
               </button>
@@ -349,13 +349,13 @@ export default function AddTilePage() {
               <div className="flex justify-center gap-3">
                 <button
                   onClick={() => closeConfirm(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  className="px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-700"
                 >
                   Yes
                 </button>
                 <button
                   onClick={() => closeConfirm(false)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  className="px-4 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
                   No
                 </button>
