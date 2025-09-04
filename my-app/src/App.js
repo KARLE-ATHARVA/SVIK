@@ -27,6 +27,7 @@ import PlanMasterPage from './pages/PlanMasterPage';
 import RegisterPage from './pages/RegisterPage';
 import AddTilePage from './pages/AddTilePage';
 import EditTilePage from './pages/EditTilePage';
+import ProductsImagePage from './pages/ProductsImagePage';
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/sizeMaster" element={<SizeMasterPage />} />
             <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
             <Route path="/tileMaster" element={<TileMasterPage />} />
+            <Route path="/tileImage" element={<ProductsImagePage />} />
             <Route path="/profileMaster" element={<ProfileMasterPage />} />
             <Route path="/colorMaster" element={<ColorMasterPage />} />
             <Route path="/categoryMaster" element={<CategoryMasterPage />} />
