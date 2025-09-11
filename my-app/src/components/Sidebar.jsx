@@ -1,16 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaBoxOpen } from 'react-icons/fa';
-import { FiGrid, FiActivity, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiGrid, FiActivity, FiChevronLeft, FiChevronRight, FiChevronDown } from 'react-icons/fi';
 import { useSidebar } from '../context/SidebarContext';
 import BrandLogo from '../assets/brand_logo.PNG';
+import axios from 'axios';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 export default function Sidebar({ darkMode }) {
   const { sidebarCollapsed, toggleSidebar } = useSidebar();
+  const [userData, setUserData] = useState(null);
+  const [productDropdown, setProductDropdown] = useState(false);
+  const [hoverFlyout, setHoverFlyout] = useState(false);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userId = localStorage.getItem('userid');
+        if (!userId) return;
+
+        const res = await axios.get(`${baseURL}/GetUserList`);
+        if (res.data && Array.isArray(res.data)) {
+          const user = res.data.find(u => String(u.user_id) === String(userId));
+          if (user) {
+            setUserData(user);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const getInitial = (name) => {
+    if (!name) return '';
+    return name.trim().charAt(0).toUpperCase();
+  };
 
   return (
     <div className="relative overflow-visible z-50">
-      {/* Sidebar container */}
       <div
         className={`${
           sidebarCollapsed ? 'w-16' : 'w-60'
@@ -35,43 +66,93 @@ export default function Sidebar({ darkMode }) {
 
           {/* User card */}
           {!sidebarCollapsed && (
-            <div className="flex flex-col items-center text-center mb-6">
-              <div className="relative w-20 h-20 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center shadow-inner mb-2">
-                <div className="w-16 h-16 rounded-full bg-gray-300 dark:bg-gray-500" />
-                <span className="absolute bottom-0 right-0 bg-green-600 text-white text-[10px] px-2 py-0.5 rounded-full shadow">
-                  New
-                </span>
+            <>
+              <div className="flex flex-col items-center text-center mb-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 shadow-md">
+                <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-green-700 dark:from-green-600 dark:to-green-800 flex items-center justify-center shadow-lg mb-3">
+                  <span className="text-3xl font-bold text-white">
+                    {getInitial(userData?.user_name)}
+                  </span>
+                </div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                  {userData?.user_name || ''}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Super Admin Department
+                </p>
               </div>
-              <h2 className="text-sm font-medium text-gray-800 dark:text-gray-100">Emay Walter</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Human Resources Department</p>
-              <div className="flex w-full text-center text-xs divide-x divide-gray-300 dark:divide-gray-700">
-                <div className="flex-1 px-2">
-                  <p className="font-bold text-gray-800 dark:text-gray-100">19.8k</p>
-                  <p className="text-gray-500 dark:text-gray-400">Follow</p>
-                </div>
-                <div className="flex-1 px-2">
-                  <p className="font-bold text-gray-800 dark:text-gray-100">2 yr</p>
-                  <p className="text-gray-500 dark:text-gray-400">Experience</p>
-                </div>
-                <div className="flex-1 px-2">
-                  <p className="font-bold text-gray-800 dark:text-gray-100">95.2k</p>
-                  <p className="text-gray-500 dark:text-gray-400">Follower</p>
-                </div>
-              </div>
-            </div>
+
+              {/* Divider */}
+              <hr className="border-t border-gray-300 dark:border-gray-700 mb-4" />
+            </>
           )}
 
           {/* Navigation */}
           <nav className="space-y-2 mt-2">
-            {/* Products */}
-            <Link
-              to="/tileMaster"
-              title="Products"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-800 dark:text-gray-100 hover:bg-green-700 hover:text-white transition"
+            {/* Products Dropdown / Flyout */}
+            <div
+              className="relative"
+              onMouseEnter={() => sidebarCollapsed && setHoverFlyout(true)}
+              onMouseLeave={() => sidebarCollapsed && setHoverFlyout(false)}
             >
-              <FaBoxOpen className="text-xl" />
-              {!sidebarCollapsed && <span className="text-sm font-medium">Products</span>}
-            </Link>
+              {/* Main Button */}
+              <button
+                onClick={() => !sidebarCollapsed && setProductDropdown(!productDropdown)}
+                className="flex items-center justify-between w-full px-3 py-2 rounded-lg text-gray-800 dark:text-gray-100 hover:bg-green-700 hover:text-white transition"
+              >
+                <div className="flex items-center gap-3">
+                  <FaBoxOpen className="text-xl" />
+                  {!sidebarCollapsed && (
+                    <span className="text-sm font-medium">Products</span>
+                  )}
+                </div>
+                {!sidebarCollapsed && (
+                  <FiChevronDown
+                    className={`text-sm transition-transform duration-200 ${
+                      productDropdown ? 'rotate-180' : ''
+                    }`}
+                  />
+                )}
+              </button>
+
+              {/* Expanded Dropdown (when sidebar open) */}
+              {!sidebarCollapsed && productDropdown && (
+                <div className="ml-8 mt-1 flex flex-col space-y-1">
+                  <Link
+                    to="/tileMaster"
+                    className="px-3 py-1 text-sm rounded-md text-gray-700 dark:text-gray-200 hover:bg-green-600 hover:text-white transition"
+                  >
+                    Products Info
+                  </Link>
+                  <Link
+                    to="/tileImage"
+                    className="px-3 py-1 text-sm rounded-md text-gray-700 dark:text-gray-200 hover:bg-green-600 hover:text-white transition"
+                  >
+                    Images
+                  </Link>
+                </div>
+              )}
+
+              {/* Flyout (when sidebar collapsed) */}
+              {sidebarCollapsed && hoverFlyout && (
+                <div className="absolute top-0 left-full bg-white dark:bg-gray-800 shadow-lg rounded-xl py-2 w-48 animate-fade-in">
+                  <p className="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                    Products
+                  </p>
+                  <Link
+                    to="/tileMaster"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-green-600 hover:text-white"
+                  >
+                    Products Info
+                  </Link>
+                  <Link
+                    to="/tileImage"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-green-600 hover:text-white"
+                  >
+                    Images
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Masters */}
             <Link
