@@ -1,10 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { SidebarProvider } from './context/SidebarContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import './index.css'; 
+import './index.css';
 
 import LoginPage from './pages/LoginPage';
 import Dashboard from './components/Dashboard';
@@ -33,11 +33,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <Router>
-          {/* ToastContainer added at root so all components can use toast */}
-          <ToastContainer 
-            
-          />
+        {/* Use homepage from package.json automatically */}
+        <BrowserRouter basename={process.env.PUBLIC_URL}>
+          <ToastContainer />
 
           <Routes>
             <Route path="/" element={<LoginPage />} />
@@ -63,7 +61,7 @@ export default function App() {
             <Route path="/add-tile" element={<AddTilePage />} />
             <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
           </Routes>
-        </Router>
+        </BrowserRouter>
       </SidebarProvider>
     </ThemeProvider>
   );
