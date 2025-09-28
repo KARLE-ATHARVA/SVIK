@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SidebarProvider } from './context/SidebarContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from 'react-toastify';
+import ProtectedRoute from './components/ProtectedRoute'; //
 import 'react-toastify/dist/ReactToastify.css';
 import './index.css'; 
 
@@ -42,26 +43,26 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/masterTables" element={<MasterTablesPage />} />
-            <Route path="/reportsPage" element={<Reportspage />} />
-            <Route path="/loginHistory" element={<LoginHistory />} />
-            <Route path="/adminActivity" element={<AdminActivityLog />} />
-            <Route path="/userActivity" element={<UserActivityLog />} />
-            <Route path="/sizeMaster" element={<SizeMasterPage />} />
-            <Route path="/applicationMaster" element={<ApplicationMasterPage />} />
-            <Route path="/tileMaster" element={<TileMasterPage />} />
-            <Route path="/profileMaster" element={<ProfileMasterPage />} />
-            <Route path="/colorMaster" element={<ColorMasterPage />} />
-            <Route path="/categoryMaster" element={<CategoryMasterPage />} />
-            <Route path="/spaceMaster" element={<SpaceMasterPage />} />
-            <Route path="/finishMaster" element={<FinishMasterPage />} />
-            <Route path="/userMaster" element={<UserMasterPage />} />
-            <Route path="/companyMaster" element={<CompanyMasterPage />} />
-            <Route path="/loginMaster" element={<LoginMasterPage />} />
-            <Route path="/planMaster" element={<PlanMasterPage />} />
-            <Route path="/add-tile" element={<AddTilePage />} />
-            <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
+            <Route path="/dashboard" element={ <ProtectedRoute> <Dashboard /> </ProtectedRoute>} />    
+            <Route path="/masterTables" element={ <ProtectedRoute> <MasterTablesPage /> </ProtectedRoute>} />
+            <Route path="/reportsPage" element={ <ProtectedRoute> <Reportspage /> </ProtectedRoute> } />
+            <Route path="/loginHistory" element={ <ProtectedRoute> <LoginHistory /> </ProtectedRoute>} />
+            <Route path="/adminActivity" element={ <ProtectedRoute> <AdminActivityLog /> </ProtectedRoute>} />
+            <Route path="/userActivity" element={<ProtectedRoute> <UserActivityLog /> </ProtectedRoute>} />
+            <Route path="/sizeMaster" element={<ProtectedRoute> <SizeMasterPage /> </ProtectedRoute>} />
+            <Route path="/applicationMaster" element={<ProtectedRoute> <ApplicationMasterPage /> </ProtectedRoute>} />
+            <Route path="/tileMaster" element={<ProtectedRoute> <TileMasterPage /> </ProtectedRoute>} />
+            <Route path="/profileMaster" element={<ProtectedRoute> <ProfileMasterPage /> </ProtectedRoute>} />
+            <Route path="/colorMaster" element={<ProtectedRoute> <ColorMasterPage /> </ProtectedRoute>} />
+            <Route path="/categoryMaster" element={<ProtectedRoute> <CategoryMasterPage /> </ProtectedRoute>} />
+            <Route path="/spaceMaster" element={<ProtectedRoute> <SpaceMasterPage /> </ProtectedRoute>} />
+            <Route path="/finishMaster" element={<ProtectedRoute> <FinishMasterPage /> </ProtectedRoute>} />
+            <Route path="/userMaster" element={<ProtectedRoute> <UserMasterPage /> </ProtectedRoute>} />
+            <Route path="/companyMaster" element={<ProtectedRoute> <CompanyMasterPage /> </ProtectedRoute>} />
+            <Route path="/loginMaster" element={<ProtectedRoute> <LoginMasterPage /> </ProtectedRoute>} />
+            <Route path="/planMaster" element={<ProtectedRoute> <PlanMasterPage /> </ProtectedRoute>} />
+            <Route path="/add-tile" element={<ProtectedRoute> <AddTilePage /> </ProtectedRoute>} />
+            <Route path="/edit-tile/:tileId" element={<ProtectedRoute> <EditTilePage /> </ProtectedRoute>} />
           </Routes>
         </Router>
       </SidebarProvider>
