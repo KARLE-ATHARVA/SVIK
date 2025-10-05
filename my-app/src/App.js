@@ -4,7 +4,7 @@ import { SidebarProvider } from './context/SidebarContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import './index.css';
+import './index.css'; 
 
 import LoginPage from './pages/LoginPage';
 import Dashboard from './components/Dashboard';
@@ -28,14 +28,17 @@ import RegisterPage from './pages/RegisterPage';
 import AddTilePage from './pages/AddTilePage';
 import EditTilePage from './pages/EditTilePage';
 import ProductsImagePage from './pages/ProductsImagePage';
+import ViewTilePage from './pages/ViewTilePage';
 
 export default function App() {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        {/* Use homepage from package.json automatically */}
-        <BrowserRouter basename={process.env.PUBLIC_URL}>
-          <ToastContainer />
+        <BrowserRouter>
+          {/* ToastContainer added at root so all components can use toast */}
+          <ToastContainer 
+            
+          />
 
           <Routes>
             <Route path="/" element={<LoginPage />} />
@@ -60,6 +63,7 @@ export default function App() {
             <Route path="/planMaster" element={<PlanMasterPage />} />
             <Route path="/add-tile" element={<AddTilePage />} />
             <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
+            <Route path="/view-tile/:tileId" element={<ViewTilePage />} />
           </Routes>
         </BrowserRouter>
       </SidebarProvider>
