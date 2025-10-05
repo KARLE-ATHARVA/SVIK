@@ -5,6 +5,7 @@ import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
 import axios from 'axios';
 import { FaArrowRight } from 'react-icons/fa'; // Added for arrow icon
+import { toast } from 'react-toastify';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
@@ -146,18 +147,18 @@ export default function EditTilePage() {
       const responseText = res.data;
 
       if (responseText === 'success') {
-        setAlertMessage('Tile updated successfully!');
-        setShowAlert(true);
+        toast.success('Updated successfully!');
+        // setShowAlert(true);
       } else if (responseText === 'alreadyexists') {
-        setAlertMessage('Tile already exists!');
-        setShowAlert(true);
+        toast.error('Tile already exists!');
+        // setShowAlert(true);
       } else {
         setAlertMessage(responseText);
         setShowAlert(true);
       }
     } catch (err) {
       console.error('Edit Error:', err);
-      setAlertMessage('An error occurred while updating tile.');
+      toast.error('An error occurred while updating tile.');
       setShowAlert(true);
     } finally {
       setIsLoading(false);
@@ -213,7 +214,7 @@ export default function EditTilePage() {
                       value={formData.SkuName}
                       onChange={handleChange}
                       placeholder="Enter SKU Name"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -234,7 +235,7 @@ export default function EditTilePage() {
                       value={formData.SkuCode}
                       onChange={handleChange}
                       placeholder="Enter SKU Code"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -255,7 +256,7 @@ export default function EditTilePage() {
                       value={formData.CatName}
                       onChange={handleChange}
                       placeholder="Enter Category"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -276,7 +277,7 @@ export default function EditTilePage() {
                       value={formData.AppName}
                       onChange={handleChange}
                       placeholder="Enter Application"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -297,7 +298,7 @@ export default function EditTilePage() {
                       value={formData.SpaceName}
                       onChange={handleChange}
                       placeholder="Enter Space"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -318,7 +319,7 @@ export default function EditTilePage() {
                       value={formData.SizeName}
                       onChange={handleChange}
                       placeholder="Enter Size"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -339,7 +340,7 @@ export default function EditTilePage() {
                       value={formData.FinishName}
                       onChange={handleChange}
                       placeholder="Enter Finish"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -360,7 +361,7 @@ export default function EditTilePage() {
                       value={formData.ColorName}
                       onChange={handleChange}
                       placeholder="Enter Color"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+                      className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
                                  text-gray-900 dark:text-white bg-white dark:bg-gray-700 
                                  focus:ring-2 focus:ring-green-500"
                       required
@@ -376,7 +377,7 @@ export default function EditTilePage() {
                   <button
                     type="button"
                     onClick={() => navigate(-1)}
-                    className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
+                    className="px-4 py-1 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
                                text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 
                                hover:bg-gray-50 dark:hover:bg-gray-600"
                     disabled={isLoading}
@@ -391,6 +392,7 @@ export default function EditTilePage() {
                   >
                     {isLoading ? 'Saving...' : 'Save'}
                     <FaArrowRight className="ml-2" /> {/* Added arrow icon */}
+                    
                   </button>
                 </div>
               </form>
