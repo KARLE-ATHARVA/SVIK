@@ -1,27 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
+import Breadcrumb from '../components/Breadcrumb';
+import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus, FaSortUp, FaSortDown } from 'react-icons/fa';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white p-6 rounded shadow-lg w-96">
-        <p className="mb-4 text-gray-800">{message}</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
+        <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-          <button
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
-            onClick={onConfirm}
-          >
-            Yes
-          </button>
+          <button className="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-600" onClick={onCancel}>Cancel</button>
+          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>Yes</button>
         </div>
       </div>
     </div>
@@ -30,48 +26,70 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
 
 export default function FinishMasterPage() {
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [finishes, setFinishes] = useState([
-    {
-      finish_id: 1,
-      finish_name: 'Glossy',
-      block: false,
-      created_by: 101,
-      created_date: '2025-07-07T12:34:56',
-      modify_by: 101,
-      modify_date: '2025-07-07T12:34:56',
-    },
-    {
-      finish_id: 2,
-      finish_name: 'Matte',
-      block: true,
-      created_by: 102,
-      created_date: '2025-07-06T09:30:00',
-      modify_by: 103,
-      modify_date: '2025-07-07T14:20:00',
-    },
-  ]);
+  const userId = localStorage.getItem('userid');
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [finishes, setFinishes] = useState([]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
-  const [confirmation, setConfirmation] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
+  const [confirmation, setConfirmation] = useState({ show: false, message: '', onConfirm: () => {} });
   const [isAdding, setIsAdding] = useState(false);
-  const [newData, setNewData] = useState({
-    finish_name: '',
-    block: false,
-    created_by: '',
-  });
+  const [newData, setNewData] = useState({ finish_name: '', created_by: '' });
 
-  const filteredFinishes = finishes.filter(
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
+  const [fadeIn, setFadeIn] = useState(false);
+
+  useEffect(() => {
+    setFadeIn(true);
+    fetchFinishes();
+  }, []);
+
+  const fetchFinishes = async () => {
+    const res = await axios.get(`${baseURL}/GetFinishList`);
+    setFinishes(res.data);
+    
+  };
+
+  const filtered = finishes.filter(
     (finish) =>
       finish.finish_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (finish.block ? 'yes' : 'no').includes(searchTerm.toLowerCase())
+      (finish.block ? 'yes' : 'no').includes(searchTerm.toLowerCase()) ||
+      (finish.updated_by && finish.updated_by.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const sorted = React.useMemo(() => {
+    let sortableItems = [...filtered];
+    if (sortConfig.key !== '') {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filtered, sortConfig]);
+
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentFinishes = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
+
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'ascending' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />;
+    }
+    return null;
+  };
 
   const startEditing = (finish) => {
     setEditId(finish.finish_id);
@@ -91,245 +109,213 @@ export default function FinishMasterPage() {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to save changes?',
-      onConfirm: () => {
-        const updated = finishes
-          .map((finish) =>
-            finish.finish_id === editId
-              ? { ...editData, modify_by: 999, modify_date: new Date().toISOString() }
-              : finish
-          )
-          .sort((a, b) => a.finish_id - b.finish_id);
+      onConfirm: async () => {
+       try {
+        const formData = new FormData();
+        formData.append('FinishId', editData.finish_id);
+        formData.append('FinishName', editData.finish_name);
+        formData.append('RequestBy', userId);
 
-        setFinishes(updated);
-        setEditId(null);
-        setEditData({});
+        const res= await axios.post(`${baseURL}/EditFinish`, formData);
+
+        const original = finishes.find((a) => a.finish_id === editData.finish_id);
+        if (original.block !== editData.block) {
+        await axios.get(`${baseURL}/BlockFinish/${userId}/${editData.finish_id}/${editData.block ? 1 : 0}`);
+        }
+
+        if (res.data === 'success') {
+                    fetchFinishes();
+                    cancelEditing();
+                    toast.success('Updated successfully!');
+                  } else {
+                    toast.error(res.data === 'alreadyexists' ? 'Finish already exists!' : `Error: ${res.data}`);
+                  }
+                } catch (err) {
+                  console.error('Edit failed', err);
+                  toast.error('Error saving category');
+                }
         setConfirmation({ ...confirmation, show: false });
-      },
+      }
     });
   };
 
-  const confirmDelete = (id) => {
+  const confirmDelete = (finishId) => {
     setConfirmation({
       show: true,
-      message: 'Are you sure you want to delete this entry?',
-      onConfirm: () => {
-        setFinishes(finishes.filter((finish) => finish.finish_id !== id));
+      message: 'Are you sure you want to delete this finish?',
+      onConfirm: async () => {
+        try {
+          await axios.get(`${baseURL}/BlockFinish/${userId}/${finishId}/1`);
+          fetchFinishes();
+          toast.success('Deleted successfully!');
+        } catch (err) {
+          console.error('Delete failed', err);
+          toast.error('Error deleting finish');
+        }
         setConfirmation({ ...confirmation, show: false });
       },
     });
   };
 
-  const startAdding = () => {
-    setIsAdding(true);
-    setNewData({ finish_name: '', block: false, created_by: '' });
+  const toggleBlock = async (finish) => {
+    await axios.get(`${baseURL}/BlockFinish/${userId}/${finish.finish_id}/${finish.block ? 0 : 1}`);
+    fetchFinishes();
   };
+
+  const startAdding = () => setIsAdding(true);
 
   const cancelAdding = () => {
     setIsAdding(false);
-    setNewData({ finish_name: '', block: false, created_by: '' });
+    setNewData({ finish_name: '', created_by: '' });
   };
 
   const saveAdding = () => {
-    if (!newData.finish_name || !newData.created_by) {
-      alert('Please fill all required fields');
-      return;
-    }
+  if (!newData.finish_name) {
+    toast.error('Please enter category name');
+    return;
+  }
 
-    setConfirmation({
-      show: true,
-      message: 'Are you sure you want to save this new finish?',
-      onConfirm: () => {
-        const newEntry = {
-          ...newData,
-          finish_id: finishes.length ? Math.max(...finishes.map((f) => f.finish_id)) + 1 : 1,
-          created_by: parseInt(newData.created_by),
-          created_date: new Date().toISOString(),
-          modify_by: parseInt(newData.created_by),
-          modify_date: new Date().toISOString(),
-        };
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to add this finish?',
+    onConfirm: async () => {
+      const formData = new FormData();
+      formData.append('FinishName', newData.finish_name);
+      formData.append('RequestBy', userId);
 
-        const updated = [...finishes, newEntry].sort((a, b) => a.finish_id - b.finish_id);
-        setFinishes(updated);
+      try {
+        const res = await axios.post(`${baseURL}/AddFinish`, formData);
 
-        setIsAdding(false);
-        setNewData({ finish_name: '', block: false, created_by: '' });
+        if (res.data === 'success') {
+          fetchFinishes();
+          cancelAdding();
+          toast.success('Added successfully!');
+        } else {
+          toast.error(res.data === 'alreadyexists' ? 'Category already exists!' : `Error: ${res.data}`);
+        }
+      } catch (err) {
+        console.error('Add failed', err);
+        toast.error('Error adding category');
+      } 
         setConfirmation({ ...confirmation, show: false });
-      },
-    });
-  };
+      
+    }
+  });
+};
+
+
+  const headers = [
+    { key: 'finish_name',  label: 'Finish Name' },
+    { key: 'updated_by',   label: 'Updated By' },
+    { key: 'updated_date', label: 'Updated Date' },
+    { key: 'block',        label: 'Block' }
+  ];
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar collapsed={collapsed} />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar collapsed={collapsed} setCollapsed={setCollapsed} />
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      <Sidebar />
+      <div className="flex flex-col flex-1">
+        <Topbar />
 
-        <div className="flex flex-col flex-1 p-6 overflow-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Finish Master Table</h2>
-            <div className="flex space-x-2">
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                onClick={() => navigate('/dashboard')}
-              >
-                Return to Dashboard
-              </button>
+        <div className={`flex flex-col flex-1 overflow-hidden p-5 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex justify-between items-center mb-4 mt-2">
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-500">Finish</h2>
+            <Breadcrumb />
+          </div>
+
+          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col  max-h-[75vh] overflow-hidden">
+            <div className="mb-4 flex justify-between items-center">
+              <input
+                type="text"
+                placeholder="Search ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border border-gray-300 dark:border-gray-600 rounded px-5 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
+              />
               {!isAdding && (
-                <button
-                  className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 flex items-center"
-                  onClick={startAdding}
-                >
+                <button onClick={startAdding} className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium">
                   <FaPlus className="mr-2" /> Add New Finish
                 </button>
               )}
             </div>
-          </div>
 
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Search by Finish Name or Block..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-green-600"
-            />
-          </div>
-
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-green-700 text-white">
-                <tr>
-                  <th className="px-4 py-3">Finish ID</th>
-                  <th className="px-4 py-3">Finish Name</th>
-                  <th className="px-4 py-3">Block</th>
-                  <th className="px-4 py-3">Created By</th>
-                  <th className="px-4 py-3">Created Date</th>
-                  <th className="px-4 py-3">Modified By</th>
-                  <th className="px-4 py-3">Modified Date</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isAdding && (
+            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+              <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
+                <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                   <tr>
-                    <td className="px-4 py-3">New</td>
-                    <td className="px-4 py-3">
-                      <input
-                        value={newData.finish_name}
-                        onChange={(e) =>
-                          setNewData({ ...newData, finish_name: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={newData.block}
-                        onChange={(e) =>
-                          setNewData({ ...newData, block: e.target.checked })
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={newData.created_by}
-                        onChange={(e) =>
-                          setNewData({ ...newData, created_by: e.target.value })
-                        }
-                        className="border rounded px-2 py-1 w-full"
-                      />
-                    </td>
-                    <td colSpan="4" className="px-4 py-3 space-x-2 flex">
-                      <button
-                        onClick={saveAdding}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <FaSave size={22} />
-                      </button>
-                      <button
-                        onClick={cancelAdding}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
-                        <FaTimes size={22} />
-                      </button>
-                    </td>
+                    {headers.map((header) => (
+                      <th key={header.key} className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort(header.key)}>
+                        <div className="flex items-center">{header.label}{getSortIcon(header.key)}</div>
+                      </th>
+                    ))}
+                    <th className="px-4 py-2 font-semibold text-left">Actions</th>
                   </tr>
-                )}
+                </thead>
+                <tbody>
+                  {isAdding && (
+                    <tr className="border-b dark:border-gray-700">
+                      <td className="px-4 py-2">
+                        <input value={newData.finish_name} onChange={(e) => setNewData({ ...newData, finish_name: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" />
+                      </td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2">--</td>
+                      <td className="px-4 py-2 flex gap-2">
+                        <button onClick={saveAdding} className="text-green-600"><FaSave size={22} /></button>
+                        <button onClick={cancelAdding} className="text-gray-600"><FaTimes size={22} /></button>
+                      </td>
+                    </tr>
+                  )}
 
-                {filteredFinishes.map((finish) => (
-                  <tr key={finish.finish_id}>
-                    <td className="px-4 py-3">{finish.finish_id}</td>
-                    <td className="px-4 py-3">
-                      {editId === finish.finish_id ? (
-                        <input
-                          value={editData.finish_name}
-                          onChange={(e) =>
-                            handleEditChange('finish_name', e.target.value)
-                          }
-                          className="border rounded px-2 py-1 w-full"
-                        />
-                      ) : (
-                        finish.finish_name
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {editId === finish.finish_id ? (
-                        <input
-                          type="checkbox"
-                          checked={editData.block}
-                          onChange={(e) =>
-                            handleEditChange('block', e.target.checked)
-                          }
-                        />
-                      ) : finish.block ? 'Yes' : 'No'}
-                    </td>
-                    <td className="px-4 py-3">{finish.created_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(finish.created_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">{finish.modify_by}</td>
-                    <td className="px-4 py-3">
-                      {new Date(finish.modify_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 space-x-2 flex">
-                      {editId === finish.finish_id ? (
-                        <>
-                          <button
-                            onClick={confirmSave}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            <FaSave size={22} />
-                          </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
-                            <FaTimes size={22} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => startEditing(finish)}
-                            className="text-yellow-500 hover:text-yellow-700"
-                          >
-                            <FaEdit size={22} />
-                          </button>
-                          <button
-                            onClick={() => confirmDelete(finish.finish_id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash size={22} />
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
+                  {currentFinishes.map((finish) => (
+                    <tr key={finish.finish_id} className="border-b dark:border-gray-700">
+                      <td className="px-4 py-2">
+                        {editId === finish.finish_id ? (
+                          <input value={editData.finish_name} onChange={(e) => handleEditChange('finish_name', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" />
+                        ) : finish.finish_name}
+                      </td>
+                      <td className="px-4 py-2">{finish.updated_by}</td>
+                      <td className="px-4 py-2">{new Date(finish.updated_date).toLocaleDateString()}</td>
+                      <td className="px-4 py-2">
+                        {editId === finish.finish_id ? (
+                          <span onClick={() => setEditData({ ...editData, block: !editData.block })} className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${editData.block ? 'bg-red-600' : 'bg-green-600'}`}>{editData.block ? 'Yes' : 'No'}</span>
+                        ) : (
+                          <span  className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${finish.block ? 'bg-red-600' : 'bg-green-600'}`}>{finish.block ? 'Yes' : 'No'}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 flex gap-2">
+                        {editId === finish.finish_id ? (
+                          <>
+                            <button onClick={confirmSave} className="text-green-600"><FaSave size={22} /></button>
+                            <button onClick={cancelEditing} className="text-gray-600"><FaTimes size={22} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => startEditing(finish)} className="text-yellow-500"><FaEdit size={18} /></button>
+                            <button onClick={() => confirmDelete(finish.finish_id)} className="text-red-500"><FaTrash size={18} /></button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+              <span>
+                Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+              </span>
+              <div className="flex gap-1">
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600">Previous</button>
+                {[...Array(totalPages).keys()].map((num) => (
+                  <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white dark:bg-green-500' : 'dark:border-gray-600 dark:text-gray-200'}`}>
+                    {num + 1}
+                  </button>
                 ))}
-              </tbody>
-            </table>
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600">Next</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
