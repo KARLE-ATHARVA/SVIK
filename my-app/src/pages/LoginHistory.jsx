@@ -1,128 +1,218 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
+import Breadcrumb from '../components/Breadcrumb';
+import { FaSortUp, FaSortDown } from 'react-icons/fa';
+import axios from 'axios';
+import { DateTime } from 'luxon';
+import { useTheme } from '../context/ThemeContext';
+
+
+const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 export default function LoginHistory() {
+  const { darkMode } = useTheme();
+  const userId = localStorage.getItem('userid');
+  const userName = localStorage.getItem('username');
+
   const [searchTerm, setSearchTerm] = useState('');
+  const [loginHistory, setLoginHistory] = useState([]);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
   const [fadeIn, setFadeIn] = useState(false);
+
+  const headers = [
+    { key: 'name', label: 'Name' },
+    { key: 'loginDate', label: 'Login Date' },
+    { key: 'logoutDate', label: 'Logout Date' },
+  ];
+
+  const fetchLoginHistory = async () => {
+    try {
+      const res = await axios.post(`${baseURL}/GetLoginHistory`, {
+        userId: parseInt(userId),
+      });
+
+      const history = res.data.map((entry) => ({
+        loginDate: entry.login_date,
+        logoutDate:
+          entry.logout_date && typeof entry.logout_date === 'string' && entry.logout_date.trim() !== ''
+            ? entry.logout_date
+            : null,
+        name: userName,
+      }));
+
+      setLoginHistory(history);
+    } catch (err) {
+      console.error('Error fetching login history:', err);
+      alert('Failed to fetch login history');
+    }
+  };
 
   useEffect(() => {
     setFadeIn(true);
+    fetchLoginHistory();
   }, []);
 
-  const loginHistory = [
-    { id: 1, name: 'John Doe', loginDate: '2024-07-01 09:00', logoutDate: '2024-07-01 17:00' },
-    { id: 2, name: 'Jane Smith', loginDate: '2024-07-02 08:45', logoutDate: '' },
-    { id: 3, name: 'Alice Johnson', loginDate: '2024-07-02 09:15', logoutDate: '2024-07-02 18:00' },
-    { id: 4, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
-    { id: 5, name: 'Bob Williams', loginDate: '2024-07-03 08:55', logoutDate: '' },
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    return DateTime.fromISO(dateString, { zone: 'America/Los_Angeles' })
+      .setZone('Asia/Kolkata')
+      .toFormat('yyyy-MM-dd hh:mm a');
+  };
 
-  ];
-
-  const filtered = loginHistory.filter((log) =>
-    log.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = loginHistory.filter(
+    (log) =>
+      log.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.loginDate || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.logoutDate || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const currentLogins = loginHistory.filter((log) => !log.logoutDate).length;
-  const totalLogouts = loginHistory.filter((log) => log.logoutDate).length;
+  const sorted = useMemo(() => {
+    let sortableItems = [...filtered];
+    if (sortConfig.key !== '') {
+      sortableItems.sort((a, b) => {
+        const aVal = a[sortConfig.key] || '';
+        const bVal = b[sortConfig.key] || '';
+        if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filtered, sortConfig]);
+
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === 'ascending' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />;
+    }
+    return null;
+  };
+
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentLogs = sorted.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
-      <div className="relative flex flex-col flex-1 overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-600"></div>
-
+      <div className="flex flex-col flex-1">
         <Topbar />
 
-        <div
-          className={`flex flex-col flex-1 p-6 bg-gray-50 transform transition-all duration-700 ${
-            fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
-        >
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-green-800 mb-3">
-                Login History
-              </h1>
+        <div className={`flex flex-col flex-1 overflow-hidden p-5 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex justify-between items-center mb-4 mt-2">
+            <h2 className="text-2xl font-bold text-green-800 dark:text-green-500">Login History</h2>
+            <Breadcrumb />
+          </div>
 
+          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
+            <div className="mb-4 flex justify-between items-center">
               <input
                 type="text"
-                placeholder="Search by name..."
+                placeholder="Search ..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-md w-full md:w-[400px] focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="border border-gray-300 dark:border-gray-600 rounded px-5 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
               />
-            </div>
-
-            <div className="flex flex-row gap-4">
-              <div className="relative flex items-center justify-between px-6 py-4 bg-green-700 rounded-lg text-white shadow-md overflow-hidden w-52">
-                <div className="z-10">
-                  <h2 className="text-sm font-medium">Current Logins</h2>
-                  <p className="text-2xl font-bold">{currentLogins}</p>
-                </div>
-                <div className="absolute right-0 -bottom-4 w-24 h-24 bg-green-600/30 rounded-full"></div>
-              </div>
-
-              <div className="relative flex items-center justify-between px-6 py-4 bg-emerald-700 rounded-lg text-white shadow-md overflow-hidden w-52">
-                <div className="z-10">
-                  <h2 className="text-sm font-medium">Logouts</h2>
-                  <p className="text-2xl font-bold">{totalLogouts}</p>
-                </div>
-                <div className="absolute right-0 -bottom-4 w-24 h-24 bg-emerald-600/30 rounded-full"></div>
+              <div className="flex items-center space-x-2 text-sm">
+                <span>Show</span>
+                <select
+                  className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 bg-white dark:bg-gray-700"
+                  value={entriesPerPage}
+                  onChange={(e) => {
+                    setEntriesPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  {[10, 25, 50, 100].map((num) => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
+                <span>entries</span>
               </div>
             </div>
-          </div>
 
-          {/* Scrollable Table Container */}
-          <div className="bg-white shadow rounded-lg overflow-hidden max-h-[500px] overflow-y-auto border border-gray-200">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-100 text-green-900 text-xs uppercase sticky top-0 z-10">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Log ID</th>
-                  <th className="px-6 py-4 font-semibold">Name</th>
-                  <th className="px-6 py-4 font-semibold">Login Date</th>
-                  <th className="px-6 py-4 font-semibold">Logout Date</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
+            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+              <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
+                <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                   <tr>
-                    <td
-                      colSpan="5"
-                      className="px-6 py-6 text-center text-gray-500 italic"
-                    >
-                      No records found.
-                    </td>
+                    {headers.map((header) => (
+                      <th
+                        key={header.key}
+                        className="px-4 py-2 font-semibold text-left cursor-pointer"
+                        onClick={() => handleSort(header.key)}
+                      >
+                        <div className="flex items-center">
+                          {header.label}
+                          {getSortIcon(header.key)}
+                        </div>
+                      </th>
+                    ))}
                   </tr>
-                ) : (
-                  filtered.map((log) => (
-                    <tr
-                      key={log.id}
-                      className="border-b hover:bg-green-50 transition-colors duration-200"
-                    >
-                      <td className="px-6 py-4">{log.id}</td>
-                      <td className="px-6 py-4">{log.name}</td>
-                      <td className="px-6 py-4">{log.loginDate}</td>
-                      <td className="px-6 py-4">
-                        {log.logoutDate || (
-                          <span className="italic text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-block w-3 h-3 rounded-full ${
-                            log.logoutDate ? 'bg-green-600' : 'bg-red-500'
-                          }`}
-                        ></span>
+                </thead>
+                <tbody>
+                  {currentLogs.length === 0 ? (
+                    <tr className="border-b dark:border-gray-700">
+                      <td colSpan={headers.length} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 italic">
+                        No records found.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    currentLogs.map((log, index) => (
+                      <tr key={index} className="border-b dark:border-gray-700 hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
+                        <td className="px-4 py-2">{log.name}</td>
+                        <td className="px-4 py-2">{formatDateTime(log.loginDate)}</td>
+                        <td className="px-4 py-2">{log.logoutDate ? formatDateTime(log.logoutDate) : '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
+            <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+              <span>
+                Showing {filtered.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
+              </span>
+              <div className="flex gap-1">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                  className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600"
+                >
+                  Previous
+                </button>
+                {[...Array(totalPages).keys()].map((num) => (
+                  <button
+                    key={num + 1}
+                    onClick={() => setCurrentPage(num + 1)}
+                    className={`px-3 py-1 border rounded ${
+                      currentPage === num + 1 ? 'bg-green-600 text-white dark:bg-green-500' : 'dark:border-gray-600 dark:text-gray-200'
+                    }`}
+                  >
+                    {num + 1}
+                  </button>
+                ))}
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                  className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
