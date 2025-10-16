@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { SidebarProvider } from './context/SidebarContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from 'react-toastify';
+import { BrowserRouter } from 'react-router-dom';
 import 'react-toastify/dist/ReactToastify.css';
 import './index.css'; 
 
@@ -34,7 +35,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <Router>
+        <BrowserRouter basename="/backoff">
           {/* ToastContainer added at root so all components can use toast */}
           <ToastContainer 
             
@@ -65,7 +66,7 @@ export default function App() {
             <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
             <Route path="/view-tile/:tileId" element={<ViewTilePage />} />
           </Routes>
-        </Router>
+        </BrowserRouter>
       </SidebarProvider>
     </ThemeProvider>
   );
