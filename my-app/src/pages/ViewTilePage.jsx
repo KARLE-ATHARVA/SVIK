@@ -21,6 +21,7 @@ export default function ViewTilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [lightboxImage, setLightboxImage] = useState(null);
+  const [imageDimensions, setImageDimensions] = useState({ width: 'auto', height: 'auto' });
 
   useEffect(() => {
     let isMounted = true;
@@ -114,6 +115,29 @@ export default function ViewTilePage() {
     };
   }, [tileId]);
 
+  // Load natural dimensions of the lightbox image, prioritizing actual square size
+  useEffect(() => {
+    if (lightboxImage) {
+      const img = new Image();
+      img.src = lightboxImage;
+      img.onload = () => {
+        const { naturalWidth, naturalHeight } = img;
+        // Use the smaller dimension to ensure square shape (should be equal for square images)
+        const size = Math.min(naturalWidth, naturalHeight);
+        // Constrain to 90% of the smaller viewport dimension to ensure it fits
+        const maxSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.9);
+        // Use natural size unless it exceeds the viewport
+        const finalSize = Math.min(size, maxSize);
+
+        setImageDimensions({ width: `${finalSize}px`, height: `${finalSize}px` });
+      };
+      img.onerror = () => {
+        console.error(`Failed to load lightbox image: ${lightboxImage}`);
+        setImageDimensions({ width: '150px', height: '150px' }); // Fallback to square placeholder size
+      };
+    }
+  }, [lightboxImage]);
+
   // Placeholder for POST API call
   const handlePostAction = async () => {
     if (!tile) return;
@@ -151,23 +175,27 @@ export default function ViewTilePage() {
 
   const closeLightbox = () => {
     setLightboxImage(null);
+    setImageDimensions({ width: 'auto', height: 'auto' });
   };
 
-  // Mock data for testing scrollability
-  const mockContent = Array(30).fill().map((_, i) => (
-    <p key={i} className="text-gray-600 dark:text-gray-300 mt-4">
-      Test paragraph {i + 1}: This is a long text to ensure the page scrolls. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-    </p>
-  ));
+  // Generate variant image names (e.g., sku_codef-1, sku_codef-2, etc.)
+  const getVariantImages = () => {
+    if (!tile?.sku_code) return [];
+    const variants = [];
+    for (let i = 1; i <= 15; i++) { // Assuming up to 15 variant images
+      variants.push(`${tile.sku_code}-f${i}`);
+    }
+    return variants;
+  };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-900 dark:to-gray-900 font-poppins">
+    <div className="flex min-h-screen bg-green-100 dark:bg-green-1000 text-gray-800 dark:text-gray-200 sticky top-0">
       <Sidebar theme="light" className="fixed top-0 left-0 h-screen w-64 bg-white dark:bg-gray-800 shadow-lg z-30" />
       <div className="flex-1 ml-0 md:ml-0">
         <Topbar theme="light" className="sticky top-0 z-20 bg-white dark:bg-gray-800 shadow-lg h-16" />
-        <div className="pt-16 pb-6 px-6 sm:px-8 md:px-10 lg:px-12 overflow-y-auto h-[calc(100vh-64px)] scrollbar-thin scrollbar-thumb-teal-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+        <div className="pt-16 pb-6 px-6 sm:px-8 md:px-10 lg:px-12 overflow-y-auto h-[calc(100vh-64px)] scrollbar-thin scrollbar-thumb-green-900 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 animate-fade-in-up">
-            <h2 className="text-4xl font-bold text-teal-700 dark:text-teal-300 tracking-tight">Product Details</h2>
+            <h2 className="text-4xl font-bold text-Black-700 dark:text-green-100 tracking-tight">Product Details</h2>
             <Breadcrumb className="animate-fade-in-up" />
           </div>
 
@@ -262,75 +290,80 @@ export default function ViewTilePage() {
 
             {/* Images Container */}
             <div className="mt-8 bg-gradient-to-br from-white to-teal-50 dark:from-gray-800 dark:to-teal-900 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-500 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              <h3 className="text-2xl font-semibold text-teal-800 dark:text-teal-200 mb-5">Images</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Main Tile Image */}
-                <div className="relative group cursor-pointer col-span-1 sm:col-span-2 lg:col-span-2" onClick={() => openLightbox(tile?.image ? `${bigImageBaseURL}${tile.image}` : `${bigImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL)}>
-                  <p className="text-sm font-medium text-teal-600 dark:text-teal-300 mb-2">Main Image</p>
-                  <img
-                    src={tile?.image ? `${bigImageBaseURL}${tile.image}` : `${bigImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL}
-                    alt={tile?.sku_name || 'Tile Image'}
-                    className="w-full h-96 object-cover rounded-xl border border-teal-200 dark:border-teal-700 group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => {
-                      console.error('Tile image failed to load:', tile?.image ? `${bigImageBaseURL}${tile.image}` : `${bigImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL);
-                      e.target.src = fallbackImageURL;
-                      e.target.alt = 'Image not found';
+              <h3 className="text-2xl font-semibold text-teal-800 dark:text-teal-200 mb-2">Images</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
+                {getVariantImages().map((variant, index) => (
+                  <div
+                    key={index}
+                    className="relative group cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      openLightbox(`${bigImageBaseURL}${variant}.jpg`);
                     }}
-                  />
-                  <div className="absolute inset-0 bg-teal-500 bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-500 rounded-xl flex items-center justify-center">
-                    <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-sm font-medium">Click to enlarge</span>
+                  >
+                    <p className="text-sm font-medium text-teal-600 dark:text-teal-300 mb-2">Variant {index + 1}</p>
+                    <img
+                      src={`${thumbImageBaseURL}${variant}.jpg`}
+                      alt={tile?.sku_name ? `${tile.sku_name} Variant ${index + 1}` : `Variant ${index + 1}`}
+                      className="w-50 h-48 object-cover border border-teal-200 dark:border-teal-700 group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        console.error(`Variant image failed to load: ${thumbImageBaseURL}${variant}.jpg`);
+                        e.target.src = fallbackImageURL;
+                        e.target.alt = 'Variant image not found';
+                      }}
+                    />
+                    <div className="absolute w-48 h-50 inset-0 bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-500 flex items-center justify-center">
+                      <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-sm font-medium">Click to enlarge</span>
+                    </div>
                   </div>
-                </div>
-
-                {/* Thumb Image */}
-                <div className="relative group cursor-pointer" onClick={() => openLightbox(tile?.thumb_image ? `${thumbImageBaseURL}${tile.thumb_image}` : `${thumbImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL)}>
-                  <p className="text-sm font-medium text-teal-600 dark:text-teal-300 mb-2">Thumb Image</p>
-                  <img
-                    src={tile?.thumb_image ? `${thumbImageBaseURL}${tile.thumb_image}` : `${thumbImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL}
-                    alt={tile?.sku_name ? `${tile.sku_name} Thumb` : 'Thumb Image'}
-                    className="w-full h-48 object-cover rounded-xl border border-teal-200 dark:border-teal-700 group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => {
-                      console.error('Thumb image failed to load:', tile?.thumb_image ? `${thumbImageBaseURL}${tile.thumb_image}` : `${thumbImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL);
-                      e.target.src = fallbackImageURL;
-                      e.target.alt = 'Thumb image not found';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-teal-500 bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-500 rounded-xl flex items-center justify-center">
-                    <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-sm font-medium">Click to enlarge</span>
-                  </div>
-                </div>
-
-                {/* Faces Image */}
-                <div className="relative group cursor-pointer" onClick={() => openLightbox(tile?.faces_image ? `${bigImageBaseURL}${tile.faces_image}` : `${bigImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL)}>
-                  <p className="text-sm font-medium text-teal-600 dark:text-teal-300 mb-2">Faces Image</p>
-                  <img
-                    src={tile?.faces_image ? `${bigImageBaseURL}${tile.faces_image}` : `${bigImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL}
-                    alt={tile?.sku_name ? `${tile.sku_name} Faces` : 'Faces Image'}
-                    className="w-full h-48 object-cover rounded-xl border border-teal-200 dark:border-teal-700 group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => {
-                      console.error('Faces image failed to load:', tile?.faces_image ? `${bigImageBaseURL}${tile.faces_image}` : `${bigImageBaseURL}${tile?.sku_code}.jpg` || fallbackImageURL);
-                      e.target.src = fallbackImageURL;
-                      e.target.alt = 'Faces image not found';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-teal-500 bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-500 rounded-xl flex items-center justify-center">
-                    <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-sm font-medium">Click to enlarge</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
-            <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                          <Link
-                            to="/tilemaster"
-                            className="bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 text-gray-800 dark:text-gray-100 px-6 py-3 rounded-lg font-medium shadow-md hover:from-gray-400 hover:to-gray-500 dark:hover:from-gray-500 dark:hover:to-gray-600 transition-all duration-300 disabled:opacity-50"
-                            aria-label="Back to products list"
-                            onClick={() => console.log('Link clicked for /tilemaster')}
-                          >
-                            Back to Products
-                          </Link>
-                          
-                        </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+              <Link
+                to="/tilemaster"
+                className="flex items-center justify-center bg-gradient-to-r from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 text-gray-800 dark:text-gray-100 px-6 py-3 rounded-lg font-medium shadow-md hover:from-gray-400 hover:to-gray-500 dark:hover:from-gray-500 dark:hover:to-gray-600 transition-all duration-300 disabled:opacity-50"
+                aria-label="Back to products list"
+                onClick={() => console.log('Link clicked for /tilemaster')}
+              >
+                <FaArrowLeft className="mr-2" />
+                Back to Products
+              </Link>
+            </div>
           </div>
+
+          {/* Lightbox */}
+          {lightboxImage && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 animate-fade-in-up"
+              onClick={closeLightbox}
+            >
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <img
+                  src={lightboxImage}
+                  alt="Enlarged tile image"
+                  style={{
+                    width: imageDimensions.width,
+                    height: imageDimensions.height,
+                    objectFit: 'contain', // Ensures no distortion, preserves square shape
+                  }}
+                  onError={(e) => {
+                    console.error(`Lightbox image failed to load: ${lightboxImage}`);
+                    e.target.src = fallbackImageURL;
+                    e.target.alt = 'Image not found';
+                  }}
+                />
+                <button
+                  className="absolute top-4 right-4 text-white text-2xl font-bold bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-all duration-300"
+                  onClick={closeLightbox}
+                  aria-label="Close lightbox"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
