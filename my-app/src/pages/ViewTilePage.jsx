@@ -9,11 +9,11 @@ import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 
 // Fallback base URL for API
-const baseURL = process.env.REACT_APP_API_BASE_URL || 'https://svikinfotech.com/clients/visualizer/api';
+const baseURL = process.env.REACT_APP_API_BASE_URL 
 // Base URLs for images
-const bigImageBaseURL = 'http://svikinfotech-001-site25.jtempurl.com/assets/media/big/';
-const thumbImageBaseURL = 'http://svikinfotech-001-site25.jtempurl.com/assets/media/thumb/';
-const fallbackImageURL = 'https://via.placeholder.com/150';
+const bigImageBaseURL = '/big';
+const thumbImageBaseURL = '/thumb';
+const fallbackImageURL = 'https://vyr.svikinfotech.in/assets/media/no-image.jpg';
 
 export default function ViewTilePage() {
   const { tileId } = useParams(); // tileId is expected to be the sku_code
@@ -189,7 +189,7 @@ export default function ViewTilePage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-green-100 dark:bg-green-1000 text-gray-800 dark:text-gray-200 sticky top-0">
+    <div className="flex min-h-screen bg-gray-100 dark:bg-green-1000 text-gray-800 dark:text-gray-200 sticky top-0">
       <Sidebar theme="light" className="fixed top-0 left-0 h-screen w-64 bg-white dark:bg-gray-800 shadow-lg z-30" />
       <div className="flex-1 ml-0 md:ml-0">
         <Topbar theme="light" className="sticky top-0 z-20 bg-white dark:bg-gray-800 shadow-lg h-16" />
