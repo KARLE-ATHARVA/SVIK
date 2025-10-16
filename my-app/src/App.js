@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './index.css'; 
+import { BrowserRouter } from 'react-router-dom';
 
 import LoginPage from './pages/LoginPage';
 import Dashboard from './components/Dashboard';
@@ -34,7 +35,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <Router>
+        <BrowserRouter basename="/backoff">
           {/* ToastContainer added at root so all components can use toast */}
           <ToastContainer 
             
@@ -65,7 +66,7 @@ export default function App() {
             <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
             <Route path="/view-tile/:tileId" element={<ViewTilePage />} />
           </Routes>
-        </Router>
+        </BrowserRouter>
       </SidebarProvider>
     </ThemeProvider>
   );
