@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import { FaSortUp, FaSortDown } from 'react-icons/fa';
@@ -9,7 +9,9 @@ export default function UserActivityLog() {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
+  const [fadeIn, setFadeIn] = useState(false);
 
+  // Sample data to simulate API response
   const activityLogs = [
     { id: 1, name: 'Admin John', action: 'Created User', logDate: '2024-07-01 09:00' },
     { id: 2, name: 'Admin Jane', action: 'Deleted Product', logDate: '2024-07-02 10:30' },
@@ -27,6 +29,10 @@ export default function UserActivityLog() {
     { id: 14, name: 'Admin Bob', action: 'Viewed Reports', logDate: '2024-07-03 12:15' },
     { id: 15, name: 'Admin Charlie', action: 'Approved Order', logDate: '2024-07-03 14:20' },
   ];
+
+  useEffect(() => {
+    setFadeIn(true);
+  }, []);
 
   const headers = [
     { key: 'id', label: 'ID' },
@@ -62,27 +68,32 @@ export default function UserActivityLog() {
     setSortConfig({ key, direction });
   };
 
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return null;
+    return sortConfig.direction === 'ascending' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />;
+  };
+
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentLogs = sorted.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filtered.length / entriesPerPage);
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-black dark:text-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
       <div className="flex flex-col flex-1">
         <Topbar />
-        <div className="flex flex-col flex-1 overflow-y-auto p-6">
-          <div className="flex justify-between mb-4 items-center">
-            <h1 className="text-2xl font-bold text-green-800 dark:text-gray-100">Admin Activity Log</h1>
+        <div className={`flex flex-col flex-1 p-6 overflow-auto transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-green-800 dark:text-green-200">Admin Activity Log</h1>
             <Breadcrumb />
           </div>
 
-          <div className="flex flex-col md:flex-row md:justify-between mb-4 gap-4">
-            <div className="flex items-center gap-2">
+          <div className="mb-4 flex justify-between items-center">
+            <div className="flex items-center space-x-2 text-sm text-gray-800 dark:text-gray-200">
               <span>Show</span>
               <select
-                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-2 py-1"
+                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-800 dark:text-gray-200"
                 value={entriesPerPage}
                 onChange={(e) => {
                   setEntriesPerPage(Number(e.target.value));
@@ -98,27 +109,26 @@ export default function UserActivityLog() {
 
             <input
               type="text"
-              placeholder="Search Name, Action, Date..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded w-full max-w-xs"
+              className="border border-gray-300 dark:border-gray-600 rounded px-5 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-800 dark:text-gray-200"
             />
           </div>
 
-          <div className="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow">
-            <table className="min-w-full text-sm text-left">
-              <thead className="bg-green-700 text-white text-xs uppercase sticky top-0 z-10">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+            <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
+              <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                 <tr>
                   {headers.map(({ key, label }) => (
                     <th
                       key={key}
-                      className="px-4 py-3 font-semibold cursor-pointer"
+                      className="px-4 py-2 font-semibold text-left cursor-pointer"
                       onClick={() => handleSort(key)}
                     >
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center">
                         {label}
-                        {sortConfig.key === key &&
-                          (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)}
+                        {getSortIcon(key)}
                       </div>
                     </th>
                   ))}
@@ -126,18 +136,18 @@ export default function UserActivityLog() {
               </thead>
               <tbody>
                 {currentLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={headers.length} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 italic">
+                  <tr className="border-b dark:border-gray-700">
+                    <td colSpan={headers.length} className="px-4 py-6 text-center text-gray-500 italic">
                       No records found.
                     </td>
                   </tr>
                 ) : (
                   currentLogs.map((log) => (
-                    <tr key={log.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                      <td className="px-4 py-3">{log.id}</td>
-                      <td className="px-4 py-3">{log.name}</td>
-                      <td className="px-4 py-3">{log.action}</td>
-                      <td className="px-4 py-3">{log.logDate}</td>
+                    <tr key={log.id} className="border-b dark:border-gray-700 hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
+                      <td className="px-4 py-2">{log.id}</td>
+                      <td className="px-4 py-2">{log.name}</td>
+                      <td className="px-4 py-2">{log.action}</td>
+                      <td className="px-4 py-2">{log.logDate}</td>
                     </tr>
                   ))
                 )}
@@ -145,7 +155,7 @@ export default function UserActivityLog() {
             </table>
           </div>
 
-          <div className="flex justify-between mt-4 text-sm items-center">
+          <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
             <span>
               Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
             </span>
@@ -153,7 +163,7 @@ export default function UserActivityLog() {
               <button
                 onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50"
+                className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50"
               >
                 Previous
               </button>
@@ -161,8 +171,8 @@ export default function UserActivityLog() {
                 <button
                   key={num + 1}
                   onClick={() => setCurrentPage(num + 1)}
-                  className={`px-3 py-1 border border-gray-300 dark:border-gray-600 rounded ${
-                    currentPage === num + 1 ? 'bg-green-600 text-white' : ''
+                  className={`px-3 py-1 border dark:border-gray-700 rounded ${
+                    currentPage === num + 1 ? 'bg-green-600 text-white' : 'dark:text-gray-200'
                   }`}
                 >
                   {num + 1}
@@ -171,7 +181,7 @@ export default function UserActivityLog() {
               <button
                 onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded disabled:opacity-50"
+                className="px-3 py-1 border dark:border-gray-700 rounded disabled:opacity-50"
               >
                 Next
               </button>
@@ -182,4 +192,3 @@ export default function UserActivityLog() {
     </div>
   );
 }
-
