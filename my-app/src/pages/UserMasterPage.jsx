@@ -4,6 +4,8 @@ import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from 'react-icons/fa';
 import axios from 'axios';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
@@ -60,7 +62,7 @@ export default function UserMasterPage() {
       setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching users', err);
-      setError('Error fetching users: ' + err.message);
+      toast.error('Failed to fetch');
     }
   };
 
@@ -126,66 +128,61 @@ export default function UserMasterPage() {
     setEditData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const confirmSave = () => {
-    setConfirmation({
-      show: true,
-      message: 'Are you sure you want to save changes?',
-      onConfirm: async () => {
-        try {
-          const formData = new FormData();
-          Object.entries(editData).forEach(([k, v]) =>
-            formData.append(k, k === 'block' ? (v ? '1' : '0') : v)
-          );
-          const res = await axios.post(`${baseURL}/EditUser`, formData);
-          if (res.data === 'success') {
-            await fetchUsers();
-            cancelEditing();
-          } else {
-            setError(res.data === 'alreadyexists' ? 'User already exists' : (res.data ?? 'Edit failed'));
-          }
-        } catch (err) {
-          console.error('Edit failed', err);
-          setError('Edit failed: ' + err.message);
-        }
-        setConfirmation((prev) => ({ ...prev, show: false }));
-      }
-    });
-  };
+const confirmSave = () => {
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to save changes?',
+    onConfirm: async () => {
+      try {
+        // Build form-data for the EditUser API
+        const formData = new FormData();
+        Object.entries(editData).forEach(([k, v]) =>
+          formData.append(k, k === 'block' ? (v ? '1' : '0') : v)
+        );
 
-  const confirmDelete = (id) => {
+        // Call EditUser
+        const res = await axios.post(`${baseURL}/EditUser`, formData);
+
+        // If the block status has changed, toggle it via BlockUser API
+        const original = users.find((u) => u.user_id === editData.UserId);
+        if (original && original.block !== editData.block) {
+          await axios.get(
+            `${baseURL}/BlockUser/${userId}/${editData.UserId}/${editData.block ? 1 : 0}`
+          );
+        }
+
+        if (res.data === 'success') {
+                                                          fetchUsers();
+                                                          cancelEditing();
+                                                          toast.success('Updated successfully!');
+                                                        } else {
+                                                          toast.error(res.data === 'alreadyexists' ? 'User already exists!' : `Error: ${res.data}`);
+                                                        }
+                                                      } catch (err) {
+                                                        console.error('Edit failed', err);
+                                                        toast.error('Error saving size');
+                                                      }
+      setConfirmation((prev) => ({ ...prev, show: false }));
+    }
+  });
+};
+
+  const confirmDelete = (id, blockStatus) => {
     setConfirmation({
       show: true,
       message: 'Are you sure you want to delete this user?',
       onConfirm: async () => {
-        try {
-          const res = await axios.get(`${baseURL}/DeleteUser/${id}`);
-          if (res.data === 'success') {
-            await fetchUsers();
-          } else {
-            setError(res.data ?? 'Delete failed');
-          }
+       try {
+          await axios.get(`${baseURL}/BlockUser/${userId}/${id}/1`);
+          fetchUsers();
+          toast.success('Deleted successfully!');
         } catch (err) {
           console.error('Delete failed', err);
-          setError('Delete failed: ' + err.message);
+          toast.error('Error deleting user');
         }
         setConfirmation((prev) => ({ ...prev, show: false }));
       }
     });
-  };
-
-  const toggleBlock = async (user) => {
-    try {
-      const status = user.block ? 0 : 1;
-      const res = await axios.get(`${baseURL}/BlockUser/${userId}/${user.user_id}/${status}`);
-      if (res.data === 'success') {
-        await fetchUsers();
-      } else {
-        setError(res.data ?? 'Block toggle failed');
-      }
-    } catch (err) {
-      console.error('Block toggle failed', err);
-      setError('Block toggle failed: ' + err.message);
-    }
   };
 
   const startAdding = () => setIsAdding(true);
@@ -205,7 +202,7 @@ export default function UserMasterPage() {
 
   const saveAdding = () => {
     if (!newData.UserName || !newData.EmailId) {
-      setError('Please fill all required fields');
+      toast.error('Please enter a name');
       return;
     }
     setConfirmation({
@@ -219,15 +216,20 @@ export default function UserMasterPage() {
           );
           const res = await axios.post(`${baseURL}/AddUser`, formData);
           if (res.data === 'success') {
-            await fetchUsers();
-            cancelAdding();
-          } else {
-            setError(res.data === 'alreadyexists' ? 'User already exists' : (res.data ?? 'Add failed'));
-          }
-        } catch (err) {
-          console.error('Add failed', err);
-          setError('Add failed: ' + err.message);
-        }
+                    fetchUsers(); 
+                    cancelAdding();
+                    toast.success('Added successfully!');
+                  } else {
+                    toast.error(
+                      res.data === 'alreadyexists'
+                        ? 'User already exists!'
+                        : `Error: ${res.data}`
+                    );
+                  }
+                } catch (err) {
+                  console.error('Add failed', err);
+                  toast.error('Error adding user');
+                }
         setConfirmation((prev) => ({ ...prev, show: false }));
       }
     });
@@ -240,16 +242,12 @@ export default function UserMasterPage() {
         <Topbar theme="light" />
 
         <div className="flex flex-col flex-1 p-6 overflow-auto">
-          {/* Header */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">User</h2>
             <Breadcrumb />
           </div>
 
-          {/* Card */}
           <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
-
-            {/* Error banner */}
             {error && (
               <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
                 {error}
@@ -257,10 +255,8 @@ export default function UserMasterPage() {
               </div>
             )}
 
-            {/* Top controls */}
             <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
-              {/* Show Entries */}
-              <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5">
+              <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1">
                 <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
                 <select
                   value={entriesPerPage}
@@ -277,7 +273,6 @@ export default function UserMasterPage() {
                 <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
               </div>
 
-              {/* Search */}
               <div className="relative w-full sm:w-64">
                 <input
                   type="text"
@@ -287,15 +282,14 @@ export default function UserMasterPage() {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                  className="border border-gray-300 dark:border-gray-600 rounded px-5 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
                 />
               </div>
 
-              {/* Add User */}
               {!isAdding && (
                 <div className="w-full sm:w-auto ml-auto">
                   <button
-                    className="inline-flex items-center bg-green-700 hover:bg-green-800 text-white px-4 py-1.5 rounded-lg"
+                    className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium"
                     onClick={startAdding}
                   >
                     <FaPlus className="mr-2" /> Add New User
@@ -304,254 +298,96 @@ export default function UserMasterPage() {
               )}
             </div>
 
-            {/* Table */}
-            <div
-              className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow"
-              style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}
-            >
+            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                 <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
                   <tr>
-                    <th
-                      className="px-4 py-2 font-semibold text-left cursor-pointer"
-                      onClick={() => handleSort('user_name')}
-                    >
-                      User Name {sortConfig.key === 'user_name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                    </th>
+                    <th className="px-4 py-2 font-semibold text-left cursor-pointer" onClick={() => handleSort('user_name')}>User Name</th>
                     <th className="px-4 py-2 font-semibold text-left">Email</th>
                     <th className="px-4 py-2 font-semibold text-left">Contact</th>
-                    <th className="px-4 py-2 font-semibold text-left">Company ID</th>
-                    <th className="px-4 py-2 font-semibold text-left">Profile ID</th>
+
                     <th className="px-4 py-2 font-semibold text-left">Updated By</th>
                     <th className="px-4 py-2 font-semibold text-left">Updated Date</th>
                     <th className="px-4 py-2 font-semibold text-left">Block</th>
                     <th className="px-4 py-2 font-semibold text-left">Actions</th>
                   </tr>
                 </thead>
+
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
-                  {/* Add new row */}
                   {isAdding && (
-                    <tr className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
-                      <td className="px-4 py-2">
-                        <input
-                          value={newData.UserName}
-                          onChange={(e) => setNewData({ ...newData, UserName: e.target.value })}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                          placeholder="User Name"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          value={newData.EmailId}
-                          onChange={(e) => setNewData({ ...newData, EmailId: e.target.value })}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                          placeholder="Email"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          value={newData.ContNumber}
-                          onChange={(e) => setNewData({ ...newData, ContNumber: e.target.value })}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                          placeholder="Contact"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          value={newData.CompId}
-                          onChange={(e) => setNewData({ ...newData, CompId: e.target.value })}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                          placeholder="Company ID"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          value={newData.ProfileId}
-                          onChange={(e) => setNewData({ ...newData, ProfileId: e.target.value })}
-                          className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                          placeholder="Profile ID"
-                        />
-                      </td>
+                    <tr>
+                      <td className="px-4 py-2"><input value={newData.UserName} onChange={(e) => setNewData({ ...newData, UserName: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.EmailId} onChange={(e) => setNewData({ ...newData, EmailId: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.ContNumber} onChange={(e) => setNewData({ ...newData, ContNumber: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.CompId} onChange={(e) => setNewData({ ...newData, CompId: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
+                      <td className="px-4 py-2"><input value={newData.ProfileId} onChange={(e) => setNewData({ ...newData, ProfileId: e.target.value })} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /></td>
                       <td className="px-4 py-2">--</td>
                       <td className="px-4 py-2">--</td>
                       <td className="px-4 py-2">--</td>
                       <td className="px-4 py-2 space-x-2 flex">
-                        <button onClick={saveAdding} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300" title="Save">
-                          <FaSave size={18} />
-                        </button>
-                        <button onClick={cancelAdding} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300" title="Cancel">
-                          <FaTimes size={18} />
-                        </button>
+                        <button onClick={saveAdding} className="text-green-600"><FaSave size={20} /></button>
+                        <button onClick={cancelAdding} className="text-gray-600"><FaTimes size={20} /></button>
                       </td>
                     </tr>
                   )}
 
-                  {/* Existing rows */}
-                  {currentUsers.length === 0 && !isAdding ? (
-                    <tr>
-                      <td colSpan={9} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                        No records found.
+                  {currentUsers.map((user) => (
+                    <tr key={user.user_id}>
+                      <td className="px-4 py-2">
+                        {editId === user.user_id ? (
+                          <input value={editData.UserName} onChange={(e) => handleEditChange('UserName', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" />
+                        ) : user.user_name}
                       </td>
-                    </tr>
-                  ) : (
-                    currentUsers.map((user) => (
-                      <tr key={user.user_id} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
-                        <td className="px-4 py-2">
-                          {editId === user.user_id ? (
-                            <input
-                              value={editData.UserName}
-                              onChange={(e) => handleEditChange('UserName', e.target.value)}
-                              className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                            />
-                          ) : (
-                            user.user_name
-                          )}
-                        </td>
-                        <td className="px-4 py-2">
-                          {editId === user.user_id ? (
-                            <input
-                              value={editData.EmailId}
-                              onChange={(e) => handleEditChange('EmailId', e.target.value)}
-                              className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                            />
-                          ) : (
-                            user.email_id
-                          )}
-                        </td>
-                        <td className="px-4 py-2">
-                          {editId === user.user_id ? (
-                            <input
-                              value={editData.ContNumber}
-                              onChange={(e) => handleEditChange('ContNumber', e.target.value)}
-                              className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                            />
-                          ) : (
-                            user.cont_number
-                          )}
-                        </td>
-                        <td className="px-4 py-2">
-                          {editId === user.user_id ? (
-                            <input
-                              value={editData.CompId}
-                              onChange={(e) => handleEditChange('CompId', e.target.value)}
-                              className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                            />
-                          ) : (
-                            user.comp_id
-                          )}
-                        </td>
-                        <td className="px-4 py-2">
-                          {editId === user.user_id ? (
-                            <input
-                              value={editData.ProfileId}
-                              onChange={(e) => handleEditChange('ProfileId', e.target.value)}
-                              className="border rounded px-2 py-1 w-full bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-                            />
-                          ) : (
-                            user.profile_id
-                          )}
-                        </td>
-                        <td className="px-4 py-2">{user.updated_by ?? '--'}</td>
-                        <td className="px-4 py-2">
-                          {user.updated_date ? new Date(user.updated_date).toLocaleDateString() : '--'}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span
-                            onClick={() => toggleBlock(user)}
-                            className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${user.block ? 'bg-red-600' : 'bg-green-600'}`}
-                            title="Toggle block"
-                          >
+                      <td className="px-4 py-2">{editId === user.user_id ? <input value={editData.EmailId} onChange={(e) => handleEditChange('EmailId', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /> : user.email_id}</td>
+                      <td className="px-4 py-2">{editId === user.user_id ? <input value={editData.ContNumber} onChange={(e) => handleEditChange('ContNumber', e.target.value)} className="border rounded px-2 py-1 w-full dark:bg-gray-700 dark:text-gray-200" /> : user.cont_number}</td>
+
+                      <td className="px-4 py-2">{user.updated_by ?? '--'}</td>
+                      <td className="px-4 py-2">{user.updated_date ? new Date(user.updated_date).toLocaleDateString() : '--'}</td>
+                      <td className="px-4 py-2">
+                        {editId === user.user_id ? (
+                          <span onClick={() => handleEditChange('block', !editData.block)} className={`px-3 py-1 rounded-full cursor-pointer text-white text-xs ${editData.block ? 'bg-red-600' : 'bg-green-600'}`}>
+                            {editData.block ? 'Yes' : 'No'}
+                          </span>
+                        ) : (
+                          <span className={`px-3 py-1 rounded-full text-white text-xs ${user.block ? 'bg-red-600' : 'bg-green-600'}`}>
                             {user.block ? 'Yes' : 'No'}
                           </span>
-                        </td>
-                        <td className="px-4 py-2 space-x-2 flex">
-                          {editId === user.user_id ? (
-                            <>
-                              <button
-                                onClick={confirmSave}
-                                className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                                title="Save"
-                              >
-                                <FaSave size={18} />
-                              </button>
-                              <button
-                                onClick={cancelEditing}
-                                className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                                title="Cancel"
-                              >
-                                <FaTimes size={18} />
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => startEditing(user)}
-                                className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
-                                title="Edit"
-                              >
-                                <FaEdit size={18} />
-                              </button>
-                              <button
-                                onClick={() => confirmDelete(user.user_id)}
-                                className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                title="Delete"
-                              >
-                                <FaTrash size={18} />
-                              </button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                        )}
+                      </td>
+                      <td className="px-4 py-2 space-x-2 flex">
+                        {editId === user.user_id ? (
+                          <>
+                            <button onClick={confirmSave} className="text-green-600"><FaSave size={22} /></button>
+                            <button onClick={cancelEditing} className="text-gray-600"><FaTimes size={22} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => startEditing(user)} className="text-yellow-500"><FaEdit size={18} /></button>
+                            <button onClick={() => confirmDelete(user.user_id, user.block)} className="text-red-500"><FaTrash size={18} /></button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Pagination */}
             <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
-              <span>
-                Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries
-              </span>
+              <span>Showing {sorted.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, sorted.length)} of {sorted.length} entries</span>
               <div className="flex gap-1">
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
-                >
-                  Previous
-                </button>
+                <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200">Previous</button>
                 {[...Array(totalPages).keys()].map((num) => (
-                  <button
-                    key={num + 1}
-                    onClick={() => setCurrentPage(num + 1)}
-                    className={`px-3 py-1 border rounded ${
-                      currentPage === num + 1
-                        ? 'bg-green-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                    }`}
-                  >
-                    {num + 1}
-                  </button>
+                  <button key={num + 1} onClick={() => setCurrentPage(num + 1)} className={`px-3 py-1 border rounded ${currentPage === num + 1 ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>{num + 1}</button>
                 ))}
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
-                >
-                  Next
-                </button>
+                <button onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))} disabled={currentPage === totalPages || totalPages === 0} className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200">Next</button>
               </div>
             </div>
           </div>
         </div>
 
         {confirmation.show && (
-          <ConfirmationModal
-            message={confirmation.message}
-            onConfirm={confirmation.onConfirm}
-            onCancel={() => setConfirmation((prev) => ({ ...prev, show: false }))}
-          />
+          <ConfirmationModal message={confirmation.message} onConfirm={confirmation.onConfirm} onCancel={() => setConfirmation((prev) => ({ ...prev, show: false }))} />
         )}
       </div>
     </div>
