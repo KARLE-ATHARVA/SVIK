@@ -1,15 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import axios from 'axios';
-import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaInfoCircle } from 'react-icons/fa';
+import {
+  FaPlus,
+  FaEdit,
+  FaCheck,
+  FaAngleLeft,
+  FaAngleRight,
+  FaTrash,
+  FaInfoCircle,
+  FaTimes,
+  FaFileImport,
+  FaFolderOpen,
+  FaSpinner,
+  FaFileExport,
+} from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const baseURL = process.env.REACT_APP_API_BASE_URL || 'https://svikinfotech.com/clients/visualizer/api';
-const imageBaseURL = 'http://svikinfotech-001-site25.jtempurl.com/assets/media/thumb';
+const baseURL = process.env.REACT_APP_API_BASE_URL || 'https://vyr.svikinfotech.in/api';
+const imageBaseURL = process.env.REACT_APP_API_IMG_URL || 'https://vyr.svikinfotech.in/assets/media';
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -35,7 +48,104 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
+// ErrorBoundary example (wrap your component with this in App.js or parent)
+export class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    // log error if needed
+  }
+  render() {
+    if (this.state.hasError) {
+      return <h2>Something went wrong.</h2>;
+    }
+    return this.props.children;
+  }
+}
 
+function ImportModal({
+  isOpen,
+  onClose,
+  selectedImportType,
+  setSelectedImportType,
+  fileInputRef,
+  folderInputRef,
+  handleExcelChange,
+  handleFolderChange,
+  isLoading,
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Import Options</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <FaTimes size={20} />
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+            {[
+              { key: 'excel', icon: FaFileImport, label: 'Excel Import' },
+              { key: 'folder', icon: FaFolderOpen, label: 'Folder Upload' },
+            ].map(({ key, icon: Icon, label }) => (
+              <button
+                key={key}
+                onClick={() => setSelectedImportType(key)}
+                className={`px-4 py-2 text-sm font-medium flex items-center space-x-2 ${
+                  selectedImportType === key
+                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
+                }`}
+              >
+                <Icon size={14} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          {selectedImportType === 'excel' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Excel File</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  ref={fileInputRef}
+                  onChange={handleExcelChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-600 dark:file:text-white"
+                  disabled={isLoading}
+                />
+              </div>
+              {isLoading && <FaSpinner className="animate-spin mx-auto text-blue-500" size={24} />}
+            </div>
+          )}
+          {selectedImportType === 'folder' && (
+            <div className="space-y-4">
+              <input
+                type="file"
+                multiple
+                webkitdirectory
+                accept="image/*"
+                ref={folderInputRef}
+                onChange={handleFolderChange}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-600 dark:file:text-white"
+                disabled={isLoading}
+              />
+              {isLoading && <FaSpinner className="animate-spin mx-auto text-blue-500" size={24} />}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const userId = localStorage.getItem('userid');
 
@@ -62,9 +172,18 @@ export default function TileMasterPage() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedImportType, setSelectedImportType] = useState('excel');
+  const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!userId) {
+      toast.error('User not authenticated. Please log in.');
+      navigate('/login');
+      return;
+    }
     fetchTiles();
   }, []);
 
@@ -73,10 +192,8 @@ export default function TileMasterPage() {
     try {
       const normalizedBaseURL = baseURL.replace(/\/+$/, '');
       const res = await axios.get(`${normalizedBaseURL}/GetTileList`);
-      console.log('TileMaster API Response:', JSON.stringify(res.data, null, 2));
       setTiles(Array.isArray(res.data) ? res.data : res.data.tiles || res.data.data?.tiles || []);
     } catch (err) {
-      console.error('TileMaster Fetch Error:', err);
       toast.error('Failed to fetch tiles');
       setError('Failed to fetch tiles');
     } finally {
@@ -108,7 +225,6 @@ export default function TileMasterPage() {
           toast.error('Failed to update block status');
         }
       } catch (err) {
-        console.error('Block Toggle Error:', err);
         toast.error('Error while toggling block status');
       } finally {
         setIsLoading(false);
@@ -174,6 +290,108 @@ export default function TileMasterPage() {
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
+
+  const handleExportExcel = async () => {
+    try {
+      const normalizedBaseURL = baseURL.replace(/\/+$/, '');
+      const res = await axios.get(`${normalizedBaseURL}/ExportToExcel`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '');
+      link.href = url;
+      link.setAttribute('download', `TileList_${timestamp}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Excel file exported successfully');
+    } catch (err) {
+      toast.error('Error exporting Excel: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleImportClick = () => {
+    setShowImportModal(true);
+  };
+
+  const handleImportClose = () => {
+    setShowImportModal(false);
+    setSelectedImportType('excel');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (folderInputRef.current) folderInputRef.current.value = '';
+  };
+
+  const handleExcelChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      toast.error('No file selected');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      setIsLoading(true);
+      const normalizedBaseURL = baseURL.replace(/\/+$/, '');
+      const res = await axios.post(`${normalizedBaseURL}/ImportFromExcel`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (res.data.message && res.data.message.includes('Error')) {
+        toast.error(res.data.message);
+      } else {
+        toast.success(res.data.message || 'Excel imported successfully');
+        fetchTiles();
+      }
+    } catch (err) {
+      toast.error('Error importing Excel: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFolderChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) {
+      toast.error('No files selected');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '');
+      const folderName = `tiles_${timestamp}`;
+      const formData = new FormData();
+      files.forEach((file) => formData.append('files', file));
+      formData.append('folderName', folderName);
+      const normalizedBaseURL = baseURL.replace(/\/+$/, '');
+      const resizeRes = await axios.post(`${normalizedBaseURL}/resize-folder`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (resizeRes.data && Array.isArray(resizeRes.data)) {
+        const errors = resizeRes.data.filter((item) => item.error);
+        if (errors.length > 0) {
+          errors.forEach((item) => toast.error(`Failed to process ${item.FileName}: ${item.error}`));
+        } else {
+          resizeRes.data.forEach((item) =>
+            toast.success(`Resized: ${item.FileName} - Big: ${item.BigUrl}, Thumb: ${item.ThumbUrl}`)
+          );
+        }
+      } else {
+        toast.error('Unexpected response from resize-folder');
+      }
+      const bluePatchFormData = new FormData();
+      bluePatchFormData.append('excelFile', new File([], 'SizeListFormat.xlsx'));
+      bluePatchFormData.append('folderName', folderName);
+      await axios.post(`${normalizedBaseURL}/process-folder-faces-with-bluepatch`, bluePatchFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Faces processed and blue patch applied, images in /vyr');
+      fetchTiles();
+    } catch (err) {
+      toast.error('Error processing folder: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsLoading(false);
+      if (folderInputRef.current) folderInputRef.current.value = '';
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
@@ -242,13 +460,27 @@ export default function TileMasterPage() {
                 </div>
               </div>
 
-              <div className="w-full sm:w-auto ml-auto">
+              <div className="flex gap-2 w-full sm:w-auto ml-auto">
                 <Link
                   to="/add-tile"
                   className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium"
                 >
                   <FaPlus className="mr-2" /> Add Product
                 </Link>
+                <button
+                  onClick={handleImportClick}
+                  className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 flex items-center text-sm font-medium"
+                  disabled={isLoading}
+                >
+                  <FaFileImport className="mr-2" /> Import
+                </button>
+                <button
+                  onClick={handleExportExcel}
+                  className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 flex items-center text-sm font-medium"
+                  disabled={isLoading}
+                >
+                  <FaFileExport className="mr-2" /> Export Excel
+                </button>
               </div>
             </div>
 
@@ -302,14 +534,14 @@ export default function TileMasterPage() {
                             alt={tile.sku_name || 'Tile Image'}
                             className="w-12 h-12 object-cover rounded"
                             onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/150';
+                              e.target.src = 'https://vyr.svikinfotech.in/assets/media/no-image.jpg';
                               e.target.alt = 'No Image';
                             }}
                           />
                         ) : (
                           <div className="flex flex-col items-center">
                             <img
-                              src="https://via.placeholder.com/150"
+                              src="https://vyr.svikinfotech.in/assets/media/no-image.jpg"
                               alt="No Image"
                               className="w-12 h-12 object-cover rounded"
                             />
@@ -345,7 +577,7 @@ export default function TileMasterPage() {
               </table>
             </div>
 
-            <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+            <div className="mt-3 flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
               <span>
                 Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to{' '}
                 {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries
@@ -380,17 +612,53 @@ export default function TileMasterPage() {
                 </button>
               </div>
             </div>
+            <div className="mt-3 flex justify-between items-center">
+              <div>
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-1 rounded border border-gray-300 dark:border-gray-600"
+                >
+                  <FaAngleLeft />
+                </button>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-1 rounded border border-gray-300 dark:border-gray-600"
+                >
+                  <FaAngleRight />
+                </button>
+              </div>
+            </div>
+            {isLoading && (
+              <div className="mt-2 text-gray-700 dark:text-gray-300">
+                Processing, please wait...
+              </div>
+            )}
+            {showConfirm && (
+              <ConfirmationModal
+                message={confirmMessage}
+                onConfirm={confirmAction}
+                onCancel={() => setShowConfirm(false)}
+              />
+            )}
+            <ImportModal
+              isOpen={showImportModal}
+              onClose={handleImportClose}
+              selectedImportType={selectedImportType}
+              setSelectedImportType={setSelectedImportType}
+              fileInputRef={fileInputRef}
+              folderInputRef={folderInputRef}
+              handleExcelChange={handleExcelChange}
+              handleFolderChange={handleFolderChange}
+              isLoading={isLoading}
+            />
           </div>
         </div>
       </div>
-
-      {showConfirm && (
-        <ConfirmationModal
-          message={confirmMessage}
-          onConfirm={confirmAction}
-          onCancel={() => setShowConfirm(false)}
-        />
-      )}
     </div>
   );
 }
