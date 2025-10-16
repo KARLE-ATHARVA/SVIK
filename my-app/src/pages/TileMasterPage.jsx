@@ -16,9 +16,9 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
-        <div className="flex justify-end space-x-2">
+        <div className="flex justify-end space-x-3">
           <button
-            className="bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+            className="px-4 py-2 bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
@@ -34,6 +34,8 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
     </div>
   );
 }
+
+
 
 const userId = localStorage.getItem('userid');
 
@@ -178,12 +180,10 @@ export default function TileMasterPage() {
       <Sidebar theme="light" />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar theme="light" />
-
         <div className="flex flex-col flex-1 p-6 overflow-auto">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Products</h2>
             <Breadcrumb />
-
           </div>
 
           <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[100vh] overflow-hidden">
@@ -256,7 +256,7 @@ export default function TileMasterPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                 <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
                   <tr>
-                    {['image', 'sku_name', 'sku_code', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
+                    {['sku_code', 'image', 'sku_name', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
                       <th
                         key={key}
                         className="px-4 py-2 font-semibold text-left cursor-pointer"
@@ -288,29 +288,36 @@ export default function TileMasterPage() {
                   {currentTiles.map((tile, index) => (
                     <tr key={index} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
                       <td className="px-4 py-2">
-                        {tile.image ? (
-                          <img
-                            src={`${imageBaseURL}/${tile.image}`}
-                            alt={tile.sku_name || 'Tile Image'}
-                            className="w-12 h-12 object-cover rounded"
-                            onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/150';
-                              e.target.alt = 'Image not found';
-                            }}
-                          />
-                        ) : (
-                          <span className="text-gray-500 dark:text-gray-400">No Image</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">{tile.sku_name}</td>
-                      <td className="px-4 py-2">
                         <span
                           onClick={() => handleViewDetails(tile)}
-                          className="text-blue-600 hover:underline cursor-pointer"
+                          className="text-black-600 hover:underline cursor-pointer"
                         >
                           {tile.sku_code}
                         </span>
                       </td>
+                      <td className="px-4 py-2">
+                        {tile.sku_code ? (
+                          <img
+                            src={`${imageBaseURL}/${tile.sku_code}.jpg`}
+                            alt={tile.sku_name || 'Tile Image'}
+                            className="w-12 h-12 object-cover rounded"
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/150';
+                              e.target.alt = 'No Image';
+                            }}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <img
+                              src="https://via.placeholder.com/150"
+                              alt="No Image"
+                              className="w-12 h-12 object-cover rounded"
+                            />
+                            <span className="text-gray-500 dark:text-gray-400 text-xs mt-1">No Image</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">{tile.sku_name}</td>
                       <td className="px-4 py-2">{tile.app_name}</td>
                       <td className="px-4 py-2">{tile.space_name}</td>
                       <td className="px-4 py-2">{tile.size_name}</td>
