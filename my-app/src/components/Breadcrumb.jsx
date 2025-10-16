@@ -6,15 +6,26 @@ export default function Breadcrumb() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const pathnames = location.pathname.split('/').filter(x => x);
+  // Split pathname and filter empty segments
+  let pathnames = location.pathname.split('/').filter(x => x);
+
+  // If the last segment is a numeric ID, drop it
+  if (pathnames.length > 1 && /^\d+$/.test(pathnames[pathnames.length - 1])) {
+    pathnames = pathnames.slice(0, -1);
+  }
 
   const handleClick = (index) => {
     const to = '/' + pathnames.slice(0, index + 1).join('/');
     navigate(to);
   };
 
+  const formatName = (name) => {
+    const cleaned = name.replace(/master/i, '').trim();
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  };
+
   return (
-    <ol className="flex flex-wrap items-center space-x-1 text-gray-500 text-sm">
+    <ol className="flex flex-wrap items-center space-x-1 text-gray-500 text-sm font-bold">
       <li
         className="cursor-pointer hover:underline text-emerald-700"
         onClick={() => navigate('/dashboard')}
@@ -30,7 +41,7 @@ export default function Breadcrumb() {
               className={`${isLast ? 'font-medium text-gray-800' : 'cursor-pointer hover:underline text-emerald-700'}`}
               {...(!isLast && { onClick: () => handleClick(index) })}
             >
-              {name.charAt(0).toUpperCase() + name.slice(1)}
+              {formatName(name)}
             </li>
           </React.Fragment>
         );
