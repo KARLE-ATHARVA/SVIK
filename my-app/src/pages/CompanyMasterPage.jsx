@@ -62,7 +62,6 @@ export default function CompanyMasterPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('checking'); // 'checking', 'connected', 'disconnected'
 
-  // Auto-dismiss error after 10 seconds
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => setError(''), 10000);
@@ -70,7 +69,6 @@ export default function CompanyMasterPage() {
     }
   }, [error]);
 
-  // Initialize dark mode from localStorage
   useEffect(() => {
     const isDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(isDarkMode);
@@ -81,60 +79,55 @@ export default function CompanyMasterPage() {
     }
   }, []);
 
-  // Debounce search term
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
+      console.log('Debounced Search Term:', searchTerm);
     }, 300);
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  // Test backend connection
-  const testConnection = async () => {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s
-      const response = await fetch(`${baseURL}/health`, {
-        signal: controller.signal,
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      clearTimeout(timeoutId);
-      if (response.ok) {
-        setConnectionStatus('connected');
-        console.log('Backend connection: OK at', new Date().toLocaleString('en-US', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
-      } else {
-        throw new Error(`Status: ${response.status}`);
+  // Ensure search term is empty on initial render to avoid filtering out data
+  useEffect(() => {
+    setSearchTerm('');
+    setDebouncedSearchTerm('');
+  }, []);
+
+  const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.ok) return response;
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-    } catch (err) {
-      setConnectionStatus('disconnected');
-      console.error('Backend connection failed:', err.message, 'at', new Date().toLocaleString('en-US', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
-      setError(`Backend not reachable: ${err.message}. Check if server is running on ${baseURL}.`);
     }
   };
 
-  // Fetch companies from API
   const fetchCompanies = async () => {
     setIsLoading(true);
     setConnectionStatus('checking');
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s
-      const response = await fetch(`${baseURL}/GetCompanyList`, {
-        signal: controller.signal,
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const response = await fetchWithRetry(
+        `${baseURL}/GetCompanyList`,
+        {
+          signal: controller.signal,
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        },
+        3,
+        1000
+      );
       clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
 
       const data = await response.json();
       console.log('API Response:', data, 'at', new Date().toLocaleString('en-US', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
 
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         const mappedCompanies = data.map(comp => ({
           comp_id: comp.CompId || 0,
           plan_id: comp.PlanId || 0,
@@ -151,13 +144,15 @@ export default function CompanyMasterPage() {
           modify_date: comp.ModifyDate || new Date().toLocaleString('en-US', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
           block: comp.Block || false,
         }));
+
         setCompanies(mappedCompanies);
+        console.log('Companies State:', mappedCompanies); // Debug: Verify state
         setConnectionStatus('connected');
         console.log('Mapped Companies:', mappedCompanies);
       } else {
         setCompanies([]);
-        setError(Array.isArray(data) ? 'No companies found in database.' : 'Invalid response from server (not an array).');
-        setConnectionStatus('connected'); // API reachable, but empty data
+        setError('Invalid response from server (not an array).');
+        setConnectionStatus('connected');
       }
     } catch (err) {
       console.error('Fetch Error Details:', err, 'at', new Date().toLocaleString('en-US', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
@@ -170,8 +165,7 @@ export default function CompanyMasterPage() {
   };
 
   useEffect(() => {
-    testConnection(); // Test connection first
-    fetchCompanies(); // Then fetch data
+    fetchCompanies();
   }, []);
 
   const validateData = (data) => {
@@ -222,11 +216,16 @@ export default function CompanyMasterPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${baseURL}/EditCompany`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editData),
-      });
+      const response = await fetchWithRetry(
+        `${baseURL}/EditCompany`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(editData),
+        },
+        3,
+        1000
+      );
       const result = await response.json();
       if (response.ok && result.status === 'success') {
         setCompanies(companies.map(comp =>
@@ -275,10 +274,15 @@ export default function CompanyMasterPage() {
       onConfirm: async () => {
         setIsLoading(true);
         try {
-          const response = await fetch(`${baseURL}/DeleteCompany/${id}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-          });
+          const response = await fetchWithRetry(
+            `${baseURL}/DeleteCompany/${id}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            },
+            3,
+            1000
+          );
           const result = await response.json();
           if (response.ok && result.status === 'success') {
             setCompanies(companies.filter(comp => comp.comp_id !== id));
@@ -336,14 +340,19 @@ export default function CompanyMasterPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${baseURL}/AddCompany`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newData),
-      });
+      const response = await fetchWithRetry(
+        `${baseURL}/AddCompany`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newData),
+        },
+        3,
+        1000
+      );
       const result = await response.json();
       if (response.ok && result.status === 'success') {
-        await fetchCompanies(); // Refetch to get accurate ID from backend
+        await fetchCompanies();
         cancelAdding();
         setConfirmation({ show: false, message: '', onConfirm: () => {} });
       } else {
@@ -368,12 +377,14 @@ export default function CompanyMasterPage() {
     const status = comp.block ? 0 : 1;
     setIsLoading(true);
     try {
-      const response = await fetch(
+      const response = await fetchWithRetry(
         `${baseURL}/BlockCompany/${comp.created_by || 0}/${comp.comp_id}/${status}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-        }
+        },
+        3,
+        1000
       );
       const result = await response.json();
       if (response.ok && result.status === 'success') {
@@ -392,14 +403,15 @@ export default function CompanyMasterPage() {
     }
   };
 
-  const filteredCompanies = useMemo(() =>
-    companies.filter(comp =>
+  const filteredCompanies = useMemo(() => {
+    const filtered = companies.filter(comp =>
       ['comp_name', 'city', 'state', 'country'].some(field =>
         (comp[field] || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       )
-    ),
-    [companies, debouncedSearchTerm]
-  );
+    );
+    console.log('Filtered Companies:', filtered, 'Search Term:', debouncedSearchTerm);
+    return filtered;
+  }, [companies, debouncedSearchTerm]);
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
@@ -433,7 +445,14 @@ export default function CompanyMasterPage() {
           )}
           {connectionStatus === 'disconnected' && !isLoading && (
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4 dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-300">
-              <strong>Connection Issue:</strong> Cannot reach backend at {baseURL}. Start your server and refresh.
+              <strong>Connection Issue:</strong> Cannot reach backend at {baseURL}. Please ensure the server is running.
+              <button
+                onClick={fetchCompanies}
+                className="ml-4 bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
+                aria-label="Retry connection"
+              >
+                Retry
+              </button>
             </div>
           )}
           <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
@@ -478,26 +497,29 @@ export default function CompanyMasterPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                   {isAdding && (
-                    <tr className="border-b border-gray-200 dark:border-gray-700" key="new-row">
+                    <tr className="border-b border-gray-200 dark:border-gray-700" key="new-row-0">
                       <td className="px-4 py-3">New</td>
                       {[
-                        { field: 'PlanId', display: 'plan_id' },
-                        { field: 'CompName', display: 'comp_name' },
-                        { field: 'Address', display: 'comp_address' },
-                        { field: 'Address1', display: 'comp_address1' },
-                        { field: 'PinCode', display: 'pin_code' },
-                        { field: 'City', display: 'city' },
-                        { field: 'State', display: 'state' },
-                        { field: 'Country', display: 'country' },
-                      ].map(({ field, display }) => (
-                        <td key={`new-${field}`} className="px-4 py-3">
+                        { field: 'PlanId' },
+                        { field: 'CompName' },
+                        { field: 'Address' },
+                        { field: 'Address1' },
+                        { field: 'PinCode' },
+                        { field: 'City' },
+                        { field: 'State' },
+                        { field: 'Country' },
+                      ].map(({ field }) => (
+                        <td key={`new-0-${field}`} className="px-4 py-3">
                           <input
                             value={newData[field]}
                             onChange={e =>
-                              setNewData({ ...newData, [field]: field === 'PinCode' || field === 'PlanId' ? Number(e.target.value) : e.target.value })
+                              setNewData({
+                                ...newData,
+                                [field]: (field === 'PinCode' || field === 'PlanId') ? Number(e.target.value) : e.target.value,
+                              })
                             }
                             className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                            type={field === 'PinCode' || field === 'PlanId' ? 'number' : 'text'}
+                            type={(field === 'PinCode' || field === 'PlanId') ? 'number' : 'text'}
                             aria-label={field}
                             disabled={connectionStatus === 'disconnected'}
                           />
@@ -507,9 +529,7 @@ export default function CompanyMasterPage() {
                         <input
                           type="number"
                           value={newData.RequestBy}
-                          onChange={e =>
-                            setNewData({ ...newData, RequestBy: Number(e.target.value) })
-                          }
+                          onChange={e => setNewData({ ...newData, RequestBy: Number(e.target.value) })}
                           className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
                           aria-label="Created By"
                           disabled={connectionStatus === 'disconnected'}
@@ -519,9 +539,7 @@ export default function CompanyMasterPage() {
                         <input
                           type="checkbox"
                           checked={newData.block}
-                          onChange={e =>
-                            setNewData({ ...newData, block: e.target.checked })
-                          }
+                          onChange={e => setNewData({ ...newData, block: e.target.checked })}
                           aria-label="Block status"
                         />
                       </td>
@@ -545,116 +563,120 @@ export default function CompanyMasterPage() {
                       </td>
                     </tr>
                   )}
-                  {filteredCompanies.map(comp => (
-                    <tr key={comp.comp_id} className="border-b border-gray-200 dark:border-gray-700">
-                      <td className="px-4 py-3">{comp.comp_id}</td>
-                      {[
-                        { field: 'PlanId', display: 'plan_id' },
-                        { field: 'CompName', display: 'comp_name' },
-                        { field: 'Address', display: 'comp_address' },
-                        { field: 'Address1', display: 'comp_address1' },
-                        { field: 'PinCode', display: 'pin_code' },
-                        { field: 'City', display: 'city' },
-                        { field: 'State', display: 'state' },
-                        { field: 'Country', display: 'country' },
-                      ].map(({ field, display }) => (
-                        <td key={`${comp.comp_id}-${field}`} className="px-4 py-3">
+                  {filteredCompanies.map((comp, index) => {
+                    console.log('Rendering Company:', comp); // Debug: Verify each company being rendered
+                    return (
+                      <tr
+                        key={comp.comp_id !== 0 ? comp.comp_id : `temp-${index}`}
+                        className="border-b border-gray-200 dark:border-gray-700"
+                      >
+                        <td className="px-4 py-3">{comp.comp_id}</td>
+                        {[
+                          { field: 'PlanId', display: 'plan_id' },
+                          { field: 'CompName', display: 'comp_name' },
+                          { field: 'Address', display: 'comp_address' },
+                          { field: 'Address1', display: 'comp_address1' },
+                          { field: 'PinCode', display: 'pin_code' },
+                          { field: 'City', display: 'city' },
+                          { field: 'State', display: 'state' },
+                          { field: 'Country', display: 'country' },
+                        ].map(({ field, display }) => (
+                          <td key={`${comp.comp_id !== 0 ? comp.comp_id : `temp-${index}`}-${field}`} className="px-4 py-3">
+                            {editId === comp.comp_id ? (
+                              <input
+                                value={editData[field] || ''}
+                                onChange={e =>
+                                  handleEditChange(field, field === 'PinCode' || field === 'PlanId' ? Number(e.target.value) : e.target.value)
+                                }
+                                className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                                type={field === 'PinCode' || field === 'PlanId' ? 'number' : 'text'}
+                                aria-label={field}
+                                disabled={connectionStatus === 'disconnected'}
+                              />
+                            ) : (
+                              comp[display] || ''
+                            )}
+                          </td>
+                        ))}
+                        <td className="px-4 py-3">
                           {editId === comp.comp_id ? (
                             <input
-                              value={editData[field] || ''}
-                              onChange={e =>
-                                handleEditChange(field, field === 'PinCode' || field === 'PlanId' ? Number(e.target.value) : e.target.value)
-                              }
+                              type="number"
+                              value={editData.created_by || 0}
+                              onChange={e => handleEditChange('created_by', Number(e.target.value))}
                               className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                              type={field === 'PinCode' || field === 'PlanId' ? 'number' : 'text'}
-                              aria-label={field}
+                              aria-label="Created By"
                               disabled={connectionStatus === 'disconnected'}
                             />
                           ) : (
-                            comp[display] || comp[field.toLowerCase()] || ''
+                            comp.created_by || 0
                           )}
                         </td>
-                      ))}
-                      <td className="px-4 py-3">
-                        {editId === comp.comp_id ? (
-                          <input
-                            type="number"
-                            value={editData.created_by || 0}
-                            onChange={e => handleEditChange('created_by', Number(e.target.value))}
-                            className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                            aria-label="Created By"
-                            disabled={connectionStatus === 'disconnected'}
-                          />
-                        ) : (
-                          comp.created_by || 0
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {editId === comp.comp_id ? (
-                          <input
-                            type="checkbox"
-                            checked={editData.block || false}
-                            onChange={e => handleEditChange('block', e.target.checked)}
-                            className="dark:bg-gray-800 dark:border-gray-600"
-                            aria-label="Block status"
-                            disabled={connectionStatus === 'disconnected'}
-                          />
-                        ) : (
-                          <button
-                            onClick={() => toggleBlock(comp)}
-                            className={`px-2 py-1 rounded ${
-                              comp.block ? 'bg-red-600' : 'bg-green-600'
-                            } text-white disabled:opacity-50`}
-                            disabled={isLoading || connectionStatus === 'disconnected'}
-                            aria-label={`Toggle block status to ${comp.block ? 'unblock' : 'block'}`}
-                          >
-                            {comp.block ? 'Yes' : 'No'}
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 flex space-x-2">
-                        {editId === comp.comp_id ? (
-                          <>
+                        <td className="px-4 py-3">
+                          {editId === comp.comp_id ? (
+                            <input
+                              type="checkbox"
+                              checked={editData.block || false}
+                              onChange={e => handleEditChange('block', e.target.checked)}
+                              className="dark:bg-gray-800 dark:border-gray-600"
+                              aria-label="Block status"
+                              disabled={connectionStatus === 'disconnected'}
+                            />
+                          ) : (
                             <button
-                              onClick={confirmSave}
-                              className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                              onClick={() => toggleBlock(comp)}
+                              className={`px-2 py-1 rounded ${comp.block ? 'bg-red-600' : 'bg-green-600'} text-white disabled:opacity-50`}
                               disabled={isLoading || connectionStatus === 'disconnected'}
-                              aria-label="Save changes"
+                              aria-label={`Toggle block status to ${comp.block ? 'unblock' : 'block'}`}
                             >
-                              <FaSave size={22} />
+                              {comp.block ? 'Yes' : 'No'}
                             </button>
-                            <button
-                              onClick={cancelEditing}
-                              className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
-                              disabled={isLoading || connectionStatus === 'disconnected'}
-                              aria-label="Cancel editing"
-                            >
-                              <FaTimes size={22} />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => startEditing(comp)}
-                              className="text-yellow-500 hover:text-yellow-700 disabled:opacity-50"
-                              disabled={isLoading || connectionStatus === 'disconnected'}
-                              aria-label="Edit company"
-                            >
-                              <FaEdit size={22} />
-                            </button>
-                            <button
-                              onClick={() => confirmDelete(comp.comp_id)}
-                              className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                              disabled={isLoading || connectionStatus === 'disconnected'}
-                              aria-label="Delete company"
-                            >
-                              <FaTrash size={22} />
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                          )}
+                        </td>
+                        <td className="px-4 py-3 flex space-x-2">
+                          {editId === comp.comp_id ? (
+                            <>
+                              <button
+                                onClick={confirmSave}
+                                className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                                disabled={isLoading || connectionStatus === 'disconnected'}
+                                aria-label="Save changes"
+                              >
+                                <FaSave size={22} />
+                              </button>
+                              <button
+                                onClick={cancelEditing}
+                                className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50"
+                                disabled={isLoading || connectionStatus === 'disconnected'}
+                                aria-label="Cancel editing"
+                              >
+                                <FaTimes size={22} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => startEditing(comp)}
+                                className="text-yellow-500 hover:text-yellow-700 disabled:opacity-50"
+                                disabled={isLoading || connectionStatus === 'disconnected'}
+                                aria-label="Edit company"
+                              >
+                                <FaEdit size={22} />
+                              </button>
+                              <button
+                                onClick={() => confirmDelete(comp.comp_id)}
+                                className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                                disabled={isLoading || connectionStatus === 'disconnected'}
+                                aria-label="Delete company"
+                              >
+                                <FaTrash size={22} />
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {filteredCompanies.length === 0 && !isAdding && companies.length === 0 && connectionStatus === 'connected' && (
