@@ -6,24 +6,26 @@ import Breadcrumb from '../components/Breadcrumb';
 import axios from 'axios';
 import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaFileExport, FaFileImport, FaFolderOpen, FaTimes, FaSpinner } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import JSZip from 'jszip';
 import 'react-toastify/dist/ReactToastify.css';
 
-const baseURL = process.env.REACT_APP_API_BASE_URL;
+const baseURL = process.env.REACT_APP_API_BASE_URL || 'https://vyr.svikinfotech.in/api';
+const imgURL = process.env.REACT_APP_API_IMG_URL || 'https://vyr.svikinfotech.in/assets/media';
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-96">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-3">
           <button
-            className="px-4 py-2 bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500"
+            className="px-4 py-2 bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
             onClick={onCancel}
           >
             Cancel
           </button>
           <button
-            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800"
+            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
             onClick={onConfirm}
           >
             Yes
@@ -37,12 +39,9 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
 function ImportModal({
   isOpen,
   onClose,
-  selectedImportType,
-  setSelectedImportType,
-  fileInputRef,
   folderInputRef,
-  handleExcelChange,
-  handleFolderChange,
+  excelFolderInputRef,
+  handleFolderUpload,
   isLoading,
 }) {
   if (!isOpen) return null;
@@ -56,57 +55,37 @@ function ImportModal({
             <FaTimes size={20} />
           </button>
         </div>
-        <div className="p-6">
-          <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
-            {[
-              { key: 'excel', icon: FaFileImport, label: 'Excel Import' },
-              { key: 'folder', icon: FaFolderOpen, label: 'Folder Upload' },
-            ].map(({ key, icon: Icon, label }) => (
-              <button
-                key={key}
-                onClick={() => setSelectedImportType(key)}
-                className={`px-4 py-2 text-sm font-medium flex items-center space-x-2 ${
-                  selectedImportType === key
-                    ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
-                }`}
-              >
-                <Icon size={14} />
-                <span>{label}</span>
-              </button>
-            ))}
+        <div className="p-6 space-y-4">
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Folder or Files</label>
+            <input
+              type="file"
+              multiple
+              webkitdirectory=""
+              accept="image/jpeg,image/png,image/webp,.zip"
+              ref={folderInputRef}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-600 dark:file:text-white"
+              disabled={isLoading}
+            />
           </div>
-          {selectedImportType === 'excel' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Excel File</label>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  ref={fileInputRef}
-                  onChange={handleExcelChange}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-600 dark:file:text-white"
-                  disabled={isLoading}
-                />
-              </div>
-              {isLoading && <FaSpinner className="animate-spin mx-auto text-blue-500" size={24} />}
-            </div>
-          )}
-          {selectedImportType === 'folder' && (
-            <div className="space-y-4">
-              <input
-                type="file"
-                multiple
-                webkitdirectory=""
-                accept="image/*"
-                ref={folderInputRef}
-                onChange={handleFolderChange}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-600 dark:file:text-white"
-                disabled={isLoading}
-              />
-              {isLoading && <FaSpinner className="animate-spin mx-auto text-blue-500" size={24} />}
-            </div>
-          )}
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Excel File (SizeListFormat.xlsx)</label>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              ref={excelFolderInputRef}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-600 dark:file:text-white"
+              disabled={isLoading}
+            />
+          </div>
+          <button
+            onClick={handleFolderUpload}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            disabled={isLoading}
+          >
+            Upload
+          </button>
+          {isLoading && <FaSpinner className="animate-spin mx-auto text-blue-500" size={24} />}
         </div>
       </div>
     </div>
@@ -117,6 +96,8 @@ const userId = localStorage.getItem('userid');
 
 export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState(() => {});
@@ -135,9 +116,8 @@ export default function TileMasterPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [selectedImportType, setSelectedImportType] = useState('excel');
-  const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+  const excelFolderInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -152,10 +132,12 @@ export default function TileMasterPage() {
   const fetchTiles = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(`${baseURL}/GetTileList`);
-      setTiles(Array.isArray(res.data) ? res.data : []);
+      const normalizedBaseURL = baseURL.replace(/\/+$/, '');
+      const res = await axios.get(`${normalizedBaseURL}/GetTileList`);
+      setTiles(Array.isArray(res.data) ? res.data : res.data.tiles || res.data.data?.tiles || []);
     } catch (err) {
-      toast.error('Failed to fetch tiles: ' + (err.response?.data?.message || err.message));
+      setError('Failed to fetch tiles');
+      toast.error('Failed to fetch tiles');
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +153,8 @@ export default function TileMasterPage() {
     setConfirmAction(() => async () => {
       try {
         setIsLoading(true);
-        const res = await axios.get(`${baseURL}/BlockTile/${userId}/${tileId}/${currentStatus ? 0 : 1}`);
+        const normalizedBaseURL = baseURL.replace(/\/+$/, '');
+        const res = await axios.get(`${normalizedBaseURL}/BlockTile/${userId}/${tileId}/${currentStatus ? 0 : 1}`);
         if (res.data === 'success') {
           toast.success(`Tile ${currentStatus ? 'unblocked' : 'blocked'} successfully`);
           fetchTiles();
@@ -179,7 +162,7 @@ export default function TileMasterPage() {
           toast.error('Failed to update block status');
         }
       } catch (err) {
-        toast.error('Error toggling block status: ' + (err.response?.data?.message || err.message));
+        toast.error('Error while toggling block status');
       } finally {
         setIsLoading(false);
         setShowConfirm(false);
@@ -211,7 +194,9 @@ export default function TileMasterPage() {
 
     if (globalSearch) {
       filteredTiles = filteredTiles.filter((tile) =>
-        Object.values(tile).some((value) => String(value).toLowerCase().includes(globalSearch))
+        Object.values(tile).some((value) =>
+          String(value).toLowerCase().includes(globalSearch)
+        )
       );
     }
 
@@ -225,9 +210,6 @@ export default function TileMasterPage() {
       filteredTiles.sort((a, b) => {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
-        if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
-          return sortConfig.direction === 'ascending' ? (aVal === bVal ? 0 : aVal ? 1 : -1) : (aVal === bVal ? 0 : bVal ? 1 : -1);
-        }
         if (!isNaN(aVal) && !isNaN(bVal)) {
           return sortConfig.direction === 'ascending' ? aVal - bVal : bVal - aVal;
         }
@@ -240,15 +222,142 @@ export default function TileMasterPage() {
     return filteredTiles;
   };
 
-  const filteredTiles = getSortedAndFilteredTiles();
-  const totalPages = Math.ceil(filteredTiles.length / entriesPerPage);
-  const indexOfLast = currentPage * entriesPerPage;
-  const indexOfFirst = indexOfLast - entriesPerPage;
-  const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
+  const createZipFromFiles = async (files) => {
+    const zip = new JSZip();
+    files.forEach((file) => {
+      zip.file(file.name, file);
+    });
+    const content = await zip.generateAsync({ type: 'blob' });
+    return new File([content], `images_${new Date().toISOString().replace(/[-T:.Z]/g, '')}.zip`, { type: 'application/zip' });
+  };
+
+  const processFolderVyr = async (formData, replace = false) => {
+    try {
+      formData.set('replace', replace);
+      const response = await axios.post(`${imgURL}/process-folder-vyr`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.Skipped?.length > 0 && !replace) {
+        setConfirmMessage('Some SKUs were skipped because files exist. Replace?');
+        setConfirmAction(() => async () => {
+          try {
+            setIsLoading(true);
+            await processFolderVyr(formData, true);
+          } catch (err) {
+            toast.error('Error processing folder: ' + (err.response?.data?.message || err.message));
+          } finally {
+            setIsLoading(false);
+            setShowConfirm(false);
+          }
+        });
+        setShowConfirm(true);
+        return false;
+      }
+
+      if (response.data?.Message) {
+        toast.success(response.data.Message);
+        if (response.data.Skipped?.length) {
+          response.data.Skipped.forEach((sku) => toast.warn(`Skipped SKU: ${sku}`));
+        }
+        if (response.data.Errors?.length) {
+          response.data.Errors.forEach((err) => toast.error(`Error: ${err}`));
+        }
+      } else {
+        throw new Error('Unexpected response from process-folder-vyr');
+      }
+      return true;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const handleFolderUpload = async () => {
+    const files = Array.from(folderInputRef.current?.files || []);
+    const excelFile = excelFolderInputRef.current?.files[0];
+    if (!files.length) {
+      toast.error('No files selected');
+      return;
+    }
+    if (!excelFile) {
+      toast.error('Excel file (SizeListFormat.xlsx) is required');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      let formData = new FormData();
+      formData.append('excelFile', excelFile);
+
+      // Step 1: Resize folder images using /resize-folder
+      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+      if (totalSize > 100 * 1024 * 1024) {
+        const zipFile = await createZipFromFiles(files);
+        formData.append('files', zipFile);
+      } else {
+        files.forEach((file) => formData.append('files', file));
+      }
+      formData.append('replace', false);
+
+      const resizeResponse = await axios.post(`${imgURL}/resize-folder`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (resizeResponse.data?.length) {
+        toast.success('Images resized successfully');
+        // Rebuild formData with resized image URLs if needed, or proceed directly
+        resizeResponse.data.forEach((item) => formData.append('files', item.FileName)); // Adjust based on actual response structure
+      } else if (resizeResponse.data?.message && resizeResponse.data.message.includes('exists. Replace?')) {
+        setConfirmMessage(resizeResponse.data.message);
+        setConfirmAction(() => async () => {
+          try {
+            setIsLoading(true);
+            formData.set('replace', true);
+            await axios.post(`${imgURL}/resize-folder`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            toast.success('Replaced existing images');
+          } catch (err) {
+            toast.error('Error replacing images: ' + (err.response?.data?.message || err.message));
+          } finally {
+            setIsLoading(false);
+            setShowConfirm(false);
+          }
+        });
+        setShowConfirm(true);
+        return;
+      } else {
+        throw new Error('Unexpected response from resize-folder');
+      }
+
+      // Step 2: Process with /process-folder-vyr
+      const vyrSuccess = await processFolderVyr(formData, false);
+      if (!vyrSuccess) return;
+
+      fetchTiles();
+    } catch (err) {
+      console.error('Folder upload error:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
+      let message = 'Error processing folder';
+      if (err.response?.status === 400) message = err.response.data.message || 'Invalid input or size exceeds 100 MB';
+      else if (err.response?.status === 404) message = 'No valid images found in ZIP';
+      else if (err.response?.status === 415) message = 'Uploaded file is not an image or ZIP';
+      else message = err.response?.data?.message || err.message;
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+      if (folderInputRef.current) folderInputRef.current.value = '';
+      if (excelFolderInputRef.current) excelFolderInputRef.current.value = '';
+    }
+  };
 
   const handleExportExcel = async () => {
     try {
-      const res = await axios.get('/api/ExportToExcel', { responseType: 'blob' });
+      const normalizedBaseURL = baseURL.replace(/\/+$/, '');
+      const res = await axios.get(`${normalizedBaseURL}/ExportToExcel`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '');
@@ -269,93 +378,15 @@ export default function TileMasterPage() {
 
   const handleImportClose = () => {
     setShowImportModal(false);
-    setSelectedImportType('excel');
-    if (fileInputRef.current) fileInputRef.current.value = '';
     if (folderInputRef.current) folderInputRef.current.value = '';
+    if (excelFolderInputRef.current) excelFolderInputRef.current.value = '';
   };
 
-  const handleExcelChange = async (e) => {
-    const file = e.target.files[0];
-    console.log('Selected Excel file:', file?.name);
-    if (!file) {
-      toast.error('No file selected');
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      setIsLoading(true);
-      const res = await axios.post('/api/ImportFromExcel', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      if (res.data.message && res.data.message.includes('Error')) {
-        toast.error(res.data.message);
-      } else {
-        toast.success(res.data.message || 'Excel imported successfully');
-        fetchTiles();
-      }
-    } catch (err) {
-      console.error('Excel import error:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      });
-      toast.error('Error importing Excel: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setIsLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleFolderChange = async (e) => {
-    const files = Array.from(e.target.files);
-    console.log('Selected folder files:', files);
-    if (!files.length) {
-      toast.error('No files selected');
-      return;
-    }
-    try {
-      setIsLoading(true);
-      const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '');
-      const folderName = `tiles_${timestamp}`; // Auto-generate folder name
-      const formData = new FormData();
-      files.forEach((file) => formData.append('files', file));
-      formData.append('folderName', folderName);
-      const resizeRes = await axios.post('/api/resize-folder', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      if (resizeRes.data && Array.isArray(resizeRes.data)) {
-        const errors = resizeRes.data.filter((item) => item.error);
-        if (errors.length > 0) {
-          errors.forEach((item) => toast.error(`Failed to process ${item.FileName}: ${item.error}`));
-        } else {
-          resizeRes.data.forEach((item) =>
-            toast.success(`Resized: ${item.FileName} - Big: ${item.BigUrl}, Thumb: ${item.ThumbUrl}`)
-          );
-        }
-      } else {
-        toast.error('Unexpected response from resize-folder');
-      }
-      const bluePatchFormData = new FormData();
-      bluePatchFormData.append('excelFile', new File([], 'SizeListFormat.xlsx'));
-      bluePatchFormData.append('folderName', folderName);
-      const bluePatchRes = await axios.post('/api/process-folder-faces-with-bluepatch', bluePatchFormData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      toast.success('Faces processed and blue patch applied, images in /vyr');
-      fetchTiles(); // Refresh tile list after successful upload
-    } catch (err) {
-      console.error('Folder upload error:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      });
-      toast.error('Error processing folder: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setIsLoading(false);
-      if (folderInputRef.current) folderInputRef.current.value = '';
-    }
-  };
+  const filteredTiles = getSortedAndFilteredTiles();
+  const totalPages = Math.ceil(filteredTiles.length / entriesPerPage);
+  const indexOfLast = currentPage * entriesPerPage;
+  const indexOfFirst = indexOfLast - entriesPerPage;
+  const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
@@ -367,7 +398,26 @@ export default function TileMasterPage() {
             <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Products</h2>
             <Breadcrumb />
           </div>
-          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
+
+          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[100vh] overflow-hidden">
+            {message && (
+              <div className="mb-4 p-3 bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded">
+                {message}
+                <button className="float-right font-bold" onClick={() => setMessage('')}>
+                  ×
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
+                {error}
+                <button className="float-right font-bold" onClick={() => setError('')}>
+                  ×
+                </button>
+              </div>
+            )}
+
             <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4">
               <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1">
                 <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">Show</span>
@@ -385,6 +435,7 @@ export default function TileMasterPage() {
                 </select>
                 <span className="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">entries</span>
               </div>
+
               <div className="relative w-full sm:w-64">
                 <input
                   type="text"
@@ -403,6 +454,7 @@ export default function TileMasterPage() {
                   </svg>
                 </div>
               </div>
+
               <div className="flex gap-2 w-full sm:w-auto ml-auto">
                 <Link
                   to="/add-tile"
@@ -426,11 +478,12 @@ export default function TileMasterPage() {
                 </button>
               </div>
             </div>
+
             <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                 <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
                   <tr>
-                    {['sku_name', 'sku_code', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
+                    {['sku_code', 'image', 'sku_name', 'app_name', 'space_name', 'size_name', 'finish_name', 'color_name', 'actions'].map((key) => (
                       <th
                         key={key}
                         className="px-4 py-2 font-semibold text-left cursor-pointer"
@@ -439,7 +492,9 @@ export default function TileMasterPage() {
                         <div className="flex items-center">
                           {key === 'actions' ? 'Actions' : key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                           {key !== 'actions' && (
-                            <span className="ml-1">{sortConfig.key === key && (sortConfig.direction === 'ascending' ? '↑' : '↓')}</span>
+                            <span className="ml-1">
+                              {sortConfig.key === key && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                            </span>
                           )}
                         </div>
                         {key !== 'actions' && (
@@ -459,8 +514,37 @@ export default function TileMasterPage() {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
                   {currentTiles.map((tile, index) => (
                     <tr key={index} className="border-b hover:bg-green-50 dark:hover:bg-gray-700 transition duration-150">
+                      <td className="px-4 py-2">
+                        <span
+                          onClick={() => navigate(`/view-tile/${tile.sku_code}`)}
+                          className="text-black-600 hover:underline cursor-pointer"
+                        >
+                          {tile.sku_code}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        {tile.sku_code ? (
+                          <img
+                            src={`${imgURL}/${tile.sku_code}.jpg`}
+                            alt={tile.sku_name || 'Tile Image'}
+                            className="w-12 h-12 object-cover rounded"
+                            onError={(e) => {
+                              e.target.src = `${imgURL}/no-image.jpg`;
+                              e.target.alt = 'No Image';
+                            }}
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <img
+                              src={`${imgURL}/no-image.jpg`}
+                              alt="No Image"
+                              className="w-12 h-12 object-cover rounded"
+                            />
+                            <span className="text-gray-500 dark:text-gray-400 text-xs mt-1">No Image</span>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-2">{tile.sku_name}</td>
-                      <td className="px-4 py-2">{tile.sku_code}</td>
                       <td className="px-4 py-2">{tile.app_name}</td>
                       <td className="px-4 py-2">{tile.space_name}</td>
                       <td className="px-4 py-2">{tile.size_name}</td>
@@ -476,11 +560,7 @@ export default function TileMasterPage() {
                         </button>
                         <button
                           onClick={() => handleBlockToggle(tile.tile_id, tile.block)}
-                          className={`${
-                            tile.block
-                              ? 'text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300'
-                              : 'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
-                          }`}
+                          className={`${tile.block ? 'text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300' : 'text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'}`}
                           disabled={isLoading}
                         >
                           {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
@@ -490,6 +570,42 @@ export default function TileMasterPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="mt-3 flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
+              <span>
+                Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to{' '}
+                {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
+                >
+                  <FaAngleLeft />
+                </button>
+                {[...Array(totalPages).keys()].map((num) => (
+                  <button
+                    key={num + 1}
+                    onClick={() => setCurrentPage(num + 1)}
+                    className={`px-3 py-1 border rounded ${
+                      currentPage === num + 1
+                        ? 'bg-green-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                    }`}
+                  >
+                    {num + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="px-3 py-1 border rounded disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
+                >
+                  <FaAngleRight />
+                </button>
+              </div>
             </div>
             <div className="mt-3 flex justify-between items-center">
               <div>
@@ -527,12 +643,9 @@ export default function TileMasterPage() {
             <ImportModal
               isOpen={showImportModal}
               onClose={handleImportClose}
-              selectedImportType={selectedImportType}
-              setSelectedImportType={setSelectedImportType}
-              fileInputRef={fileInputRef}
               folderInputRef={folderInputRef}
-              handleExcelChange={handleExcelChange}
-              handleFolderChange={handleFolderChange}
+              excelFolderInputRef={excelFolderInputRef}
+              handleFolderUpload={handleFolderUpload}
               isLoading={isLoading}
             />
           </div>

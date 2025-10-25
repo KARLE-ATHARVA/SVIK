@@ -2,7 +2,7 @@
   "name": "my-app",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://svikinfotech-001-site25.jtempurl.com",
+  "proxy": "http://svikinfotech-001-site25.jtempurl.com/api/",
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
     "@testing-library/dom": "^10.4.0",
@@ -14,6 +14,7 @@
     "datatables.net-dt": "^2.3.2",
     "framer-motion": "^12.23.9",
     "jquery": "^3.7.1",
+    "jszip": "^3.10.1",
     "luxon": "^3.7.1",
     "next-themes": "^0.4.6",
     "react": "^19.1.0",

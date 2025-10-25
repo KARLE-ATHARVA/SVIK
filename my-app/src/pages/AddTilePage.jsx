@@ -9,6 +9,7 @@ import { FaSpinner } from 'react-icons/fa';
 import 'react-toastify/dist/ReactToastify.css';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
+const imgURL = process.env.REACT_APP_API_IMG_URL;
 
 export default function AddTilePage() {
   const [formData, setFormData] = useState({
@@ -27,7 +28,7 @@ export default function AddTilePage() {
     spaces: [],
     sizes: [],
     finishes: [],
-    colors: []
+    colors: [],
   });
   const [numberOfFaces, setNumberOfFaces] = useState(1);
   const [imageFiles, setImageFiles] = useState([]);
@@ -59,7 +60,7 @@ export default function AddTilePage() {
         axios.get(`${baseURL}/GetSpaceList`),
         axios.get(`${baseURL}/GetSizeList`),
         axios.get(`${baseURL}/GetFinishList`),
-        axios.get(`${baseURL}/GetColorList`)
+        axios.get(`${baseURL}/GetColorList`),
       ]);
       setReferenceData({
         categories: categories.data || [],
@@ -67,7 +68,7 @@ export default function AddTilePage() {
         spaces: spaces.data || [],
         sizes: sizes.data || [],
         finishes: finishes.data || [],
-        colors: colors.data || []
+        colors: colors.data || [],
       });
     } catch (err) {
       console.error('Reference Data Fetch Error:', err);
@@ -82,8 +83,17 @@ export default function AddTilePage() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
+    if (name === 'SizeId') {
+      const selectedSize = referenceData.sizes.find((size) => size.size_id === value);
+      if (selectedSize) {
+        const [width, height] = selectedSize.size_name.split('X').map(Number);
+        setImageWidth(width || 800);
+        setImageHeight(height || 600);
+      }
+    }
+
     if (validationErrors[name]) {
-      setValidationErrors(prev => {
+      setValidationErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -91,25 +101,48 @@ export default function AddTilePage() {
     }
   };
 
-  const handleImageChange = (e, index) => {
+  const handleImageChange = async (e, index) => {
     const files = e.target.files;
     if (files.length) {
       const file = files[0];
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please upload a valid image file.');
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error('Please upload a valid image file (jpg, jpeg, png, webp).');
         return;
       }
-      const newFiles = [...imageFiles];
-      newFiles[index] = file;
-      setImageFiles(newFiles);
+      const extension = file.name.split('.').pop();
+      const renamedFile = new File([file], `${formData.SkuCode}-f${index + 1}.${extension}`, { type: file.type });
 
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const newPreviews = [...imagePreviews];
-        newPreviews[index] = ev.target.result;
-        setImagePreviews(newPreviews);
-      };
-      reader.readAsDataURL(file);
+      // Step 1: Resize with proper aspect ratio using /resize-vyr
+      const selectedSize = referenceData.sizes.find((size) => size.size_id === formData.SizeId);
+      const sizeName = selectedSize ? selectedSize.size_name : `${imageWidth}X${imageHeight}`;
+      const vyrFormData = new FormData();
+      vyrFormData.append('size', sizeName);
+      vyrFormData.append('image', renamedFile);
+
+      try {
+        setIsLoading(true);
+        const vyrResponse = await axios.post(`${baseURL}/resize-vyr`, vyrFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const resizedFile = new File([vyrResponse.data], renamedFile.name, { type: 'image/png' });
+
+        // Step 2: Update state with resized file
+        const newFiles = [...imageFiles];
+        newFiles[index] = resizedFile;
+        setImageFiles(newFiles);
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const newPreviews = [...imagePreviews];
+          newPreviews[index] = ev.target.result;
+          setImagePreviews(newPreviews);
+        };
+        reader.readAsDataURL(resizedFile);
+      } catch (err) {
+        toast.error('Error resizing image with proper aspect ratio: ' + (err.response?.data?.message || err.message));
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -123,10 +156,10 @@ export default function AddTilePage() {
       { name: 'SpaceId', label: 'Space' },
       { name: 'SizeId', label: 'Size' },
       { name: 'FinishId', label: 'Finish' },
-      { name: 'ColorId', label: 'Color' }
+      { name: 'ColorId', label: 'Color' },
     ];
 
-    requiredFields.forEach(field => {
+    requiredFields.forEach((field) => {
       const value = formData[field.name];
       if (!value || value.trim() === '') {
         errors[field.name] = `${field.label} is required.`;
@@ -153,6 +186,97 @@ export default function AddTilePage() {
       setConfirmMessage('Are you sure you want to save this tile and process its images?');
       setConfirmAction(() => () => addTile());
       setShowConfirm(true);
+    }
+  };
+
+  const uploadFaceImages = async (replace = false) => {
+    try {
+      for (const file of imageFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('replace', replace);
+
+        const response = await axios.post(`${baseURL}/resize-single`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        if (response.data?.message && response.data.message.includes('exists. Replace?')) {
+          setConfirmMessage(response.data.message);
+          setConfirmAction(() => async () => {
+            try {
+              setIsLoading(true);
+              await uploadFaceImages(true);
+            } catch (err) {
+              toast.error('Error processing image: ' + (err.response?.data?.message || err.message));
+            } finally {
+              setIsLoading(false);
+              setShowConfirm(false);
+            }
+          });
+          setShowConfirm(true);
+          return false;
+        }
+
+        if (response.data.FileName) {
+          toast.success(`Image resized: ${response.data.FileName} - Big: ${response.data.BigUrl}, Thumb: ${response.data.ThumbUrl}`);
+        } else {
+          throw new Error('Unexpected response from resize-single');
+        }
+      }
+      return true;
+    } catch (err) {
+      toast.error('Error uploading face images: ' + (err.response?.data?.message || err.message));
+      return false;
+    }
+  };
+
+  const processVyrImages = async (replace = false) => {
+    try {
+      const selectedSize = referenceData.sizes.find((size) => size.size_id === formData.SizeId);
+      const sizeName = selectedSize ? selectedSize.size_name : `${imageWidth}X${imageHeight}`;
+
+      const formData = new FormData();
+      formData.append('size', sizeName);
+      formData.append('replace', replace);
+      formData.append('name', formData.SkuCode);
+      imageFiles.forEach((file) => formData.append('images', file));
+
+      const response = await axios.post(`${imgURL}/single-prod-vyr`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.skipped?.length > 0 && !replace) {
+        setConfirmMessage(`Files exist for SKU ${formData.SkuCode}. Replace?`);
+        setConfirmAction(() => async () => {
+          try {
+            setIsLoading(true);
+            await processVyrImages(true);
+          } catch (err) {
+            toast.error('Error processing VYR images: ' + (err.response?.data?.message || err.message));
+          } finally {
+            setIsLoading(false);
+            setShowConfirm(false);
+          }
+        });
+        setShowConfirm(true);
+        return false;
+      }
+
+      if (response.data?.message) {
+        toast.success(response.data.message);
+        if (response.data.skipped?.length) {
+          response.data.skipped.forEach((file) => toast.warn(`Skipped: ${file}`));
+        }
+        if (response.data.errors?.length) {
+          response.data.errors.forEach((err) => toast.error(`Error: ${err}`));
+        }
+      } else {
+        throw new Error('Unexpected response from single-prod-vyr');
+      }
+      return true;
+    } catch (err) {
+      toast.error('Error processing VYR images: ' + (err.response?.data?.message || err.message));
+      return false;
     }
   };
 
@@ -190,68 +314,13 @@ export default function AddTilePage() {
       }
       toast.success('Tile details added successfully');
 
-      // Step 2: Process images
+      // Step 2: Process images if any
       if (imageFiles.length > 0) {
-        // Resize single images (prodlisting API)
-        const resizeSingleFormData = new FormData();
-        imageFiles.forEach(file => resizeSingleFormData.append('files', file));
-        resizeSingleFormData.append('product_name', formData.SkuName);
-        console.log('Sending to api/resize-single:', { product_name: formData.SkuName, fileCount: imageFiles.length }); // Debug payload
-        const resizeSingleRes = await axios.post('/api/resize-single', resizeSingleFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        console.log('Resize Single Response:', resizeSingleRes.data); // Debug response
-        if (resizeSingleRes.data?.error || !resizeSingleRes.data) {
-          throw new Error(resizeSingleRes.data?.error || 'Resize single failed');
-        }
-        if (Array.isArray(resizeSingleRes.data)) {
-          resizeSingleRes.data.forEach(item => {
-            toast.success(`Image resized: ${item.FileName} - Big: ${item.BigUrl}, Thumb: ${item.ThumbUrl}`);
-          });
-        } else {
-          toast.success('Images resized successfully');
-        }
+        const bigThumbSuccess = await uploadFaceImages(false);
+        if (!bigThumbSuccess) return;
 
-        // Resize images with specific dimensions (image API)
-        const resizeImageFormData = new FormData();
-        resizeImageFormData.append('width', imageWidth);
-        resizeImageFormData.append('height', imageHeight);
-        imageFiles.forEach(file => resizeImageFormData.append('images', file));
-        resizeImageFormData.append('product_name', formData.SkuName);
-        const resizeImageRes = await axios.post('/api/resize-image', resizeImageFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          responseType: 'blob'
-        });
-        console.log('Resize Image Response:', resizeImageRes); // Debug full response
-        if (resizeImageRes.status === 200 && resizeImageRes.data instanceof Blob) {
-          const dispName = `${formData.SkuName}_resized.png`;
-          const url = window.URL.createObjectURL(new Blob([resizeImageRes.data]));
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', dispName);
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          window.URL.revokeObjectURL(url); // Clean up
-          toast.success('Resized images downloaded');
-        } else {
-          throw new Error('Failed to retrieve resized image or invalid response');
-        }
-
-        // Process single product faces
-        const prodFacesFormData = new FormData();
-        prodFacesFormData.append('width', imageWidth);
-        prodFacesFormData.append('height', imageHeight);
-        prodFacesFormData.append('name', formData.SkuName);
-        imageFiles.forEach(file => prodFacesFormData.append('images', file));
-        const prodFacesRes = await axios.post('/api/single-prod-faces', prodFacesFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        console.log('Prod Faces Response:', prodFacesRes.data); // Debug
-        if (prodFacesRes.data?.error || !prodFacesRes.data) {
-          throw new Error(prodFacesRes.data?.error || 'Face processing failed');
-        }
-        toast.success('Product faces processed and saved in /vyr');
+        const vyrSuccess = await processVyrImages(false);
+        if (!vyrSuccess) return;
       }
 
       // Reset form
@@ -274,7 +343,7 @@ export default function AddTilePage() {
       setIsSubmitted(false);
       navigate('/tile-master');
     } catch (err) {
-      console.error('Add Tile Error:', err.response); // Log full response
+      console.error('Add Tile Error:', err);
       let errorMessage = 'An error occurred while saving tile.';
       if (err.response?.data) {
         if (Array.isArray(err.response.data.errors)) {
@@ -287,8 +356,6 @@ export default function AddTilePage() {
           errorMessage = err.response.data.title + (err.response.data.errors ? `: ${err.response.data.errors}` : '');
         } else if (typeof err.response.data === 'string') {
           errorMessage = err.response.data;
-        } else {
-          errorMessage = JSON.stringify(err.response.data); // Fallback
         }
       } else if (err.message) {
         errorMessage = err.message;
@@ -321,7 +388,7 @@ export default function AddTilePage() {
     { label: 'Space', name: 'SpaceId', data: referenceData.spaces, idKey: 'space_id', nameKey: 'space_name' },
     { label: 'Size', name: 'SizeId', data: referenceData.sizes, idKey: 'size_id', nameKey: 'size_name' },
     { label: 'Finish', name: 'FinishId', data: referenceData.finishes, idKey: 'finish_id', nameKey: 'finish_name' },
-    { label: 'Color', name: 'ColorId', data: referenceData.colors, idKey: 'color_id', nameKey: 'color_name' }
+    { label: 'Color', name: 'ColorId', data: referenceData.colors, idKey: 'color_id', nameKey: 'color_name' },
   ];
 
   return (
@@ -341,7 +408,6 @@ export default function AddTilePage() {
               </p>
               <form onSubmit={handleSubmit} className="flex flex-col">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {/* SKU Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       SKU Name <span className="text-red-500">*</span>
@@ -359,7 +425,6 @@ export default function AddTilePage() {
                       <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuName}</p>
                     )}
                   </div>
-                  {/* SKU Code */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       SKU Code <span className="text-red-500">*</span>
@@ -377,7 +442,6 @@ export default function AddTilePage() {
                       <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuCode}</p>
                     )}
                   </div>
-                  {/* Dropdowns */}
                   {dropdownFields.map((field, idx) => (
                     <div key={idx} className="relative overflow-visible">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -402,7 +466,6 @@ export default function AddTilePage() {
                       )}
                     </div>
                   ))}
-                  {/* Number of Faces */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Number of Faces <span className="text-red-500">*</span>
@@ -417,7 +480,6 @@ export default function AddTilePage() {
                       disabled={isLoading}
                     />
                   </div>
-                  {/* Image Dimensions */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -447,7 +509,6 @@ export default function AddTilePage() {
                     </div>
                   </div>
                 </div>
-                {/* Image Uploads */}
                 <div className="space-y-4 mb-6">
                   <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Upload Face Images</h3>
                   {Array.from({ length: numberOfFaces }, (_, index) => (
@@ -456,11 +517,15 @@ export default function AddTilePage() {
                         Face {index + 1} <span className="text-red-500">*</span>
                       </label>
                       {imagePreviews[index] && (
-                        <img src={imagePreviews[index]} alt={`Face ${index + 1} Preview`} className="max-w-full h-32 object-contain rounded mb-2" />
+                        <img
+                          src={imagePreviews[index]}
+                          alt={`Face ${index + 1} Preview`}
+                          className="max-w-full h-32 object-contain rounded mb-2"
+                        />
                       )}
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp"
                         onChange={(e) => handleImageChange(e, index)}
                         ref={(el) => (imageInputRefs.current[index] = el)}
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 dark:file:bg-gray-600 dark:file:text-white"
@@ -472,7 +537,6 @@ export default function AddTilePage() {
                     <p className="mt-1 text-xs text-orange-600">{validationErrors.images}</p>
                   )}
                 </div>
-                {/* Actions */}
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
                   <button
                     type="button"
@@ -494,7 +558,6 @@ export default function AddTilePage() {
             </div>
           </div>
         </div>
-        {/* Alert */}
         {showAlert && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
@@ -508,7 +571,6 @@ export default function AddTilePage() {
             </div>
           </div>
         )}
-        {/* Confirm */}
         {showConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
@@ -530,7 +592,6 @@ export default function AddTilePage() {
             </div>
           </div>
         )}
-        {/* Loader */}
         {isLoading && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
             <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>
