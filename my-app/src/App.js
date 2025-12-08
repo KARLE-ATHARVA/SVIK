@@ -34,7 +34,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <BrowserRouter>
+        <BrowserRouter basename="/backoff">
           {/* ToastContainer added at root so all components can use toast */}
           <ToastContainer 
             
