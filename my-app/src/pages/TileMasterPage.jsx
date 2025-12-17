@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import axios from 'axios';
-import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaFileExport, FaFileImport, FaTimes, FaSpinner } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import JSZip from 'jszip';
 import 'react-toastify/dist/ReactToastify.css';
 
-const baseURL = process.env.REACT_APP_API_BASE_URL || 'https://svikinfotech.com/clients/visualizer/api';
-const thumbImageBaseURL = 'http://svikinfotech-001-site25.jtempurl.com/assets/media/thumb/';
-const fallbackUrl = "https://vyr.svikinfotech.in/assets/media/no-image.jpg";  // YOUR PLACEHOLDER IMAGE
+const baseURL = process.env.REACT_APP_API_BASE_URL || 'https://vyr.svikinfotech.in/api/';
+const thumbImageBaseURL = 'https://vyr.svikinfotech.in/assets/media/thumb/';
+const imgURL = process.env.REACT_APP_API_IMG_URL || 'https://vyr.svikinfotech.in/assets/media';
+const fallbackUrl = "https://vyr.svikinfotech.in/assets/media/no-image.jpg";
+
+// --- Components from Tile1 ---
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -18,17 +22,75 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
       <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-96">
         <p className="mb-4 text-gray-800 dark:text-gray-200">{message}</p>
         <div className="flex justify-end space-x-2">
-          <button
-            className="bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-          <button
-            className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800"
-            onClick={onConfirm}
-          >
-            Yes
+          <button className="bg-gray-300 text-gray-800 dark:bg-gray-600 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500" onClick={onCancel}>Cancel</button>
+          <button className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800" onClick={onConfirm}>Yes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const useImageLoader = (src) => {
+  const [status, setStatus] = useState("loading");
+  useEffect(() => {
+    if (!src) { setStatus("error"); return; }
+    const img = new Image();
+    img.onload = () => setStatus("loaded");
+    img.onerror = () => setStatus("error");
+    img.src = src;
+    return () => { img.onload = null; img.onerror = null; };
+  }, [src]);
+  return status;
+};
+
+const getThumbImageUrl = (tile) => {
+  if (!tile) return null;
+  if (tile.thumb_image && tile.thumb_image.trim() !== "") return `${thumbImageBaseURL}${tile.thumb_image}`;
+  if (tile.image && tile.image.trim() !== "") return `${thumbImageBaseURL}${tile.image}`;
+  if (tile.sku_code && tile.sku_code.trim() !== "") return `${thumbImageBaseURL}${tile.sku_code}.jpg`;
+  return null;
+};
+
+const TileImage = ({ tile }) => {
+  const mainUrl = getThumbImageUrl(tile);
+  const urlToLoad = mainUrl || fallbackUrl;
+  const status = useImageLoader(urlToLoad);
+
+  if (status === "loaded") {
+    return <img src={urlToLoad} alt={tile?.sku_name || "Tile"} className="w-12 h-12 object-cover rounded" />;
+  }
+  if (status === "error") {
+    return <img src={fallbackUrl} alt="No Image" className="w-12 h-12 object-cover rounded" />;
+  }
+  return (
+    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+      <div className="animate-pulse text-gray-400 text-xs">Loading...</div>
+    </div>
+  );
+};
+
+// --- Components from Tile2 ---
+
+function ImportModal({ isOpen, onClose, folderInputRef, excelFolderInputRef, handleFolderUpload, isLoading }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Import Options</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"><FaTimes size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Folder or Files</label>
+            <input type="file" multiple webkitdirectory="" accept="image/jpeg,image/png,image/webp,.zip" ref={folderInputRef} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-600 dark:file:text-white" disabled={isLoading} />
+          </div>
+          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Excel File (SizeListFormat.xlsx)</label>
+            <input type="file" accept=".xlsx,.xls" ref={excelFolderInputRef} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-600 dark:file:text-white" disabled={isLoading} />
+          </div>
+          <button onClick={handleFolderUpload} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center" disabled={isLoading}>
+            {isLoading ? <FaSpinner className="animate-spin mr-2" /> : 'Upload'}
           </button>
         </div>
       </div>
@@ -38,103 +100,32 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
 
 const userId = localStorage.getItem('userid');
 
-// Image loader hook
-const useImageLoader = (src) => {
-  const [status, setStatus] = useState("loading");
-
-  useEffect(() => {
-    if (!src) {
-      setStatus("error");
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => setStatus("loaded");
-    img.onerror = () => setStatus("error");
-    img.src = src;
-
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [src]);
-
-  return status;
-};
-
-// Get product image URL
-const getThumbImageUrl = (tile) => {
-  if (!tile) return null;
-
-  if (tile.thumb_image && tile.thumb_image.trim() !== "") {
-    return `${thumbImageBaseURL}${tile.thumb_image}`;
-  }
-  if (tile.image && tile.image.trim() !== "") {
-    return `${thumbImageBaseURL}${tile.image}`;
-  }
-  if (tile.sku_code && tile.sku_code.trim() !== "") {
-    return `${thumbImageBaseURL}${tile.sku_code}.jpg`;
-  }
-  return null;
-};
-
-// FINAL TileImage Component
-const TileImage = ({ tile }) => {
-  const mainUrl = getThumbImageUrl(tile);
-  const urlToLoad = mainUrl || fallbackUrl;   // fallback directly used
-
-  const status = useImageLoader(urlToLoad);
-
-  if (status === "loaded") {
-    return (
-      <img
-        src={urlToLoad}
-        alt={tile?.sku_name || "Tile Image"}
-        className="w-12 h-12 object-cover rounded"
-      />
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <img
-        src={fallbackUrl}
-        alt="No Image"
-        className="w-12 h-12 object-cover rounded"
-      />
-    );
-  }
-
-  return (
-    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-      <div className="animate-pulse text-gray-400 text-xs">Loading...</div>
-    </div>
-  );
-};
-
 export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
-  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState(() => {});
   const [confirmMessage, setConfirmMessage] = useState('');
-  const [columnSearches, setColumnSearches] = useState({
-    sku_code: '',
-    sku_name: '',
-    app_name: '',
-    finish_name: '',
-    color_name: '',
-    image: '',
-  });
   const [globalSearch, setGlobalSearch] = useState('');
+  const [columnSearches, setColumnSearches] = useState({
+    sku_code: '', sku_name: '', app_name: '', finish_name: '', color_name: '',
+  });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [showImportModal, setShowImportModal] = useState(false);
+  
+  const folderInputRef = useRef(null);
+  const excelFolderInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!userId) {
+      toast.error('User not authenticated.');
+      navigate('/login');
+      return;
+    }
     fetchTiles();
   }, []);
 
@@ -143,179 +134,211 @@ export default function TileMasterPage() {
     try {
       const normalizedBaseURL = baseURL.replace(/\/+$/, '');
       const res = await axios.get(`${normalizedBaseURL}/GetTileList`);
-
-      let tilesData = [];
-
-      if (Array.isArray(res.data)) tilesData = res.data;
-      else if (res.data?.tiles) tilesData = res.data.tiles;
-      else if (res.data?.data?.tiles) tilesData = res.data.data.tiles;
-      else if (res.data?.data) tilesData = res.data.data ?? [];
-
+      let tilesData = Array.isArray(res.data) ? res.data : (res.data.tiles || res.data.data?.tiles || []);
       setTiles(tilesData);
     } catch (err) {
       toast.error('Failed to fetch tiles');
-      setError('Failed to fetch tiles');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEditClick = (tile) => navigate(`/edit-tile/${tile.tile_id}`);
-  const handleViewDetails = (tile) => navigate(`/view-tile/${tile.sku_code}`);
+  // --- Logic Handlers ---
 
   const handleBlockToggle = (tileId, currentStatus) => {
     setConfirmMessage(`Are you sure you want to ${currentStatus ? 'unblock' : 'block'} this tile?`);
-
     setConfirmAction(() => async () => {
       try {
         setIsLoading(true);
         const normalizedBaseURL = baseURL.replace(/\/+$/, '');
-        const res = await axios.get(
-          `${normalizedBaseURL}/BlockTile/${userId}/${tileId}/${currentStatus ? 0 : 1}`
-        );
-
+        const res = await axios.get(`${normalizedBaseURL}/BlockTile/${userId}/${tileId}/${currentStatus ? 0 : 1}`);
         if (res.data === 'success') {
-          toast.success("Tile updated!");
+          toast.success("Status updated!");
           fetchTiles();
-        } else {
-          toast.error('Update failed');
         }
-      } catch (err) {
-        toast.error('Error updating tile');
-      } finally {
-        setIsLoading(false);
-        setShowConfirm(false);
-      }
+      } catch (err) { toast.error('Error updating tile'); }
+      finally { setIsLoading(false); setShowConfirm(false); }
     });
-
     setShowConfirm(true);
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const normalizedBaseURL = baseURL.replace(/\/+$/, '');
+      const res = await axios.get(`${normalizedBaseURL}/ExportToExcel`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `TileList_${new Date().getTime()}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Exported successfully');
+    } catch (err) { toast.error('Export failed'); }
+  };
+
+  const createZipFromFiles = async (files) => {
+    const zip = new JSZip();
+    files.forEach((file) => zip.file(file.name, file));
+    const content = await zip.generateAsync({ type: 'blob' });
+    return new File([content], `images_${Date.now()}.zip`, { type: 'application/zip' });
+  };
+
+  const handleFolderUpload = async () => {
+    const files = Array.from(folderInputRef.current?.files || []);
+    const excelFile = excelFolderInputRef.current?.files[0];
+    if (!files.length || !excelFile) {
+      toast.error('Files and Excel are required');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      let formData = new FormData();
+      formData.append('excelFile', excelFile);
+      
+      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+      if (totalSize > 100 * 1024 * 1024) {
+        formData.append('files', await createZipFromFiles(files));
+      } else {
+        files.forEach((file) => formData.append('files', file));
+      }
+      formData.append('replace', false);
+
+      const res = await axios.post(`${imgURL}/process-folder-vyr`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(res.data.Message || "Imported successfully");
+      fetchTiles();
+      setShowImportModal(false);
+    } catch (err) { toast.error('Upload failed'); }
+    finally { setIsLoading(false); }
+  };
+
+  // --- Search & Filter Logic ---
+
   const getSortedAndFilteredTiles = () => {
-    let filteredTiles = [...tiles];
-
+    let filtered = [...tiles];
     if (globalSearch) {
-      filteredTiles = filteredTiles.filter((tile) =>
-        Object.values(tile).some((value) =>
-          String(value).toLowerCase().includes(globalSearch)
-        )
-      );
+      filtered = filtered.filter(t => Object.values(t).some(v => String(v).toLowerCase().includes(globalSearch.toLowerCase())));
     }
-
-    filteredTiles = filteredTiles.filter((tile) =>
-      Object.entries(columnSearches).every(([key, value]) =>
-        !value || String(tile[key]).toLowerCase().includes(value.toLowerCase())
-      )
-    );
-
+    filtered = filtered.filter(t => Object.entries(columnSearches).every(([k, v]) => !v || String(t[k]).toLowerCase().includes(v.toLowerCase())));
+    
     if (sortConfig.key) {
-      filteredTiles.sort((a, b) =>
-        sortConfig.direction === 'ascending'
-          ? String(a[sortConfig.key]).localeCompare(String(b[sortConfig.key]))
-          : String(b[sortConfig.key]).localeCompare(String(a[sortConfig.key]))
-      );
+      filtered.sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        return sortConfig.direction === 'ascending' 
+          ? String(aVal).localeCompare(String(bVal)) 
+          : String(bVal).localeCompare(String(aVal));
+      });
     }
-
-    return filteredTiles;
+    return filtered;
   };
 
   const filteredTiles = getSortedAndFilteredTiles();
-  const totalPages = Math.ceil(filteredTiles.length / entriesPerPage);
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filteredTiles.length / entriesPerPage);
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar theme="light" />
-
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar theme="light" />
-
         <div className="flex flex-col flex-1 p-6 overflow-auto">
-
+          
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Products</h2>
             <Breadcrumb />
           </div>
 
           <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[100vh] overflow-hidden">
+            
+            {/* Toolbar Area */}
+            <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3">
+              <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 px-3 py-1">
+                <span className="text-sm mr-2">Show</span>
+                <select value={entriesPerPage} onChange={(e) => setEntriesPerPage(Number(e.target.value))} className="text-sm bg-transparent border-none focus:ring-0">
+                  {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
 
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <div className="relative w-full sm:w-64">
+                <input type="text" placeholder="Search..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-1.5 focus:ring-2 focus:ring-green-600 outline-none" />
+              </div>
+
+              <div className="flex gap-2">
+                <Link to="/add-tile" className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium"><FaPlus className="mr-2" /> Add Product</Link>
+                <button onClick={() => setShowImportModal(true)} className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 flex items-center text-sm font-medium"><FaFileImport className="mr-2" /> Import</button>
+                <button onClick={handleExportExcel} className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 flex items-center text-sm font-medium"><FaFileExport className="mr-2" /> Export Excel</button>
+              </div>
+            </div>
+
+            {/* Table Area */}
+            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
                   <tr>
-                    {['sku_code', 'sku_name', 'app_name', 'finish_name', 'color_name', 'image', 'actions'].map((key) => (
-                      <th key={key} className="px-4 py-2 font-semibold text-left">
-                        {key.toUpperCase()}
+                    {[
+                      {label: 'SKU Code', key: 'sku_code'},
+                      {label: 'SKU Name', key: 'sku_name'},
+                      {label: 'Application', key: 'app_name'},
+                      {label: 'Finish', key: 'finish_name'},
+                      {label: 'Color', key: 'color_name'},
+                      {label: 'Image', key: 'image'},
+                      {label: 'Actions', key: 'actions'}
+                    ].map((col) => (
+                      <th key={col.key} className="px-4 py-2 font-semibold text-left">
+                        <div className="flex items-center cursor-pointer" onClick={() => col.key !== 'actions' && col.key !== 'image' && setSortConfig({key: col.key, direction: sortConfig.direction === 'ascending' ? 'descending' : 'ascending'})}>
+                          {col.label} {sortConfig.key === col.key && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                        </div>
+                        {col.key !== 'actions' && col.key !== 'image' && (
+                          <input 
+                            type="text" 
+                            className="mt-1 w-full border rounded px-2 py-0.5 text-xs font-normal text-black" 
+                            placeholder="Filter..." 
+                            value={columnSearches[col.key]} 
+                            onChange={(e) => setColumnSearches({...columnSearches, [col.key]: e.target.value})}
+                          />
+                        )}
                       </th>
                     ))}
                   </tr>
                 </thead>
-
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 text-gray-800 dark:text-gray-200">
-                  {currentTiles.map((tile, index) => (
-                    <tr key={index} className="hover:bg-green-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-2">{tile.sku_code}</td>
+                <tbody className="divide-y divide-gray-200">
+                  {currentTiles.map((tile, idx) => (
+                    <tr key={idx} className="hover:bg-green-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-2">
+                        <span onClick={() => navigate(`/view-tile/${tile.sku_code}`)} className="text-blue-600 hover:underline cursor-pointer font-medium">{tile.sku_code}</span>
+                      </td>
                       <td className="px-4 py-2">{tile.sku_name}</td>
                       <td className="px-4 py-2">{tile.app_name}</td>
                       <td className="px-4 py-2">{tile.finish_name}</td>
                       <td className="px-4 py-2">{tile.color_name}</td>
-
-                      <td className="px-4 py-2">
-                        <TileImage tile={tile} />
-                      </td>
-
-                      <td className="px-4 py-2 flex space-x-2">
-                        <button onClick={() => handleEditClick(tile)} className="text-yellow-500">
-                          <FaEdit size={18} />
-                        </button>
-                        <button onClick={() => handleBlockToggle(tile.tile_id, tile.block)} className="text-red-500">
+                      <td className="px-4 py-2"><TileImage tile={tile} /></td>
+                      <td className="px-4 py-2 flex space-x-3">
+                        <button onClick={() => navigate(`/edit-tile/${tile.tile_id}`)} className="text-yellow-500 hover:text-yellow-600"><FaEdit size={18} /></button>
+                        <button onClick={() => handleBlockToggle(tile.tile_id, tile.block)} className={tile.block ? 'text-green-600' : 'text-red-500'}>
                           {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
                         </button>
                       </td>
-
                     </tr>
                   ))}
                 </tbody>
-
               </table>
             </div>
 
-            <div className="flex justify-between mt-4 text-sm">
-              <span>
-                Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to{' '}
-                {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries
-              </span>
-
+            {/* Pagination */}
+            <div className="flex justify-between mt-4 text-sm items-center">
+              <span>Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries</span>
               <div className="flex gap-1">
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border rounded"
-                >
-                  <FaAngleLeft />
-                </button>
-
-                {[...Array(totalPages).keys()].map((num) => (
-                  <button
-                    key={num + 1}
-                    onClick={() => setCurrentPage(num + 1)}
-                    className={`px-3 py-1 border rounded ${
-                      currentPage === num + 1 ? 'bg-green-600 text-white' : ''
-                    }`}
-                  >
-                    {num + 1}
-                  </button>
+                <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50"><FaAngleLeft /></button>
+                {[...Array(totalPages).keys()].slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2)).map(n => (
+                  <button key={n + 1} onClick={() => setCurrentPage(n + 1)} className={`px-3 py-1 border rounded ${currentPage === n + 1 ? 'bg-green-600 text-white' : ''}`}>{n + 1}</button>
                 ))}
-
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 border rounded"
-                >
-                  <FaAngleRight />
-                </button>
+                <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50"><FaAngleRight /></button>
               </div>
             </div>
 
@@ -323,13 +346,8 @@ export default function TileMasterPage() {
         </div>
       </div>
 
-      {showConfirm && (
-        <ConfirmationModal
-          message={confirmMessage}
-          onConfirm={confirmAction}
-          onCancel={() => setShowConfirm(false)}
-        />
-      )}
+      {showConfirm && <ConfirmationModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setShowConfirm(false)} />}
+      <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} folderInputRef={folderInputRef} excelFolderInputRef={excelFolderInputRef} handleFolderUpload={handleFolderUpload} isLoading={isLoading} />
     </div>
   );
 }
