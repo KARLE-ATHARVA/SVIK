@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 import axios from 'axios';
-import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaFileExport, FaFileImport, FaTimes, FaSpinner } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaFileExport, FaFileImport, FaTimes, FaSpinner, FaSearch } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import JSZip from 'jszip';
 import 'react-toastify/dist/ReactToastify.css';
@@ -14,7 +14,7 @@ const thumbImageBaseURL = 'https://vyr.svikinfotech.in/assets/media/thumb/';
 const imgURL = process.env.REACT_APP_API_IMG_URL || 'https://vyr.svikinfotech.in/assets/media';
 const fallbackUrl = "https://vyr.svikinfotech.in/assets/media/no-image.jpg";
 
-// --- Components from Tile1 ---
+// --- Components ---
 
 function ConfirmationModal({ message, onConfirm, onCancel }) {
   return (
@@ -69,8 +69,6 @@ const TileImage = ({ tile }) => {
   );
 };
 
-// --- Components from Tile2 ---
-
 function ImportModal({ isOpen, onClose, folderInputRef, excelFolderInputRef, handleFolderUpload, isLoading }) {
   if (!isOpen) return null;
   return (
@@ -103,7 +101,6 @@ const userId = localStorage.getItem('userid');
 export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState(() => {});
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -142,8 +139,6 @@ export default function TileMasterPage() {
       setIsLoading(false);
     }
   };
-
-  // --- Logic Handlers ---
 
   const handleBlockToggle = (tileId, currentStatus) => {
     setConfirmMessage(`Are you sure you want to ${currentStatus ? 'unblock' : 'block'} this tile?`);
@@ -215,8 +210,6 @@ export default function TileMasterPage() {
     finally { setIsLoading(false); }
   };
 
-  // --- Search & Filter Logic ---
-
   const getSortedAndFilteredTiles = () => {
     let filtered = [...tiles];
     if (globalSearch) {
@@ -257,29 +250,49 @@ export default function TileMasterPage() {
           <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[100vh] overflow-hidden">
             
             {/* Toolbar Area */}
-            <div className="mb-4 flex flex-col sm:flex-row justify-between items-start gap-3">
-              <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg border border-gray-300 px-3 py-1">
-                <span className="text-sm mr-2">Show</span>
-                <select value={entriesPerPage} onChange={(e) => setEntriesPerPage(Number(e.target.value))} className="text-sm bg-transparent border-none focus:ring-0">
-                  {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
+            <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+              
+              {/* Left Side: Show Entries + Search aligned together */}
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                {/* Show Entries Dropdown */}
+                <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 h-10">
+                  <span className="text-sm mr-2 text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">Show</span>
+                  <select 
+                    value={entriesPerPage} 
+                    onChange={(e) => setEntriesPerPage(Number(e.target.value))} 
+                    className="text-sm bg-transparent border-none focus:ring-0 cursor-pointer dark:text-white"
+                  >
+                    {[10, 25, 50, 100].map(n => <option key={n} value={n} className="dark:bg-gray-800">{n}</option>)}
+                  </select>
+                </div>
+
+                {/* Global Search Bar aligned beside the dropdown */}
+                <div className="relative flex-1 sm:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaSearch className="text-gray-400 text-sm" />
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="Search product..." 
+                    value={globalSearch} 
+                    onChange={(e) => setGlobalSearch(e.target.value)} 
+                    className="block w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-600 outline-none dark:text-white h-10" 
+                  />
+                </div>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <input type="text" placeholder="Search..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-1.5 focus:ring-2 focus:ring-green-600 outline-none" />
-              </div>
-
-              <div className="flex gap-2">
-                <Link to="/add-tile" className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium"><FaPlus className="mr-2" /> Add Product</Link>
-                <button onClick={() => setShowImportModal(true)} className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 flex items-center text-sm font-medium"><FaFileImport className="mr-2" /> Import</button>
-                <button onClick={handleExportExcel} className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 flex items-center text-sm font-medium"><FaFileExport className="mr-2" /> Export Excel</button>
+              {/* Right Side: Action Buttons */}
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <Link to="/add-tile" className="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800 flex items-center text-sm font-medium transition-colors shadow-sm"><FaPlus className="mr-2" /> Add Product</Link>
+                <button onClick={() => setShowImportModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm font-medium transition-colors shadow-sm"><FaFileImport className="mr-2" /> Import</button>
+                <button onClick={handleExportExcel} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center text-sm font-medium transition-colors shadow-sm"><FaFileExport className="mr-2" /> Export Excel</button>
               </div>
             </div>
 
             {/* Table Area */}
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-green-100 dark:bg-green-900 text-gray-800 dark:text-gray-200 sticky top-0">
+            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                <thead className="bg-green-100 dark:bg-green-900/30 text-gray-800 dark:text-gray-200 sticky top-0 z-10">
                   <tr>
                     {[
                       {label: 'SKU Code', key: 'sku_code'},
@@ -290,15 +303,15 @@ export default function TileMasterPage() {
                       {label: 'Image', key: 'image'},
                       {label: 'Actions', key: 'actions'}
                     ].map((col) => (
-                      <th key={col.key} className="px-4 py-2 font-semibold text-left">
-                        <div className="flex items-center cursor-pointer" onClick={() => col.key !== 'actions' && col.key !== 'image' && setSortConfig({key: col.key, direction: sortConfig.direction === 'ascending' ? 'descending' : 'ascending'})}>
+                      <th key={col.key} className="px-4 py-3 font-semibold text-left">
+                        <div className="flex items-center cursor-pointer hover:text-green-700 dark:hover:text-green-400" onClick={() => col.key !== 'actions' && col.key !== 'image' && setSortConfig({key: col.key, direction: sortConfig.direction === 'ascending' ? 'descending' : 'ascending'})}>
                           {col.label} {sortConfig.key === col.key && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                         </div>
                         {col.key !== 'actions' && col.key !== 'image' && (
                           <input 
                             type="text" 
-                            className="mt-1 w-full border rounded px-2 py-0.5 text-xs font-normal text-black" 
-                            placeholder="Filter..." 
+                            className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded px-2 py-1 text-xs font-normal text-black dark:text-white dark:bg-gray-800" 
+                            placeholder={`Filter ${col.label}...`} 
                             value={columnSearches[col.key]} 
                             onChange={(e) => setColumnSearches({...columnSearches, [col.key]: e.target.value})}
                           />
@@ -307,38 +320,44 @@ export default function TileMasterPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {currentTiles.map((tile, idx) => (
-                    <tr key={idx} className="hover:bg-green-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-2">
-                        <span onClick={() => navigate(`/view-tile/${tile.sku_code}`)} className="text-blue-600 hover:underline cursor-pointer font-medium">{tile.sku_code}</span>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {currentTiles.length > 0 ? currentTiles.map((tile, idx) => (
+                    <tr key={idx} className="hover:bg-green-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <span onClick={() => navigate(`/view-tile/${tile.sku_code}`)} className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium">{tile.sku_code}</span>
                       </td>
-                      <td className="px-4 py-2">{tile.sku_name}</td>
-                      <td className="px-4 py-2">{tile.app_name}</td>
-                      <td className="px-4 py-2">{tile.finish_name}</td>
-                      <td className="px-4 py-2">{tile.color_name}</td>
-                      <td className="px-4 py-2"><TileImage tile={tile} /></td>
-                      <td className="px-4 py-2 flex space-x-3">
-                        <button onClick={() => navigate(`/edit-tile/${tile.tile_id}`)} className="text-yellow-500 hover:text-yellow-600"><FaEdit size={18} /></button>
-                        <button onClick={() => handleBlockToggle(tile.tile_id, tile.block)} className={tile.block ? 'text-green-600' : 'text-red-500'}>
-                          {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
-                        </button>
+                      <td className="px-4 py-3 dark:text-gray-300">{tile.sku_name}</td>
+                      <td className="px-4 py-3 dark:text-gray-300">{tile.app_name}</td>
+                      <td className="px-4 py-3 dark:text-gray-300">{tile.finish_name}</td>
+                      <td className="px-4 py-3 dark:text-gray-300">{tile.color_name}</td>
+                      <td className="px-4 py-3"><TileImage tile={tile} /></td>
+                      <td className="px-4 py-3">
+                        <div className="flex space-x-3">
+                          <button onClick={() => navigate(`/edit-tile/${tile.tile_id}`)} className="text-yellow-500 hover:text-yellow-600 transition-colors" title="Edit"><FaEdit size={18} /></button>
+                          <button onClick={() => handleBlockToggle(tile.tile_id, tile.block)} className={`${tile.block ? 'text-green-600 hover:text-green-700' : 'text-red-500 hover:text-red-600'} transition-colors`} title={tile.block ? "Unblock" : "Block"}>
+                            {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr>
+                      <td colSpan="7" className="px-4 py-10 text-center text-gray-500">No products found.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
-            <div className="flex justify-between mt-4 text-sm items-center">
-              <span>Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries</span>
+            <div className="flex justify-between mt-6 text-sm items-center text-gray-600 dark:text-gray-400">
+              <span className="font-medium">Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries</span>
               <div className="flex gap-1">
-                <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border rounded disabled:opacity-50"><FaAngleLeft /></button>
+                <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-all"><FaAngleLeft /></button>
                 {[...Array(totalPages).keys()].slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2)).map(n => (
-                  <button key={n + 1} onClick={() => setCurrentPage(n + 1)} className={`px-3 py-1 border rounded ${currentPage === n + 1 ? 'bg-green-600 text-white' : ''}`}>{n + 1}</button>
+                  <button key={n + 1} onClick={() => setCurrentPage(n + 1)} className={`px-3 py-1.5 border rounded-lg transition-all ${currentPage === n + 1 ? 'bg-green-700 text-white border-green-700 shadow-sm' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>{n + 1}</button>
                 ))}
-                <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border rounded disabled:opacity-50"><FaAngleRight /></button>
+                <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-all"><FaAngleRight /></button>
               </div>
             </div>
 
