@@ -29,6 +29,9 @@ import AddTilePage from './pages/AddTilePage';
 import EditTilePage from './pages/EditTilePage';
 import ProductsImagePage from './pages/ProductsImagePage';
 import ViewTilePage from './pages/ViewTilePage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+
 
 export default function App() {
   return (
@@ -64,6 +67,8 @@ export default function App() {
             <Route path="/add-tile" element={<AddTilePage />} />
             <Route path="/edit-tile/:tileId" element={<EditTilePage />} />
             <Route path="/view-tile/:tileId" element={<ViewTilePage />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Routes>
         </BrowserRouter>
       </SidebarProvider>

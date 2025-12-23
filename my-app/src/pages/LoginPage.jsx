@@ -170,27 +170,42 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold mb-2 text-emerald-800 text-center">Sign In</h1>
           <p className="text-gray-600 mb-6 text-center text-sm">Welcome back! Please log in.</p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form
+  onSubmit={handleLogin}
+  autoComplete="on"
+  method="post"
+  className="space-y-4"
+>
+
             <div>
               <label className="block text-sm font-medium mb-1">Username</label>
               <input
-                type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
-              />
+  type="text"
+  id="username"
+  name="username"
+  autoComplete="username"
+  placeholder="Enter your username"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+  className="w-full border border-gray-300 rounded-lg py-2 px-3"
+/>
+
+
             </div>
 
             <div className="relative">
               <label className="block text-sm font-medium mb-1">Password</label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition"
-              />
+  type={showPassword ? 'text' : 'password'}
+  id="password"
+  name="password"
+  autoComplete="current-password"
+  placeholder="Enter your password"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  className="w-full border border-gray-300 rounded-lg py-2 px-3"
+/>
+
               <span
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-9 text-emerald-600 cursor-pointer text-xs"
@@ -204,7 +219,14 @@ export default function LoginPage() {
                 <input type="checkbox" className="mr-2" />
                 Remember me
               </label>
-              <a href="#" className="text-emerald-700 hover:underline">Forgot password?</a>
+              <a
+  href="#"
+  onClick={() => navigate('/forgot-password')}
+  className="text-emerald-700 hover:underline"
+>
+  Forgot password?
+</a>
+
             </div>
 
             <button
