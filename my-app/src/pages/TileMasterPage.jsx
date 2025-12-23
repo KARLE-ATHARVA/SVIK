@@ -9,10 +9,12 @@ import { toast } from 'react-toastify';
 import JSZip from 'jszip';
 import 'react-toastify/dist/ReactToastify.css';
 
-const baseURL = process.env.REACT_APP_API_BASE_URL || 'https://vyr.svikinfotech.in/api/';
-const thumbImageBaseURL = 'https://vyr.svikinfotech.in/assets/media/thumb/';
-const imgURL = process.env.REACT_APP_API_IMG_URL || 'https://vyr.svikinfotech.in/assets/media';
-const fallbackUrl = "https://vyr.svikinfotech.in/assets/media/no-image.jpg";
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+const MEDIA_URL = process.env.REACT_APP_MEDIA_URL;
+const thumbImageBaseURL = `${MEDIA_URL}/thumb/`;
+const imgURL = process.env.REACT_APP_MEDIA_URL;;
+const fallbackUrl = `${MEDIA_URL}/no-image.jpg`;
+
 
 // --- Components ---
 

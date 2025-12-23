@@ -9,6 +9,9 @@ import leftImage from '../assets/left_image.jpg';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
+// ✅ IMPORTANT: allow cookies
+axios.defaults.withCredentials = true;
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -32,51 +35,37 @@ export default function LoginPage() {
     });
 
     try {
-      const response = await axios.post(`${baseURL}/Login`, {
-        username,
-        password
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const response = await axios.post(
+        `${baseURL}/login`,
+        { username, password },
+        { withCredentials: true }
+      );
+
+      // ✅ ONLY NON-SENSITIVE DATA
+      const { userid, username: name } = response.data;
+
+      localStorage.setItem('userid', userid);
+      localStorage.setItem('username', name);
+
+      toast.update(toastId, {
+        render: 'Login successful!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 2000,
+        style: {
+          fontSize: '14px',
+          padding: '10px 20px',
+          borderRadius: '10px',
+        },
       });
 
-      if (typeof response.data === 'string') {
-        toast.update(toastId, {
-          render: 'Invalid Credentials',
-          type: 'error',
-          isLoading: false,
-          autoClose: 3000,
-          style: {
-            fontSize: '14px',
-            padding: '10px 20px',
-            borderRadius: '10px',
-          },
-        });
-      } else {
-        const { pgatoken, userid } = response.data;
-        localStorage.setItem('token', pgatoken);
-        localStorage.setItem('userid', userid);
-        localStorage.setItem('username', username);
+      setTimeout(() => navigate('/dashboard'), 2000);
 
-        toast.update(toastId, {
-          render: 'Login successful!',
-          type: 'success',
-          isLoading: false,
-          autoClose: 2000,
-          style: {
-            fontSize: '14px',
-            padding: '10px 20px',
-            borderRadius: '10px',
-          },
-        });
-
-        setTimeout(() => navigate('/dashboard'), 2000);
-      }
     } catch (error) {
       console.error(error);
+
       toast.update(toastId, {
-        render: 'Server error. Please try again.',
+        render: 'Invalid credentials or server error',
         type: 'error',
         isLoading: false,
         autoClose: 3000,
