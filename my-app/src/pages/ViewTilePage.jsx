@@ -9,20 +9,28 @@ import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
 
 // Fallback base URL for API
-const baseURL = process.env.REACT_APP_API_BASE_URL 
+const baseURL = process.env.REACT_APP_API_BASE_URL ;
+const MEDIA_URL = process.env.REACT_APP_MEDIA_URL;
 // Base URLs for images
-const bigImageBaseURL = 'https://vyr.svikinfotech.in/assets/media/big/';
-const thumbImageBaseURL = 'https://vyr.svikinfotech.in/assets/media/thumb/';
-const fallbackImageURL = 'https://vyr.svikinfotech.in/assets/media/no-image.jpg';
+const bigImageBaseURL = `${MEDIA_URL}/big/`;
+const thumbImageBaseURL = `${MEDIA_URL}/thumb/`;
+const fallbackImageURL = `${MEDIA_URL}/no-image.jpg`;
 
 export default function ViewTilePage() {
   const { tileId } = useParams(); // tileId is expected to be the sku_code
   const [tile, setTile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [lightboxImage, setLightboxImage] = useState(null);
+  // const [lightboxImage, setLightboxImage] = useState(null);
   const [imageDimensions, setImageDimensions] = useState({ width: 'auto', height: 'auto' });
   const [availableVariants, setAvailableVariants] = useState([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
+  const [loadedImages, setLoadedImages] = useState({});
+  const [lightboxImage, setLightboxImage] = useState(null);
+const [activeImageName, setActiveImageName] = useState(null);
+
+
+
 
   useEffect(() => {
     let isMounted = true;
@@ -77,9 +85,9 @@ export default function ViewTilePage() {
           if (matchingTile) {
             console.log('Tile found:', JSON.stringify(matchingTile, null, 2));
             console.log('Image URLs:', {
-              tileImage: matchingTile.image ? `${bigImageBaseURL}${matchingTile.image}` : `${bigImageBaseURL}${matchingTile.sku_code}.jpg`,
-              thumbImage: matchingTile.thumb_image ? `${thumbImageBaseURL}${matchingTile.thumb_image}` : `${thumbImageBaseURL}${matchingTile.sku_code}.jpg`,
-              facesImage: matchingTile.faces_image ? `${bigImageBaseURL}${matchingTile.faces_image}` : `${bigImageBaseURL}${matchingTile.sku_code}.jpg`,
+              tileImage: matchingTile.image ? `${bigImageBaseURL}${matchingTile.image}` : `${bigImageBaseURL}${matchingTile.sku_code}.avif`,
+              thumbImage: matchingTile.thumb_image ? `${thumbImageBaseURL}${matchingTile.thumb_image}` : `${thumbImageBaseURL}${matchingTile.sku_code}.avif`,
+              facesImage: matchingTile.faces_image ? `${bigImageBaseURL}${matchingTile.faces_image}` : `${bigImageBaseURL}${matchingTile.sku_code}.avif`,
             });
             setTile(matchingTile);
           } else {
@@ -116,39 +124,69 @@ export default function ViewTilePage() {
       source.cancel('Request canceled due to component unmount');
     };
   }, [tileId]);
-  useEffect(() => {
+useEffect(() => {
   if (!tile?.sku_code) return;
 
   let isMounted = true;
-  const detectedVariants = [];
+  const detectedImages = [];
+
+  setImagesLoading(true); // ✅ START LOADING
+
+  const finish = () => {
+    if (isMounted) {
+      setAvailableVariants(detectedImages);
+      setImagesLoading(false); // ✅ STOP LOADING
+    }
+  };
+
+  const checkBaseImage = () => {
+    const baseName = tile.sku_code;
+    const img = new Image();
+
+    img.src = `${thumbImageBaseURL}${baseName}.avif`;
+
+    img.onload = () => {
+      if (!isMounted) return;
+      detectedImages.push({
+        name: baseName,
+        url: `${bigImageBaseURL}${baseName}.avif`
+      });
+      checkVariant(1);
+    };
+
+    img.onerror = () => {
+      checkVariant(1);
+    };
+  };
 
   const checkVariant = (index) => {
     const variantName = `${tile.sku_code}-f${index}`;
     const img = new Image();
 
-    img.src = `${thumbImageBaseURL}${variantName}.jpg`;
+    img.src = `${thumbImageBaseURL}${variantName}.avif`;
 
     img.onload = () => {
       if (!isMounted) return;
-
-      detectedVariants.push(variantName);
-      checkVariant(index + 1); // check next variant
+      detectedImages.push({
+        name: variantName,
+        url: `${bigImageBaseURL}${variantName}.avif`
+      });
+      checkVariant(index + 1);
     };
 
     img.onerror = () => {
-      // stop checking when a variant does not exist
-      if (isMounted) {
-        setAvailableVariants(detectedVariants);
-      }
+      finish(); // ✅ END SEARCH HERE
     };
   };
 
-  checkVariant(1);
+  checkBaseImage();
 
   return () => {
     isMounted = false;
   };
 }, [tile]);
+
+
 
 
   // Load natural dimensions of the lightbox image, prioritizing actual square size
@@ -205,14 +243,54 @@ export default function ViewTilePage() {
   };
 
   // Lightbox handlers
-  const openLightbox = (imageSrc) => {
-    setLightboxImage(imageSrc);
-  };
+ const openLightbox = (image) => {
+  setLightboxImage(image.url);
+  setActiveImageName(image.name);
+};
+
 
   const closeLightbox = () => {
     setLightboxImage(null);
     setImageDimensions({ width: 'auto', height: 'auto' });
   };
+
+ const handleDeleteImage = async () => {
+  if (!activeImageName) return;
+
+  const confirm = window.confirm(
+    `Delete image "${activeImageName}"?`
+  );
+  if (!confirm) return;
+
+  // ✅ Optimistic UI update
+  setAvailableVariants(prev =>
+    prev.filter(img => img.name !== activeImageName)
+  );
+
+  closeLightbox();
+
+  try {
+    await axios.delete(`${baseURL}/delete-image`, {
+      params: {
+        fileNames: `${activeImageName}.avif`,
+        type: "both",
+        empcode: Number(localStorage.getItem("userid")) || 0,
+      },
+      timeout: 60000,
+    });
+
+    toast.success("Image deleted successfully");
+  } catch (err) {
+    console.error(err);
+    toast.error("Delete failed on server");
+
+    // ❗ rollback if needed (optional)
+    setAvailableVariants(prev => [
+      ...prev,
+      { name: activeImageName, url: `${bigImageBaseURL}${activeImageName}.avif` }
+    ]);
+  }
+};
 
   
 
@@ -319,33 +397,49 @@ export default function ViewTilePage() {
             {/* Images Container */}
             <div className="mt-8 bg-gradient-to-br from-white to-teal-50 dark:from-gray-800 dark:to-teal-900 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-500 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <h3 className="text-2xl font-semibold text-teal-800 dark:text-teal-200 mb-2">Images</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
-                {availableVariants.map((variant, index) => (
-                  <div
-                    key={index}
-                    className="relative group cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openLightbox(`${bigImageBaseURL}${variant}.jpg`);
-                    }}
-                  >
-                    <p className="text-sm font-medium text-teal-600 dark:text-teal-300 mb-2">Variant {index + 1}</p>
-                    <img
-                      src={`${thumbImageBaseURL}${variant}.jpg`}
-                      alt={tile?.sku_name ? `${tile.sku_name} Variant ${index + 1}` : `Variant ${index + 1}`}
-                      className="w-50 h-48 object-cover border border-teal-200 dark:border-teal-700 group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => {
-                        console.error(`Variant image failed to load: ${thumbImageBaseURL}${variant}.jpg`);
-                        e.target.src = fallbackImageURL;
-                        e.target.alt = 'Variant image not found';
-                      }}
-                    />
-                    <div className="absolute w-48 h-50 inset-0 bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-500 flex items-center justify-center">
-                      <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-sm font-medium">Click to enlarge</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              
+{imagesLoading ? (
+  <p className="text-gray-500 italic">Loading images…</p>
+) : availableVariants.length === 0 ? (
+  <p className="text-gray-500 italic">No images available</p>
+) : (
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    {availableVariants.map((img, index) => (
+      <div
+        key={index}
+        className="cursor-pointer"
+        onClick={() => openLightbox(img)}
+
+      >
+        {/* Image name */}
+        <p className="text-xs text-gray-600 mb-1 text-center">
+          {img.name}
+        </p>
+
+        {/* Image box */}
+        <div className="border rounded p-2 flex items-center justify-center bg-gray-50">
+          <img
+  src={`${thumbImageBaseURL}${img.name}.avif`}
+  alt={img.name}
+  className={`max-w-full max-h-48 object-contain rounded transition-opacity duration-500 ${
+    loadedImages[img.name] ? 'opacity-100' : 'opacity-0'
+  }`}
+  onLoad={() =>
+    setLoadedImages(prev => ({ ...prev, [img.name]: true }))
+  }
+  onError={(e) => {
+    e.target.src = fallbackImageURL;
+    setLoadedImages(prev => ({ ...prev, [img.name]: true }));
+  }}
+/>
+
+        </div>
+      </div>
+    ))}
+  </div>
+)}
+
             </div>
 
             <div className="mt-10 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
@@ -382,6 +476,13 @@ export default function ViewTilePage() {
                     e.target.alt = 'Image not found';
                   }}
                 />
+                <button
+  className="absolute top-4 left-4 text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+  onClick={handleDeleteImage}
+>
+  Delete
+</button>
+
                 <button
                   className="absolute top-4 right-4 text-white text-2xl font-bold bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-all duration-300"
                   onClick={closeLightbox}

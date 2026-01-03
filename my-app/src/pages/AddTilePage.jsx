@@ -38,6 +38,20 @@ export default function AddTilePage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const userId = localStorage.getItem('userid');
   const navigate = useNavigate();
+  // 🖼 Image handling 
+  const [vyrFinalImages, setVyrFinalImages] = useState([]); // resized files
+const [rawImages, setRawImages] = useState([]);
+const [uploadDone, setUploadDone] = useState(false);
+const [uploadedImages, setUploadedImages] = useState([]); // filenames
+const [selectedImages, setSelectedImages] = useState([]);
+const [vyrPreviewImages, setVyrPreviewImages] = useState([]);
+const [vyrProcessing, setVyrProcessing] = useState(false);
+const [replaceImages, setReplaceImages] = useState(false);
+const [showReplacePrompt, setShowReplacePrompt] = useState(false);
+const [existingBigImages, setExistingBigImages] = useState([]);
+const [pendingSave, setPendingSave] = useState(false);
+
+
 
   useEffect(() => {
     fetchReferenceData();
@@ -125,61 +139,257 @@ export default function AddTilePage() {
       setShowConfirm(true);
     }
   };
+  const getCleanVyrSize = () => {
+  const sizeName = getSizeName(); // e.g. "600 x 1200 mm"
+  if (!sizeName) return "";
 
-  const addTile = async () => {
-    try {
-      const payload = new FormData();
-      payload.append('SkuName', formData.SkuName);
-      payload.append('SkuCode', formData.SkuCode);
+  // Extract ONLY numbers like 600 and 1200
+  const match = sizeName.match(/(\d+)\s*[xX×]\s*(\d+)/);
 
-      const getName = (list, idKey, nameKey, id) => {
-        const item = list.find((x) => x[idKey] === id);
-        return item ? item[nameKey] : '';
-      };
+  if (!match) {
+    console.error("Invalid size format for VYR:", sizeName);
+    return "";
+  }
 
-      payload.append('CatId', formData.CatId);
-      payload.append('CatName', getName(referenceData.categories, 'cat_id', 'cat_name', formData.CatId));
+  return `${match[1]}X${match[2]}`; // EXACT backend format
+};
 
-      payload.append('AppId', formData.AppId);
-      payload.append('AppName', getName(referenceData.applications, 'app_id', 'app_name', formData.AppId));
+const checkBigImagesExist = async () => {
+  if (rawImages.length === 0) return { exists: false };
 
-      payload.append('SpaceId', formData.SpaceId);
-      payload.append('SpaceName', getName(referenceData.spaces, 'space_id', 'space_name', formData.SpaceId));
+  const names = rawImages
+    .map(f => f.name.replace(/\.[^/.]+$/, "")) // filename without extension
+    .join(",");
 
-      payload.append('SizeId', formData.SizeId);
-      payload.append('SizeName', getName(referenceData.sizes, 'size_id', 'size_name', formData.SizeId));
+  const res = await axios.get(
+    `${baseURL}/big-images-exist`,
+    { params: { names } }
+  );
 
-      payload.append('FinishId', formData.FinishId);
-      payload.append('FinishName', getName(referenceData.finishes, 'finish_id', 'finish_name', formData.FinishId));
+  return res.data;
+};
 
-      payload.append('ColorId', formData.ColorId);
-      payload.append('ColorName', getName(referenceData.colors, 'color_id', 'color_name', formData.ColorId));
 
-      payload.append('RequestBy', userId || '');
+const getSizeName = () =>
+  referenceData.sizes.find(
+    x => Number(x.size_id) === Number(formData.SizeId)
+  )?.size_name || "";
 
-      setIsLoading(true);
-      const res = await axios.post(`${baseURL}/AddTile`, payload);
-      const responseText = res.data;
+  const addTile = async (forceReplace = false) => {
 
-      if (responseText === 'success') {
-        toast.success('Tile added successfully!');
+  try {
+  if (!forceReplace) {
+  const existRes = await checkBigImagesExist();
 
-        // setShowAlert(true);
-      } else if (responseText === 'alreadyexists') {
-        toast.error('Tile already exists!');
-        // setShowAlert(true);
-      } else {
-        setAlertMessage(responseText);
-        setShowAlert(true);
-      }
-    } catch (err) {
-      console.error('Add Error:', err);
-      toast.error('An error occurred while saving tile.');
-      setShowAlert(true);
-    } finally {
-      setIsLoading(false);
+  if (existRes.exists) {
+    setExistingBigImages(existRes.found || []);
+    setShowReplacePrompt(true);
+    return; // ⛔ wait for user
+  }
+}
+
+
+
+setIsLoading(true);
+
+
+    // -------------------
+    // 1️⃣ ADD TILE
+    // -------------------
+    const tileForm = new FormData();
+
+    const getName = (list, idKey, nameKey, id) =>
+  list.find(x => Number(x[idKey]) === Number(id))?.[nameKey] || "";
+
+
+    tileForm.append("SkuName", formData.SkuName);
+    tileForm.append("SkuCode", formData.SkuCode);
+
+    tileForm.append("CatId", formData.CatId);
+    tileForm.append("CatName", getName(referenceData.categories, "cat_id", "cat_name", formData.CatId));
+
+    tileForm.append("AppId", formData.AppId);
+    tileForm.append("AppName", getName(referenceData.applications, "app_id", "app_name", formData.AppId));
+
+    tileForm.append("SpaceId", formData.SpaceId);
+    tileForm.append("SpaceName", getName(referenceData.spaces, "space_id", "space_name", formData.SpaceId));
+
+    tileForm.append("SizeId", formData.SizeId);
+    tileForm.append("SizeName", getName(referenceData.sizes, "size_id", "size_name", formData.SizeId));
+
+    tileForm.append("FinishId", formData.FinishId);
+    tileForm.append("FinishName", getName(referenceData.finishes, "finish_id", "finish_name", formData.FinishId));
+
+    tileForm.append("ColorId", formData.ColorId);
+    tileForm.append("ColorName", getName(referenceData.colors, "color_id", "color_name", formData.ColorId));
+
+    tileForm.append("RequestBy", userId || "");
+
+    const tileRes = await axios.post(
+      `${baseURL}/AddTile`,
+      tileForm
+    );
+
+    if (tileRes.data !== "success") {
+      toast.error("Tile creation failed");
+      return;
     }
-  };
+
+    // -------------------
+    // 2️⃣ RESIZE IMAGES
+    // -------------------
+    if (rawImages.length > 0) {
+      const imgForm = new FormData();
+      rawImages.forEach((f) => imgForm.append("files", f));
+      imgForm.append("empcode", userId);
+      imgForm.append("replace", forceReplace);
+
+
+      await axios.post(
+        `${baseURL}/resize-folder-avif`,
+        imgForm
+      );
+    }
+
+    // -------------------
+// 3️⃣ FINAL VYR
+// -------------------
+if (vyrFinalImages.length > 0) {
+  const vyrForm = new FormData();
+
+  vyrForm.append("name", formData.SkuCode);
+ vyrForm.append("size", getCleanVyrSize());
+
+  vyrForm.append("createdBy", Number(userId));
+ vyrForm.append("replace", forceReplace);
+
+
+
+  vyrFinalImages.forEach((file) =>
+    vyrForm.append("images", file)
+  );
+  
+  const cleanSize = getCleanVyrSize();
+
+if (!cleanSize) {
+  toast.error("Invalid size format. Please select a valid tile size.");
+  return;
+}
+console.log("VYR FILE COUNT:", vyrFinalImages.length);
+console.log("VYR SIZE SENT:", getCleanVyrSize());
+
+
+  const vyrRes = await axios.post(
+    `${baseURL}/single-prod-vyr`,
+    vyrForm
+  );
+
+  if (
+  vyrRes.data?.result?.Processed?.length === 0 &&
+  vyrRes.data?.result?.Errors?.length > 0
+) {
+  toast.error("VYR failed: " + vyrRes.data.result.Errors.join(", "));
+  return;
+}
+
+}
+
+
+
+    toast.success("Tile and images added successfully!");
+    navigate(-1);
+
+  } catch (err) {
+    console.error("Add tile error:", err);
+    toast.error("Failed to add tile");
+  } finally {
+    setIsLoading(false);
+    setReplaceImages(false);
+setPendingSave(false);
+
+  }
+};
+
+
+const handleVyrPreview = async (files) => {
+  try {
+    setVyrProcessing(true);
+    toast.info("Preparing image previews…");
+
+    const previews = [];
+    const resizedFiles = [];
+    const size = getSizeName();
+
+    if (!size) {
+      toast.error("Size missing. Cannot generate VYR.");
+      return;
+    }
+
+    for (const file of files) {
+      const form = new FormData();
+      form.append("image", file);
+      form.append("size", size);
+
+      const res = await axios.post(
+        `${baseURL}/resize-vyr`,
+        form,
+        { responseType: "blob" }
+      );
+
+      // 👇 create File from blob
+      const resizedFile = new File(
+        [res.data],
+        file.name.replace(/\.[^/.]+$/, ".png"),
+        { type: "image/png" }
+      );
+
+      resizedFiles.push(resizedFile);
+      previews.push(URL.createObjectURL(resizedFile));
+    }
+
+    setVyrFinalImages(resizedFiles);     // ✅ IMPORTANT
+    setVyrPreviewImages(previews);       // preview only
+    toast.success("Images ready");
+
+  } catch (err) {
+    console.error("VYR preview error:", err);
+    toast.error("Preview failed");
+  } finally {
+    setVyrProcessing(false);
+  }
+};
+
+
+
+
+  const uploadTileImages = async () => {
+  try {
+    const form = new FormData();
+
+    rawImages.forEach((file) => {
+      form.append("files", file);
+    });
+
+    form.append("empcode", userId);
+    form.append("replace", false);
+
+    toast.info("Uploading & resizing images…");
+
+    const res = await axios.post(
+      `${baseURL}/resize-folder-avif`,
+      form
+    );
+
+    toast.success(res.data.message || "Images processed");
+
+    setUploadDone(true);
+    setUploadedImages(res.data.processed || []);
+  } catch (err) {
+    console.error(err);
+    toast.error("Image upload failed");
+  }
+};
+
 
   const closeAlert = () => {
     setShowAlert(false);
@@ -299,6 +509,51 @@ export default function AddTilePage() {
                     </div>
                   ))}
                 </div>
+                {/* Image Upload */}
+<div className="mt-6">
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    Upload Tile Images (Multiple Faces)
+  </label>
+
+ <input
+  type="file"
+  multiple
+  accept="image/jpeg,image/png,image/webp"
+  onChange={(e) => {
+    const files = Array.from(e.target.files);
+    setRawImages(files);
+    handleVyrPreview(files);
+  }}
+/>
+
+
+  <p className="text-xs text-gray-500 mt-1">
+    Upload multiple images of the same tile (different faces).
+  </p>
+</div>
+{vyrPreviewImages.length > 0 && (
+  <div className="mt-4">
+    <p className="text-sm font-medium mb-2">Image Preview</p>
+
+    <div className="grid grid-cols-4 gap-3">
+      {vyrPreviewImages.map((img) => (
+        <div key={img} className="border rounded p-1">
+          <div className="border rounded p-2 flex items-center justify-center bg-gray-50">
+  <img
+    src={img}
+    alt=""
+    className="max-w-full max-h-48 object-contain rounded"
+  />
+</div>
+
+
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
 
                 {/* Actions */}
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
@@ -340,6 +595,46 @@ export default function AddTilePage() {
             </div>
           </div>
         )}
+{showReplacePrompt && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-[90%] max-w-md">
+      <p className="mb-3 text-lg font-semibold text-gray-800 dark:text-white">
+        Images already exist in Big folder.
+      </p>
+
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        Do you want to replace them?
+      </p>
+
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={() => {
+  setReplaceImages(false);
+  setShowReplacePrompt(false);
+  toast.info("Keeping existing images.");
+}}
+
+
+          className="px-4 py-1 bg-gray-500 text-white rounded-md"
+        >
+          No
+        </button>
+
+        <button
+          onClick={() => {
+  setReplaceImages(true);
+  setShowReplacePrompt(false);
+  addTile(true); // ✅ FORCE REPLACE
+}}
+
+          className="px-4 py-1 bg-green-600 text-white rounded-md"
+        >
+          Yes, Replace
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Confirm */}
         {showConfirm && (

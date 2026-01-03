@@ -14,6 +14,7 @@ const MEDIA_URL = process.env.REACT_APP_MEDIA_URL;
 const thumbImageBaseURL = `${MEDIA_URL}/thumb/`;
 const imgURL = process.env.REACT_APP_MEDIA_URL;;
 const fallbackUrl = `${MEDIA_URL}/no-image.jpg`;
+// const MAX_UPLOAD_SIZE = 100 * 1024 * 1024; // 100MB (same as backend)
 
 
 // --- Components ---
@@ -45,34 +46,63 @@ const useImageLoader = (src) => {
   return status;
 };
 
-const getThumbImageUrl = (tile) => {
-  if (!tile) return null;
-  if (tile.thumb_image && tile.thumb_image.trim() !== "") return `${thumbImageBaseURL}${tile.thumb_image}`;
-  if (tile.image && tile.image.trim() !== "") return `${thumbImageBaseURL}${tile.image}`;
-  if (tile.sku_code && tile.sku_code.trim() !== "") return `${thumbImageBaseURL}${tile.sku_code}.jpg`;
-  return null;
+const getThumbImageCandidates = (tile) => {
+  if (!tile?.sku_code) return [];
+
+  return [
+    `${thumbImageBaseURL}${tile.sku_code}.avif`,
+    `${thumbImageBaseURL}${tile.sku_code}-f1.avif`,
+    fallbackUrl
+  ];
 };
 
-const TileImage = ({ tile }) => {
-  const mainUrl = getThumbImageUrl(tile);
-  const urlToLoad = mainUrl || fallbackUrl;
-  const status = useImageLoader(urlToLoad);
 
-  if (status === "loaded") {
-    return <img src={urlToLoad} alt={tile?.sku_name || "Tile"} className="w-12 h-12 object-cover rounded" />;
+const TileImage = ({ tile }) => {
+  const candidates = getThumbImageCandidates(tile);
+  const [index, setIndex] = useState(0);
+
+  const status = useImageLoader(candidates[index]);
+
+  useEffect(() => {
+    if (status === "error" && index < candidates.length - 1) {
+      setIndex(i => i + 1);
+    }
+  }, [status, index, candidates.length]);
+
+  if (status === "loading") {
+    return (
+      <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
+        <div className="animate-pulse text-gray-400 text-xs">Loading…</div>
+      </div>
+    );
   }
-  if (status === "error") {
-    return <img src={fallbackUrl} alt="No Image" className="w-12 h-12 object-cover rounded" />;
-  }
+
   return (
-    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-      <div className="animate-pulse text-gray-400 text-xs">Loading...</div>
-    </div>
+    <img
+      src={candidates[index]}
+      alt={tile?.sku_name || "Tile"}
+      className="w-12 h-12 object-cover rounded"
+    />
   );
 };
 
-function ImportModal({ isOpen, onClose, folderInputRef, excelFolderInputRef, handleFolderUpload, isLoading }) {
+
+function ImportModal({
+  isOpen,
+  onClose,
+  folderInputRef,
+  fileInputRef,          // ✅ ADD THIS
+  excelFolderInputRef,
+  handleFolderUpload,
+  isLoading,
+  replaceExcel,
+  setReplaceExcel,
+  replaceImages,
+  setReplaceImages
+}) {
+
   if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -82,13 +112,72 @@ function ImportModal({ isOpen, onClose, folderInputRef, excelFolderInputRef, han
         </div>
         <div className="p-6 space-y-4">
           <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Folder or Files</label>
-            <input type="file" multiple webkitdirectory="" accept="image/jpeg,image/png,image/webp,.zip" ref={folderInputRef} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-600 dark:file:text-white" disabled={isLoading} />
-          </div>
+
+{/* File upload */}
+<div>
+  <label className="block text-sm font-medium mb-1">
+    Select Images or ZIP
+  </label>
+ <input
+  type="file"
+  ref={fileInputRef}
+  multiple
+  accept=".zip,image/jpeg,image/png,image/webp"
+  className="block w-full text-sm"
+  disabled={isLoading}
+/>
+
+<p className="text-xs text-gray-500 mt-1">
+  Select a ZIP file OR select images (they will be zipped automatically)
+</p>
+
+</div>
+</div>
           <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Excel File (SizeListFormat.xlsx)</label>
+            
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+  Select Excel File (
+  <a
+    href="https://docs.google.com/spreadsheets/d/1pybBh-jxqRtLEPT0ItBJxhAdIEqg4uO18yHqQIfJlH0/edit?gid=0#gid=0"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+  >
+    View sample format
+  </a>
+  )
+</label>
+
             <input type="file" accept=".xlsx,.xls" ref={excelFolderInputRef} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-600 dark:file:text-white" disabled={isLoading} />
           </div>
+         <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-3">
+
+  {/* Excel replace */}
+  <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+    <input
+      type="checkbox"
+      checked={replaceExcel}
+      onChange={(e) => setReplaceExcel(e.target.checked)}
+      disabled={isLoading}
+      className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+    />
+    Replace existing Excel records
+  </label>
+
+  {/* Image replace */}
+  <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+    <input
+      type="checkbox"
+      checked={replaceImages}
+      onChange={(e) => setReplaceImages(e.target.checked)}
+      disabled={isLoading}
+      className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+    />
+    Replace existing images
+  </label>
+
+</div>
+
           <button onClick={handleFolderUpload} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center" disabled={isLoading}>
             {isLoading ? <FaSpinner className="animate-spin mr-2" /> : 'Upload'}
           </button>
@@ -107,6 +196,8 @@ export default function TileMasterPage() {
   const [confirmAction, setConfirmAction] = useState(() => {});
   const [confirmMessage, setConfirmMessage] = useState('');
   const [globalSearch, setGlobalSearch] = useState('');
+  const [replaceExcel, setReplaceExcel] = useState(false);
+const [replaceImages, setReplaceImages] = useState(false);
   const [columnSearches, setColumnSearches] = useState({
     sku_code: '', sku_name: '', app_name: '', finish_name: '', color_name: '',
   });
@@ -115,7 +206,10 @@ export default function TileMasterPage() {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [showImportModal, setShowImportModal] = useState(false);
   
-  const folderInputRef = useRef(null);
+  // const folderInputRef = useRef(null);
+  // const folderInputRef = useRef(null);
+const fileInputRef = useRef(null); // ✅ NEW
+
   const excelFolderInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -174,43 +268,105 @@ export default function TileMasterPage() {
     } catch (err) { toast.error('Export failed'); }
   };
 
-  const createZipFromFiles = async (files) => {
-    const zip = new JSZip();
-    files.forEach((file) => zip.file(file.name, file));
-    const content = await zip.generateAsync({ type: 'blob' });
-    return new File([content], `images_${Date.now()}.zip`, { type: 'application/zip' });
-  };
+const createZipFromFiles = async (files) => {
+  const zip = new JSZip();
+  files.forEach((file) => zip.file(file.name, file));
 
-  const handleFolderUpload = async () => {
-    const files = Array.from(folderInputRef.current?.files || []);
-    const excelFile = excelFolderInputRef.current?.files[0];
-    if (!files.length || !excelFile) {
-      toast.error('Files and Excel are required');
-      return;
+  const content = await zip.generateAsync({ type: "blob" });
+
+  return new File([content], `images_${Date.now()}.zip`, {
+    type: "application/zip",
+  });
+};
+
+const triggerVyrProcessing = (excelFile) => {
+  if (!excelFile) return;
+
+  const form = new FormData();
+  form.append("excelFile", excelFile);
+  form.append("replace", replaceImages);
+  form.append("createdBy", userId);
+
+  toast.info("Starting VYR processing… 🔄", { autoClose: 3000 });
+
+  axios
+    .post(`${baseURL}/process-folder-vyr`, form)
+    .then((res) => {
+      toast.success(res.data.Message || "VYR processing completed ✅");
+    })
+    .catch(() => {
+      toast.error("VYR processing failed ❌");
+    });
+};
+
+
+
+const handleFolderUpload = async () => {
+  const selectedFiles = Array.from(fileInputRef.current?.files || []);
+  const excelFile = excelFolderInputRef.current?.files[0];
+
+  if (!selectedFiles.length && !excelFile) {
+    toast.error("Please select ZIP or images");
+    return;
+  }
+
+  setIsLoading(true);
+  const normalizedBaseURL = baseURL.replace(/\/+$/, "");
+
+  /* ==========================
+     1️⃣ Excel upload (optional)
+  ========================== */
+  if (excelFile) {
+    const excelForm = new FormData();
+    excelForm.append("file", excelFile);
+    excelForm.append("createdBy", userId);
+    excelForm.append("replace", replaceExcel);
+
+    axios
+      .post(`${normalizedBaseURL}/ImportFromExcel`, excelForm)
+      .then(() => fetchTiles())
+      .catch(() => toast.error("Excel import failed"));
+  }
+
+  /* ==========================
+     2️⃣ ZIP or Images upload
+  ========================== */
+  if (selectedFiles.length) {
+    let zipFile;
+
+    // CASE 1: User selected ZIP
+    if (
+      selectedFiles.length === 1 &&
+      selectedFiles[0].name.toLowerCase().endsWith(".zip")
+    ) {
+      zipFile = selectedFiles[0];
+    }
+    // CASE 2: User selected images → ZIP them
+    else {
+      toast.info("Zipping images… 📦");
+      zipFile = await createZipFromFiles(selectedFiles);
     }
 
-    try {
-      setIsLoading(true);
-      let formData = new FormData();
-      formData.append('excelFile', excelFile);
-      
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      if (totalSize > 100 * 1024 * 1024) {
-        formData.append('files', await createZipFromFiles(files));
-      } else {
-        files.forEach((file) => formData.append('files', file));
-      }
-      formData.append('replace', false);
+    const formData = new FormData();
+    formData.append("files", zipFile);
+    formData.append("empcode", userId);
+    formData.append("replace", replaceImages);
 
-      const res = await axios.post(`${imgURL}/process-folder-vyr`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      toast.success(res.data.Message || "Imported successfully");
-      fetchTiles();
-      setShowImportModal(false);
-    } catch (err) { toast.error('Upload failed'); }
-    finally { setIsLoading(false); }
-  };
+    axios
+      .post(`${normalizedBaseURL}/resize-folder-avif`, formData)
+      .then(() => {
+        toast.success("Images processed successfully");
+
+        if (excelFile) triggerVyrProcessing(excelFile);
+        fetchTiles();
+      })
+      .catch(() => toast.error("Image upload failed"));
+  }
+
+  setShowImportModal(false);
+  setIsLoading(false);
+};
+
 
   const getSortedAndFilteredTiles = () => {
     let filtered = [...tiles];
@@ -323,31 +479,71 @@ export default function TileMasterPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {currentTiles.length > 0 ? currentTiles.map((tile, idx) => (
-                    <tr key={idx} className="hover:bg-green-50/50 dark:hover:bg-gray-700/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <span onClick={() => navigate(`/view-tile/${tile.sku_code}`)} className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium">{tile.sku_code}</span>
-                      </td>
-                      <td className="px-4 py-3 dark:text-gray-300">{tile.sku_name}</td>
-                      <td className="px-4 py-3 dark:text-gray-300">{tile.app_name}</td>
-                      <td className="px-4 py-3 dark:text-gray-300">{tile.finish_name}</td>
-                      <td className="px-4 py-3 dark:text-gray-300">{tile.color_name}</td>
-                      <td className="px-4 py-3"><TileImage tile={tile} /></td>
-                      <td className="px-4 py-3">
-                        <div className="flex space-x-3">
-                          <button onClick={() => navigate(`/edit-tile/${tile.tile_id}`)} className="text-yellow-500 hover:text-yellow-600 transition-colors" title="Edit"><FaEdit size={18} /></button>
-                          <button onClick={() => handleBlockToggle(tile.tile_id, tile.block)} className={`${tile.block ? 'text-green-600 hover:text-green-700' : 'text-red-500 hover:text-red-600'} transition-colors`} title={tile.block ? "Unblock" : "Block"}>
-                            {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan="7" className="px-4 py-10 text-center text-gray-500">No products found.</td>
-                    </tr>
-                  )}
-                </tbody>
+  {isLoading ? (
+    <tr>
+      <td colSpan="7" className="px-4 py-10 text-center text-gray-500">
+        <FaSpinner className="inline mr-2 animate-spin" />
+        Loading products…
+      </td>
+    </tr>
+  ) : currentTiles.length > 0 ? (
+    currentTiles.map((tile) => (
+      <tr
+        key={tile.tile_id}
+        className="hover:bg-green-50/50 dark:hover:bg-gray-700/50 transition-colors"
+      >
+        <td className="px-4 py-3">
+          <span
+            onClick={() => navigate(`/view-tile/${tile.sku_code}`)}
+            className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
+          >
+            {tile.sku_code}
+          </span>
+        </td>
+
+        <td className="px-4 py-3 dark:text-gray-300">{tile.sku_name}</td>
+        <td className="px-4 py-3 dark:text-gray-300">{tile.app_name}</td>
+        <td className="px-4 py-3 dark:text-gray-300">{tile.finish_name}</td>
+        <td className="px-4 py-3 dark:text-gray-300">{tile.color_name}</td>
+
+        <td className="px-4 py-3">
+          <TileImage tile={tile} />
+        </td>
+
+        <td className="px-4 py-3">
+          <div className="flex space-x-3">
+            <button
+              onClick={() => navigate(`/edit-tile/${tile.tile_id}`)}
+              className="text-yellow-500 hover:text-yellow-600 transition-colors"
+              title="Edit"
+            >
+              <FaEdit size={18} />
+            </button>
+
+            <button
+              onClick={() => handleBlockToggle(tile.tile_id, tile.block)}
+              className={`${
+                tile.block
+                  ? 'text-green-600 hover:text-green-700'
+                  : 'text-red-500 hover:text-red-600'
+              } transition-colors`}
+              title={tile.block ? 'Unblock' : 'Block'}
+            >
+              {tile.block ? <FaCheck size={18} /> : <FaTrash size={18} />}
+            </button>
+          </div>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="7" className="px-4 py-10 text-center text-gray-500">
+        No products found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
               </table>
             </div>
 
@@ -368,7 +564,21 @@ export default function TileMasterPage() {
       </div>
 
       {showConfirm && <ConfirmationModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setShowConfirm(false)} />}
-      <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} folderInputRef={folderInputRef} excelFolderInputRef={excelFolderInputRef} handleFolderUpload={handleFolderUpload} isLoading={isLoading} />
+      <ImportModal
+  isOpen={showImportModal}
+  onClose={() => setShowImportModal(false)}
+    // folderInputRef={folderInputRef}
+  fileInputRef={fileInputRef}
+  excelFolderInputRef={excelFolderInputRef}
+  handleFolderUpload={handleFolderUpload}
+  isLoading={isLoading}
+  replaceExcel={replaceExcel}
+  setReplaceExcel={setReplaceExcel}
+  replaceImages={replaceImages}
+  setReplaceImages={setReplaceImages}
+/>
+
+
     </div>
   );
 }
