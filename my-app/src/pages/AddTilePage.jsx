@@ -246,7 +246,7 @@ setIsLoading(true);
 
 
       await axios.post(
-        `${baseURL}/resize-folder-avif`,
+        `${baseURL}/resize-folder-jpg`,
         imgForm
       );
     }
@@ -376,7 +376,7 @@ const handleVyrPreview = async (files) => {
     toast.info("Uploading & resizing images…");
 
     const res = await axios.post(
-      `${baseURL}/resize-folder-avif`,
+      `${baseURL}/resize-folder-jpg`,
       form
     );
 

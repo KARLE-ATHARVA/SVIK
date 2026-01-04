@@ -50,8 +50,8 @@ const getThumbImageCandidates = (tile) => {
   if (!tile?.sku_code) return [];
 
   return [
-    `${thumbImageBaseURL}${tile.sku_code}.avif`,
-    `${thumbImageBaseURL}${tile.sku_code}-f1.avif`,
+    `${thumbImageBaseURL}${tile.sku_code}.jpg`,
+    `${thumbImageBaseURL}${tile.sku_code}-f1.jpg`,
     fallbackUrl
   ];
 };
@@ -353,7 +353,7 @@ const handleFolderUpload = async () => {
     formData.append("replace", replaceImages);
 
     axios
-      .post(`${normalizedBaseURL}/resize-folder-avif`, formData)
+      .post(`${normalizedBaseURL}/resize-folder-jpg`, formData)
       .then(() => {
         toast.success("Images processed successfully");
 

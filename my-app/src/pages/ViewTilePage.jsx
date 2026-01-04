@@ -85,9 +85,9 @@ const [activeImageName, setActiveImageName] = useState(null);
           if (matchingTile) {
             console.log('Tile found:', JSON.stringify(matchingTile, null, 2));
             console.log('Image URLs:', {
-              tileImage: matchingTile.image ? `${bigImageBaseURL}${matchingTile.image}` : `${bigImageBaseURL}${matchingTile.sku_code}.avif`,
-              thumbImage: matchingTile.thumb_image ? `${thumbImageBaseURL}${matchingTile.thumb_image}` : `${thumbImageBaseURL}${matchingTile.sku_code}.avif`,
-              facesImage: matchingTile.faces_image ? `${bigImageBaseURL}${matchingTile.faces_image}` : `${bigImageBaseURL}${matchingTile.sku_code}.avif`,
+              tileImage: matchingTile.image ? `${bigImageBaseURL}${matchingTile.image}` : `${bigImageBaseURL}${matchingTile.sku_code}.jpg`,
+              thumbImage: matchingTile.thumb_image ? `${thumbImageBaseURL}${matchingTile.thumb_image}` : `${thumbImageBaseURL}${matchingTile.sku_code}.jpg`,
+              facesImage: matchingTile.faces_image ? `${bigImageBaseURL}${matchingTile.faces_image}` : `${bigImageBaseURL}${matchingTile.sku_code}.jpg`,
             });
             setTile(matchingTile);
           } else {
@@ -143,13 +143,13 @@ useEffect(() => {
     const baseName = tile.sku_code;
     const img = new Image();
 
-    img.src = `${thumbImageBaseURL}${baseName}.avif`;
+    img.src = `${thumbImageBaseURL}${baseName}.jpg`;
 
     img.onload = () => {
       if (!isMounted) return;
       detectedImages.push({
         name: baseName,
-        url: `${bigImageBaseURL}${baseName}.avif`
+        url: `${bigImageBaseURL}${baseName}.jpg`
       });
       checkVariant(1);
     };
@@ -163,13 +163,13 @@ useEffect(() => {
     const variantName = `${tile.sku_code}-f${index}`;
     const img = new Image();
 
-    img.src = `${thumbImageBaseURL}${variantName}.avif`;
+    img.src = `${thumbImageBaseURL}${variantName}.jpg`;
 
     img.onload = () => {
       if (!isMounted) return;
       detectedImages.push({
         name: variantName,
-        url: `${bigImageBaseURL}${variantName}.avif`
+        url: `${bigImageBaseURL}${variantName}.jpg`
       });
       checkVariant(index + 1);
     };
@@ -270,9 +270,9 @@ useEffect(() => {
   closeLightbox();
 
   try {
-    await axios.delete(`${baseURL}/delete-image`, {
+    await axios.delete(`${baseURL}/delete-image-jpg`, {
       params: {
-        fileNames: `${activeImageName}.avif`,
+        fileNames: `${activeImageName}.jpg`,
         type: "both",
         empcode: Number(localStorage.getItem("userid")) || 0,
       },
@@ -287,7 +287,7 @@ useEffect(() => {
     // ❗ rollback if needed (optional)
     setAvailableVariants(prev => [
       ...prev,
-      { name: activeImageName, url: `${bigImageBaseURL}${activeImageName}.avif` }
+      { name: activeImageName, url: `${bigImageBaseURL}${activeImageName}.jpg` }
     ]);
   }
 };
@@ -420,7 +420,7 @@ useEffect(() => {
         {/* Image box */}
         <div className="border rounded p-2 flex items-center justify-center bg-gray-50">
           <img
-  src={`${thumbImageBaseURL}${img.name}.avif`}
+  src={`${thumbImageBaseURL}${img.name}.jpg`}
   alt={img.name}
   className={`max-w-full max-h-48 object-contain rounded transition-opacity duration-500 ${
     loadedImages[img.name] ? 'opacity-100' : 'opacity-0'
