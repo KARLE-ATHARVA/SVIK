@@ -59,6 +59,8 @@ useEffect(() => {
   }
 }, [referenceData, tileId]);
 
+const getNameById = (list, idKey, nameKey, id) =>
+  list.find(x => x[idKey] === Number(id))?.[nameKey] || '';
 
 const fetchReferenceData = async () => {
   const [
@@ -223,12 +225,42 @@ setRawNames({
       payload.append('TileId', formData.TileId);
       payload.append('SkuName', formData.SkuName);
       payload.append('SkuCode', formData.SkuCode);
-      payload.append('CatName', formData.CatName);
-      payload.append('AppName', formData.AppName);
-      payload.append('SpaceName', formData.SpaceName);
-      payload.append('SizeName', formData.SizeName);
-      payload.append('FinishName', formData.FinishName);
-      payload.append('ColorName', formData.ColorName);
+     payload.append('CatId', formData.CatId);
+payload.append(
+  'CatName',
+  getNameById(referenceData.categories, 'cat_id', 'cat_name', formData.CatId)
+);
+
+payload.append('AppId', formData.AppId);
+payload.append(
+  'AppName',
+  getNameById(referenceData.applications, 'app_id', 'app_name', formData.AppId)
+);
+
+payload.append('SpaceId', formData.SpaceId);
+payload.append(
+  'SpaceName',
+  getNameById(referenceData.spaces, 'space_id', 'space_name', formData.SpaceId)
+);
+
+payload.append('SizeId', formData.SizeId);
+payload.append(
+  'SizeName',
+  getNameById(referenceData.sizes, 'size_id', 'size_name', formData.SizeId)
+);
+
+payload.append('FinishId', formData.FinishId);
+payload.append(
+  'FinishName',
+  getNameById(referenceData.finishes, 'finish_id', 'finish_name', formData.FinishId)
+);
+
+payload.append('ColorId', formData.ColorId);
+payload.append(
+  'ColorName',
+  getNameById(referenceData.colors, 'color_id', 'color_name', formData.ColorId)
+);
+
       payload.append('RequestBy', userId || '');
 
       setIsLoading(true);
