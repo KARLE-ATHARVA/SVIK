@@ -4,13 +4,30 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumbs from '../components/Breadcrumb';
 import axios from 'axios';
-import { FaArrowRight } from 'react-icons/fa'; // Added for arrow icon
+import { FaArrowRight } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
+/* -------------------- HELPERS -------------------- */
+const getNameById = (list, idKey, nameKey, id) =>
+  list.find(x => x[idKey] === Number(id))?.[nameKey] || '';
+
+const mapIdByName = (list, idKey, nameKey, value) =>
+  list.find(x => x[nameKey] === value)?.[idKey] || '';
+
+/* -------------------- COMPONENT -------------------- */
 export default function EditTilePage() {
-  const [formData, setFormData] = useState({
+  const navigate = useNavigate();
+  const { tileId } = useParams();
+  const userId = localStorage.getItem('userid');
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+
+ const [formData, setFormData] = useState({
   TileId: '',
   SkuName: '',
   SkuCode: '',
@@ -19,287 +36,191 @@ export default function EditTilePage() {
   SpaceId: '',
   SizeId: '',
   FinishId: '',
-  ColorId: ''
-});
-const [referenceData, setReferenceData] = useState({
-  categories: [],
-  applications: [],
-  spaces: [],
-  sizes: [],
-  finishes: [],
-  colors: []
+  ColorId: '',
+  Faces: 0
 });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [confirmMessage, setConfirmMessage] = useState('');
-  const [confirmAction, setConfirmAction] = useState(() => {});
-  const [validationErrors, setValidationErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const userId = localStorage.getItem('userid');
-  const navigate = useNavigate();
-  const { tileId } = useParams();
-  
-useEffect(() => {
-  fetchReferenceData();
-}, []);
 
-useEffect(() => {
-  if (
-    referenceData.categories.length &&
-    referenceData.applications.length &&
-    referenceData.spaces.length &&
-    referenceData.sizes.length &&
-    referenceData.finishes.length &&
-    referenceData.colors.length
-  ) {
-    fetchTileData();
-  }
-}, [referenceData, tileId]);
-
-const getNameById = (list, idKey, nameKey, id) =>
-  list.find(x => x[idKey] === Number(id))?.[nameKey] || '';
-
-const fetchReferenceData = async () => {
-  const [
-    categories,
-    applications,
-    spaces,
-    sizes,
-    finishes,
-    colors
-  ] = await Promise.all([
-    axios.get(`${baseURL}/GetCategoryList`),
-    axios.get(`${baseURL}/GetApplicationList`),
-    axios.get(`${baseURL}/GetSpaceList`),
-    axios.get(`${baseURL}/GetSizeList`),
-    axios.get(`${baseURL}/GetFinishList`),
-    axios.get(`${baseURL}/GetColorList`)
-  ]);
-
-  setReferenceData({
-    categories: categories.data,
-    applications: applications.data,
-    spaces: spaces.data,
-    sizes: sizes.data,
-    finishes: finishes.data,
-    colors: colors.data
+  const [rawNames, setRawNames] = useState({
+    CatName: '',
+    AppName: '',
+    SpaceName: '',
+    SizeName: '',
+    FinishName: '',
+    ColorName: ''
   });
-};
-const mapIdByName = (list, idKey, nameKey, value) =>
-  list.find(x => x[nameKey] === value)?.[idKey] || '';
 
-const [rawNames, setRawNames] = useState({
-  CatName: '',
-  AppName: '',
-  SpaceName: '',
-  SizeName: '',
-  FinishName: '',
-  ColorName: ''
-});
+  const [referenceData, setReferenceData] = useState({
+    categories: [],
+    applications: [],
+    spaces: [],
+    sizes: [],
+    finishes: [],
+    colors: []
+  });
 
+  /* -------------------- LOAD MASTER DATA -------------------- */
   useEffect(() => {
     if (!baseURL) {
-      setAlertMessage('API base URL is not configured.');
-      setShowAlert(true);
+      toast.error('API base URL not configured');
       return;
     }
-    const loadData = async () => {
-      await fetchTileData();
-    };
-    loadData();
-  }, [tileId]);
 
-  const fetchTileData = async () => {
-    setIsLoading(true);
-    try {
-      const res = await axios.get(`${baseURL}/GetTileList`);
-      const tile = res.data.find(t => t.tile_id === parseInt(tileId));
-      if (!tile) {
-        throw new Error('Tile not found');
+    const loadMasters = async () => {
+      try {
+        const [
+          categories,
+          applications,
+          spaces,
+          sizes,
+          finishes,
+          colors
+        ] = await Promise.all([
+          axios.get(`${baseURL}/GetCategoryList`),
+          axios.get(`${baseURL}/GetApplicationList`),
+          axios.get(`${baseURL}/GetSpaceList`),
+          axios.get(`${baseURL}/GetSizeList`),
+          axios.get(`${baseURL}/GetFinishList`),
+          axios.get(`${baseURL}/GetColorList`)
+        ]);
+
+        setReferenceData({
+          categories: categories.data,
+          applications: applications.data,
+          spaces: spaces.data,
+          sizes: sizes.data,
+          finishes: finishes.data,
+          colors: colors.data
+        });
+      } catch {
+        toast.error('Failed to load master data');
       }
+    };
 
-      console.log('Fetched Tile Data:', tile); // Debug log
-setFormData({
+    loadMasters();
+  }, []);
+
+  /* -------------------- LOAD TILE DATA -------------------- */
+  useEffect(() => {
+    if (!referenceData.categories.length) return;
+
+    const fetchTile = async () => {
+      setIsLoading(true);
+      try {
+        const res = await axios.get(`${baseURL}/GetTileList`);
+        const tile = res.data.find(t => t.tile_id === Number(tileId));
+
+        if (!tile) throw new Error();
+
+        setFormData({
   TileId: tile.tile_id,
   SkuName: tile.sku_name,
   SkuCode: tile.sku_code,
-  CatId: mapIdByName(referenceData.categories, "cat_id", "cat_name", tile.cat_name),
-  AppId: mapIdByName(referenceData.applications, "app_id", "app_name", tile.app_name),
-  SpaceId: mapIdByName(referenceData.spaces, "space_id", "space_name", tile.space_name),
-  SizeId: mapIdByName(referenceData.sizes, "size_id", "size_name", tile.size_name),
-  FinishId: mapIdByName(referenceData.finishes, "finish_id", "finish_name", tile.finish_name),
-  ColorId: mapIdByName(referenceData.colors, "color_id", "color_name", tile.color_name),
-});
-
-setRawNames({
-  CatName: tile.cat_name,
-  AppName: tile.app_name,
-  SpaceName: tile.space_name,
-  SizeName: tile.size_name,
-  FinishName: tile.finish_name,
-  ColorName: tile.color_name
+  CatId: mapIdByName(referenceData.categories, 'cat_id', 'cat_name', tile.cat_name),
+  AppId: mapIdByName(referenceData.applications, 'app_id', 'app_name', tile.app_name),
+  SpaceId: mapIdByName(referenceData.spaces, 'space_id', 'space_name', tile.space_name),
+  SizeId: mapIdByName(referenceData.sizes, 'size_id', 'size_name', tile.size_name),
+  FinishId: mapIdByName(referenceData.finishes, 'finish_id', 'finish_name', tile.finish_name),
+  ColorId: mapIdByName(referenceData.colors, 'color_id', 'color_name', tile.color_name),
+  Faces: tile.faces ?? 0
 });
 
 
-    } catch (err) {
-      console.error('Tile Data Fetch Error:', err);
-      setAlertMessage(err.message === 'Tile not found' ? 'Tile not found.' : 'Failed to fetch tile data. Please try again later.');
-      setShowAlert(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setRawNames({
+          CatName: tile.cat_name,
+          AppName: tile.app_name,
+          SpaceName: tile.space_name,
+          SizeName: tile.size_name,
+          FinishName: tile.finish_name,
+          ColorName: tile.color_name
+        });
+      } catch {
+        toast.error('Tile not found');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleChange = (e) => {
+    fetchTile();
+  }, [referenceData, tileId]);
+
+  /* -------------------- HANDLERS -------------------- */
+  const handleChange = e => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (validationErrors[name]) {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setValidationErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const validateForm = () => {
-  const errors = {};
+    const errors = {};
+    if (formData.SkuName.trim().length < 2) errors.SkuName = 'Min 2 characters';
+    if (!/^[a-zA-Z0-9-]+$/.test(formData.SkuCode)) errors.SkuCode = 'Invalid SKU Code';
 
-  // -------- SKU validations --------
-  if (!formData.SkuName || formData.SkuName.trim().length < 2) {
-    errors.SkuName = 'SKU Name must be at least 2 characters long.';
-  }
+    ['Cat', 'App', 'Space', 'Size', 'Finish', 'Color'].forEach(key => {
+      if (!formData[`${key}Id`] && rawNames[`${key}Name`]) {
+        errors[`${key}Id`] = `"${rawNames[`${key}Name`]}" does not exist`;
+      }
+    });
 
-  if (!formData.SkuCode || !/^[a-zA-Z0-9-]+$/.test(formData.SkuCode)) {
-    errors.SkuCode = 'SKU Code must contain only letters, numbers, and hyphens.';
-  }
+    setValidationErrors(errors);
+    return !Object.keys(errors).length;
+  };
 
-  // -------- MASTER LOOKUP validations --------
-  if (!formData.CatId && rawNames.CatName) {
-    errors.CatId = `Category "${rawNames.CatName}" does not exist. Please select a valid category.`;
-  }
-
-  if (!formData.AppId && rawNames.AppName) {
-    errors.AppId = `Application "${rawNames.AppName}" does not exist. Please select a valid application.`;
-  }
-
-  if (!formData.SpaceId && rawNames.SpaceName) {
-    errors.SpaceId = `Space "${rawNames.SpaceName}" does not exist. Please select a valid space.`;
-  }
-
-  if (!formData.SizeId && rawNames.SizeName) {
-    errors.SizeId = `Size "${rawNames.SizeName}" does not exist. Please select a valid size.`;
-  }
-
-  if (!formData.FinishId && rawNames.FinishName) {
-    errors.FinishId = `Finish "${rawNames.FinishName}" does not exist. Please select a valid finish.`;
-  }
-
-  if (!formData.ColorId && rawNames.ColorName) {
-    errors.ColorId = `Color "${rawNames.ColorName}" does not exist. Please select a valid color.`;
-  }
-
-  setValidationErrors(errors);
-  return Object.keys(errors).length === 0;
-};
-
-
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
     setIsSubmitted(true);
-
-    if (validateForm()) {
-      setConfirmMessage('Are you sure you want to save changes to this tile?');
-      setConfirmAction(() => () => editTile());
-      setShowConfirm(true);
-    }
+    if (validateForm()) setShowConfirm(true);
   };
 
   const editTile = async () => {
     try {
       const payload = new FormData();
-      payload.append('TileId', formData.TileId);
-      payload.append('SkuName', formData.SkuName);
-      payload.append('SkuCode', formData.SkuCode);
-     payload.append('CatId', formData.CatId);
-payload.append(
-  'CatName',
-  getNameById(referenceData.categories, 'cat_id', 'cat_name', formData.CatId)
-);
-
-payload.append('AppId', formData.AppId);
-payload.append(
-  'AppName',
-  getNameById(referenceData.applications, 'app_id', 'app_name', formData.AppId)
-);
-
-payload.append('SpaceId', formData.SpaceId);
-payload.append(
-  'SpaceName',
-  getNameById(referenceData.spaces, 'space_id', 'space_name', formData.SpaceId)
-);
-
-payload.append('SizeId', formData.SizeId);
-payload.append(
-  'SizeName',
-  getNameById(referenceData.sizes, 'size_id', 'size_name', formData.SizeId)
-);
-
-payload.append('FinishId', formData.FinishId);
-payload.append(
-  'FinishName',
-  getNameById(referenceData.finishes, 'finish_id', 'finish_name', formData.FinishId)
-);
-
-payload.append('ColorId', formData.ColorId);
-payload.append(
-  'ColorName',
-  getNameById(referenceData.colors, 'color_id', 'color_name', formData.ColorId)
-);
-
+      Object.entries(formData).forEach(([k, v]) => payload.append(k, v));
       payload.append('RequestBy', userId || '');
+
+      Object.entries({
+        Cat: 'categories',
+        App: 'applications',
+        Space: 'spaces',
+        Size: 'sizes',
+        Finish: 'finishes',
+        Color: 'colors'
+      }).forEach(([k, list]) => {
+        payload.append(
+          `${k}Name`,
+          getNameById(referenceData[list], `${k.toLowerCase()}_id`, `${k.toLowerCase()}_name`, formData[`${k}Id`])
+        );
+      });
 
       setIsLoading(true);
       const res = await axios.post(`${baseURL}/EditTile`, payload);
-      const responseText = res.data;
 
-      if (responseText === 'success') {
-        toast.success('Updated successfully!');
-        // setShowAlert(true);
-      } else if (responseText === 'alreadyexists') {
-        toast.error('Tile already exists!');
-        // setShowAlert(true);
-      } else {
-        setAlertMessage(responseText);
-        setShowAlert(true);
-      }
-    } catch (err) {
-      console.error('Edit Error:', err);
-      toast.error('An error occurred while updating tile.');
-      setShowAlert(true);
+      if (res.data === 'success') toast.success('Updated successfully');
+      else if (res.data === 'alreadyexists') toast.error('Tile already exists');
+      else toast.error(res.data);
+    } catch {
+      toast.error('Update failed');
     } finally {
       setIsLoading(false);
+      setShowConfirm(false);
     }
   };
 
-  const closeAlert = () => {
-    setShowAlert(false);
-    setAlertMessage('');
-    if (alertMessage === 'Tile updated successfully!') {
-      navigate(-1);
-    }
-  };
+  /* -------------------- JSX -------------------- */
+//   return (
+//     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+//       <Sidebar />
+//       <div className="flex-1 flex flex-col overflow-hidden">
+//         <Topbar />
+//         <div className="flex-1 overflow-y-auto p-5">
+//           <Breadcrumbs currentPage="Edit Tile" />
+//           {/* UI unchanged */}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
 
-  const closeConfirm = (confirm) => {
-    if (confirm && confirmAction) confirmAction();
-    setShowConfirm(false);
-    setConfirmMessage('');
-    setConfirmAction(() => {});
-  };
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
@@ -593,82 +514,90 @@ payload.append(
     </p>
   )}
 </div>
+{/* Faces */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+    Faces
+  </label>
+
+  <input
+    type="number"
+    name="Faces"
+    min="0"
+    value={formData.Faces}
+    onChange={handleChange}
+    className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md
+               text-gray-900 dark:text-white bg-white dark:bg-gray-700
+               focus:ring-2 focus:ring-green-500"
+    placeholder="Enter number of faces"
+  />
+</div>
+
 
 </div>
 
-                {/* Actions */}
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="px-4 py-1 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
-                               text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 
-                               hover:bg-gray-50 dark:hover:bg-gray-600"
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm 
-                               focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Saving...' : 'Save'}
-                    <FaArrowRight className="ml-2" /> {/* Added arrow icon */}
-                    
-                  </button>
-                </div>
-              </form>
-            </div>
+              {/* Actions */}
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="px-4 py-1 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md 
+                             text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 
+                             hover:bg-gray-50 dark:hover:bg-gray-600"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm 
+                             focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 flex items-center"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Saving...' : 'Save'}
+                  <FaArrowRight className="ml-2" />
+                </button>
+              </div>
+            </form>
           </div>
         </div>
+      </div>
 
-        {/* Alert */}
-        {showAlert && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
-              <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{alertMessage}</p>
+      {/* Confirm Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
+            <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">
+              Are you sure you want to save changes to this tile?
+            </p>
+            <div className="flex justify-center gap-3">
               <button
-                onClick={closeAlert}
+                onClick={editTile}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
               >
-                OK
+                Yes
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                No
               </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Confirm */}
-        {showConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
-              <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{confirmMessage}</p>
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => closeConfirm(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                >
-                  Yes
-                </button>
-                <button
-                  onClick={() => closeConfirm(false)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-                >
-                  No
-                </button>
-              </div>
-            </div>
+      {/* Loader */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+          <div className="text-white text-lg font-semibold animate-pulse">
+            Loading...
           </div>
-        )}
-
-        {/* Loader */}
-        {isLoading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-            <div className="text-white text-lg font-semibold animate-pulse">Loading...</div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 }
