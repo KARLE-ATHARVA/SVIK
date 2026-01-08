@@ -13,13 +13,9 @@ export default function MasterTablesPage() {
     { name: "Color", path: "/colorMaster" },
     { name: "Category", path: "/categoryMaster" },
     { name: "Size", path: "/sizeMaster" },
-    { name: "Profile", path: "/profileMaster" },
     { name: "Application", path: "/applicationMaster" },
     { name: "Finish", path: "/finishMaster" },
-    { name: "User", path: "/userMaster" },
-    { name: "Company", path: "/companyMaster" },
- 
-    { name: "Plan", path: "/planMaster" }
+    { name: "User", path: "/userMaster" }
   ];
 
   // Sort alphabetically (case-insensitive)

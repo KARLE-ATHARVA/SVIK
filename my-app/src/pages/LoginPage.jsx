@@ -36,9 +36,17 @@ export default function LoginPage() {
 
     try {
       const response = await axios.post(
-        `${baseURL}/login`,
-        { username, password },
-        { withCredentials: true }
+        `http://localhost:5109/login`,
+        {
+          username: username,
+          password: password,
+          platform: 1
+        },
+        {
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
       );
 
       // ✅ ONLY NON-SENSITIVE DATA

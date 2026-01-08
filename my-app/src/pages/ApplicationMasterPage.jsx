@@ -186,6 +186,7 @@ export default function ApplicationMasterPage() {
     setIsAdding(false);
     setNewData({ app_name: '', created_by: '' });
   };
+  
   const saveAdding = () => {
     if (!newData.app_name) {
       toast.error('Please enter application name');

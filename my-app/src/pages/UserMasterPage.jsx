@@ -56,19 +56,35 @@ export default function UserMasterPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
 
-  const fetchUsers = async () => {
-    try {
-      const res = await axios.get(`${baseURL}/GetUserList`);
-      setUsers(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Error fetching users', err);
-      toast.error('Failed to fetch');
-    }
-  };
+const fetchUsers = async () => {
+  try {
+    const res = await axios.get(`${baseURL}/GetUserList`);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+    const normalizedUsers = Array.isArray(res.data)
+      ? res.data.map(u => ({
+          user_id: u.user_id,
+          comp_id: u.comp_id,
+          user_name: u.user_name,
+          email_id: u.email_id,
+          cont_number: u.cont_number,
+          profile_id: u.profile_id,
+          updated_by:u.updated_by,
+          updated_date:u.updated_date,
+          block: Boolean(u.Block) // 🔥 THIS IS THE FIX
+        }))
+      : [];
+
+    setUsers(normalizedUsers);
+  } catch (err) {
+    console.error('Error fetching users', err);
+    toast.error('Failed to fetch');
+  }
+};
+
+useEffect(() => {
+  fetchUsers();
+}, []);
+
 
   const filtered = users.filter((user) => {
     const name = (user?.user_name ?? '').toLowerCase();
@@ -105,19 +121,20 @@ export default function UserMasterPage() {
     setSortConfig({ key, direction });
   };
 
-  const startEditing = (user) => {
-    setEditId(user.user_id);
-    setEditData({
-      UserId: user.user_id,
-      CompId: user.comp_id ?? '',
-      UserName: user.user_name ?? '',
-      EmailId: user.email_id ?? '',
-      ContNumber: user.cont_number ?? '',
-      ProfileId: user.profile_id ?? '',
-      RequestBy: userId,
-      block: !!user.block
-    });
-  };
+const startEditing = (user) => {
+  setEditId(user.user_id);
+  setEditData({
+    UserId: user.user_id,
+    CompId: user.comp_id,
+    UserName: user.user_name,
+    EmailId: user.email_id,
+    ContNumber: user.cont_number,
+    ProfileId: user.profile_id,
+    RequestBy: userId,
+    block: user.block
+  });
+};
+
 
   const cancelEditing = () => {
     setEditId(null);
@@ -134,56 +151,73 @@ const confirmSave = () => {
     message: 'Are you sure you want to save changes?',
     onConfirm: async () => {
       try {
-        // Build form-data for the EditUser API
         const formData = new FormData();
-        Object.entries(editData).forEach(([k, v]) =>
-          formData.append(k, k === 'block' ? (v ? '1' : '0') : v)
-        );
+        formData.append('UserId', editData.UserId);
+        formData.append('CompId', editData.CompId);
+        formData.append('UserName', editData.UserName);
+        formData.append('EmailId', editData.EmailId);
+        formData.append('ContNumber', editData.ContNumber);
+        formData.append('ProfileId', editData.ProfileId);
+        formData.append('RequestBy', userId);
 
-        // Call EditUser
         const res = await axios.post(`${baseURL}/EditUser`, formData);
 
-        // If the block status has changed, toggle it via BlockUser API
-        const original = users.find((u) => u.user_id === editData.UserId);
-        if (original && original.block !== editData.block) {
+        const original = users.find(u => u.user_id === editData.UserId);
+
+        if (original.block !== editData.block) {
           await axios.get(
             `${baseURL}/BlockUser/${userId}/${editData.UserId}/${editData.block ? 1 : 0}`
           );
+
+          // 🔥 UPDATE UI IMMEDIATELY
+          setUsers(prev =>
+            prev.map(u =>
+              u.user_id === editData.UserId
+                ? { ...u, block: editData.block }
+                : u
+            )
+          );
         }
 
+
         if (res.data === 'success') {
-                                                          fetchUsers();
-                                                          cancelEditing();
-                                                          toast.success('Updated successfully!');
-                                                        } else {
-                                                          toast.error(res.data === 'alreadyexists' ? 'User already exists!' : `Error: ${res.data}`);
-                                                        }
-                                                      } catch (err) {
-                                                        console.error('Edit failed', err);
-                                                        toast.error('Error saving size');
-                                                      }
-      setConfirmation((prev) => ({ ...prev, show: false }));
+          fetchUsers();
+          cancelEditing();
+          toast.success('Updated successfully!');
+        } else {
+          toast.error(
+            res.data === 'alreadyexists'
+              ? 'User already exists!'
+              : `Error: ${res.data}`
+          );
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Not Authorized');
+      }
+      setConfirmation(prev => ({ ...prev, show: false }));
     }
   });
 };
 
-  const confirmDelete = (id, blockStatus) => {
-    setConfirmation({
-      show: true,
-      message: 'Are you sure you want to delete this user?',
-      onConfirm: async () => {
-       try {
-          await axios.get(`${baseURL}/BlockUser/${userId}/${id}/1`);
-          fetchUsers();
-          toast.success('Deleted successfully!');
-        } catch (err) {
-          console.error('Delete failed', err);
-          toast.error('Error deleting user');
-        }
-        setConfirmation((prev) => ({ ...prev, show: false }));
+
+const confirmDelete = (id) => {
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to delete this user?',
+    onConfirm: async () => {
+      try {
+        await axios.get(`${baseURL}/BlockUser/${userId}/${id}/1`);
+        fetchUsers();
+        toast.success('Deleted successfully!');
+      } catch (err) {
+        console.error(err);
+        toast.error('Not Authorized to delete');
       }
-    });
-  };
+      setConfirmation(prev => ({ ...prev, show: false }));
+    }
+  });
+};
 
   const startAdding = () => setIsAdding(true);
 
@@ -200,40 +234,47 @@ const confirmSave = () => {
     });
   };
 
-  const saveAdding = () => {
-    if (!newData.UserName || !newData.EmailId) {
-      toast.error('Please enter a name');
-      return;
-    }
-    setConfirmation({
-      show: true,
-      message: 'Are you sure you want to save this new user?',
-      onConfirm: async () => {
-        try {
-          const formData = new FormData();
-          Object.entries(newData).forEach(([k, v]) =>
-            formData.append(k, k === 'block' ? (v ? '1' : '0') : v)
+const saveAdding = () => {
+  if (!newData.UserName || !newData.EmailId) {
+    toast.error('Please enter required fields');
+    return;
+  }
+
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to add this user?',
+    onConfirm: async () => {
+      try {
+        const formData = new FormData();
+        formData.append('CompId', newData.CompId);
+        formData.append('UserName', newData.UserName);
+        formData.append('EmailId', newData.EmailId);
+        formData.append('ContNumber', newData.ContNumber);
+        formData.append('ProfileId', newData.ProfileId);
+        formData.append('RequestBy', userId);
+
+        const res = await axios.post(`${baseURL}/AddUser`, formData);
+
+        if (res.data === 'success') {
+          fetchUsers();
+          cancelAdding();
+          toast.success('Added successfully!');
+        } else {
+          toast.error(
+            res.data === 'alreadyexists'
+              ? 'User already exists!'
+              : `Error: ${res.data}`
           );
-          const res = await axios.post(`${baseURL}/AddUser`, formData);
-          if (res.data === 'success') {
-                    fetchUsers(); 
-                    cancelAdding();
-                    toast.success('Added successfully!');
-                  } else {
-                    toast.error(
-                      res.data === 'alreadyexists'
-                        ? 'User already exists!'
-                        : `Error: ${res.data}`
-                    );
-                  }
-                } catch (err) {
-                  console.error('Add failed', err);
-                  toast.error('Error adding user');
-                }
-        setConfirmation((prev) => ({ ...prev, show: false }));
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Not Authorized to Add');
       }
-    });
-  };
+      setConfirmation(prev => ({ ...prev, show: false }));
+    }
+  });
+};
+
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
@@ -363,7 +404,7 @@ const confirmSave = () => {
                         ) : (
                           <>
                             <button onClick={() => startEditing(user)} className="text-yellow-500"><FaEdit size={18} /></button>
-                            <button onClick={() => confirmDelete(user.user_id, user.block)} className="text-red-500"><FaTrash size={18} /></button>
+                            <button onClick={() => confirmDelete(user.user_id)} className="text-red-500"><FaTrash size={18} /></button>
                           </>
                         )}
                       </td>
