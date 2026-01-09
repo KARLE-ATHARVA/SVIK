@@ -28,102 +28,42 @@ export default function ViewTilePage() {
   const [loadedImages, setLoadedImages] = useState({});
   const [lightboxImage, setLightboxImage] = useState(null);
 const [activeImageName, setActiveImageName] = useState(null);
+const editInputRef = React.useRef(null);
 
+useEffect(() => {
+  if (!tileId) return;
 
+  const fetchTileDetails = async () => {
+    setIsLoading(true);
+    setError('');
 
+    try {
+      const normalizedBaseURL = baseURL.replace(/\/+$/, '');
 
-  useEffect(() => {
-    let isMounted = true;
-    const source = axios.CancelToken.source();
+      const res = await axios.get(
+        `${normalizedBaseURL}/GetTileBySku`,
+        { params: { skuCode: tileId } }
+      );
 
-    const fetchTileDetails = async () => {
-      if (!tileId || !/^[a-zA-Z0-9-]+$/.test(tileId)) {
-        if (isMounted) {
-          setError('Invalid SKU code');
-          toast.error('Invalid SKU code', { autoClose: 5000 });
-          setIsLoading(false);
-        }
-        return;
+      // ✅ BACKEND NOW RETURNS OBJECT DIRECTLY
+      if (!res.data || !res.data.sku_code) {
+        throw new Error('Tile not found');
       }
 
-      setIsLoading(true);
-      setError('');
-      try {
-        const normalizedBaseURL = baseURL.replace(/\/+$/, '');
-        const url = `${normalizedBaseURL}/GetTileList`;
-        console.log('Fetching from URL:', url);
-        console.log('Looking for sku_code:', tileId);
+      setTile(res.data); // ✅ THIS IS THE FIX
+    } catch (err) {
+      console.error(err);
+      toast.error('Tile not found');
+      setError('Tile not found');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        const res = await axios.get(url, {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: Number(process.env.REACT_APP_API_TIMEOUT) || 10000,
-          cancelToken: source.token,
-        });
+  fetchTileDetails();
+}, [tileId]);
 
-        if (isMounted) {
-          console.log('API Response:', JSON.stringify(res.data, null, 2));
-          let tileData = [];
-          if (Array.isArray(res.data)) {
-            tileData = res.data;
-          } else if (res.data?.tiles) {
-            tileData = res.data.tiles;
-          } else if (res.data?.data?.tiles) {
-            tileData = res.data.data.tiles;
-          } else if (res.data?.data) {
-            tileData = Array.isArray(res.data.data) ? res.data.data : [];
-          } else {
-            throw new Error('Unexpected API response structure');
-          }
-          console.log('Parsed tileData:', JSON.stringify(tileData, null, 2));
 
-          const matchingTile = tileData.find((tile) => {
-            const match = String(tile.sku_code).trim() === String(tileId).trim();
-            console.log(`Checking tile with sku_code: ${tile.sku_code}, Match: ${match}`);
-            return match;
-          });
-
-          if (matchingTile) {
-            console.log('Tile found:', JSON.stringify(matchingTile, null, 2));
-            console.log('Image URLs:', {
-              tileImage: matchingTile.image ? `${bigImageBaseURL}${matchingTile.image}` : `${bigImageBaseURL}${matchingTile.sku_code}.jpg`,
-              thumbImage: matchingTile.thumb_image ? `${thumbImageBaseURL}${matchingTile.thumb_image}` : `${thumbImageBaseURL}${matchingTile.sku_code}.jpg`,
-              facesImage: matchingTile.faces_image ? `${bigImageBaseURL}${matchingTile.faces_image}` : `${bigImageBaseURL}${matchingTile.sku_code}.jpg`,
-            });
-            setTile(matchingTile);
-          } else {
-            console.warn(`No tile found with sku_code: ${tileId}`);
-            setError(`No tile found with SKU code ${tileId}.`);
-            toast.error(`No tile found with SKU code ${tileId}`, { autoClose: 5000 });
-          }
-        }
-      } catch (err) {
-        if (axios.isCancel(err)) return;
-        if (!isMounted) return;
-
-        let errorMessage = 'Failed to fetch tile list';
-        if (err.code === 'ERR_NETWORK') {
-          errorMessage = 'Network error. Please check your internet connection.';
-        } else if (err.response?.status === 404) {
-          errorMessage = 'Tile list endpoint not found.';
-        } else {
-          errorMessage = err.response?.data?.message || err.message || 'An unexpected error occurred';
-        }
-        console.error('API Error:', err);
-        setError(errorMessage);
-        toast.error(errorMessage, { autoClose: 5000 });
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    fetchTileDetails();
-
-    
-    return () => {
-      isMounted = false;
-      source.cancel('Request canceled due to component unmount');
-    };
-  }, [tileId]);
 useEffect(() => {
   if (!tile?.sku_code) return;
 
@@ -241,6 +181,41 @@ useEffect(() => {
       setIsLoading(false);
     }
   };
+  const handleReplaceImage = async (e) => {
+  const file = e.target.files[0];
+  if (!file || !activeImageName) return;
+
+  try {
+    // 1️⃣ Delete old image
+    await axios.delete(`${baseURL}/delete-image-jpg`, {
+      params: {
+        fileNames: `${activeImageName}.jpg`,
+        type: "both",
+        empcode: Number(localStorage.getItem("userid")) || 0,
+      },
+    });
+
+    const formData = new FormData();
+formData.append("image", file);
+formData.append("targetName", activeImageName);
+formData.append("empcode", Number(localStorage.getItem("userid")) || 0);
+
+await axios.post(`${baseURL}/replace-image-jpg`, formData, {
+  headers: { "Content-Type": "multipart/form-data" },
+  timeout: 60000,
+});
+
+
+    toast.success("Image replaced successfully");
+    closeLightbox();
+  } catch (err) {
+    console.error(err);
+    toast.error("Image replace failed");
+  } finally {
+    e.target.value = "";
+  }
+};
+
 
   // Lightbox handlers
  const openLightbox = (image) => {
@@ -476,12 +451,22 @@ useEffect(() => {
                     e.target.alt = 'Image not found';
                   }}
                 />
-                <button
-  className="absolute top-4 left-4 text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
-  onClick={handleDeleteImage}
+<button
+  className="absolute top-4 left-4 text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+  onClick={() => editInputRef.current.click()}
 >
-  Delete
+  Edit
 </button>
+
+<input
+  ref={editInputRef}
+  type="file"
+  accept="image/*"
+  hidden
+  onChange={handleReplaceImage}
+/>
+
+
 
                 <button
                   className="absolute top-4 right-4 text-white text-2xl font-bold bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-all duration-300"

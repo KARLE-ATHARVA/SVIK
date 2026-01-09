@@ -130,36 +130,49 @@ export default function CategoryMasterPage() {
   };
 
   const confirmSave = () => {
-    setConfirmation({
-      show: true,
-      message: 'Are you sure you want to save changes?',
-      onConfirm: async () => {
-        try {
-          const formData = new FormData();
-          formData.append('CatId', editData.cat_id);
-          formData.append('CatName', editData.cat_name);
-          formData.append('RequestBy', userId);
+  setConfirmation({
+    show: true,
+    message: 'Are you sure you want to save changes?',
+    onConfirm: async () => {
+      try {
+        const formData = new FormData();
+        formData.append('CatId', editData.cat_id);
+        formData.append('CatName', editData.cat_name);
+        formData.append('RequestBy', userId);
 
-          const res = await axios.post(`${baseURL}/EditCategory`, formData);
-          const original = categories.find((a) => a.app_id === editData.app_id);
-          if (original.block !== editData.block) {
-            await axios.get(`${baseURL}/BlockCategory/${userId}/${editData.cat_id}/${editData.block ? 1 : 0}`);
-          }
-          if (res.data === 'success') {
-            fetchCategories();
-            cancelEditing();
-            toast.success('Updated successfully!');
-          } else {
-            toast.error(res.data === 'alreadyexists' ? 'Category already exists!' : `Error: ${res.data}`);
-          }
-        } catch (err) {
-          console.error('Edit failed', err);
-          toast.error('Error saving category');
+        const res = await axios.post(`${baseURL}/EditCategory`, formData);
+
+        // ✅ FIXED HERE
+        const original = categories.find(
+          (a) => a.cat_id === editData.cat_id
+        );
+
+        if (original && original.block !== editData.block) {
+          await axios.get(
+            `${baseURL}/BlockCategory/${userId}/${editData.cat_id}/${editData.block ? 1 : 0}`
+          );
         }
-        setConfirmation({ ...confirmation, show: false });
-      },
-    });
-  };
+
+        if (res.data === 'success') {
+          fetchCategories();
+          cancelEditing();
+          toast.success('Updated successfully!');
+        } else {
+          toast.error(
+            res.data === 'alreadyexists'
+              ? 'Category already exists!'
+              : `Error: ${res.data}`
+          );
+        }
+      } catch (err) {
+        console.error('Edit failed', err);
+        toast.error('Error saving category');
+      }
+
+      setConfirmation((prev) => ({ ...prev, show: false }));
+    },
+  });
+};
 
   const confirmDelete = (catId) => {
     setConfirmation({

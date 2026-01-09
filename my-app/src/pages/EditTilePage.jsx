@@ -101,48 +101,49 @@ export default function EditTilePage() {
   }, []);
 
   /* -------------------- LOAD TILE DATA -------------------- */
-  useEffect(() => {
-    if (!referenceData.categories.length) return;
+useEffect(() => {
+  if (!referenceData.categories.length || !tileId) return;
 
-    const fetchTile = async () => {
-      setIsLoading(true);
-      try {
-        const res = await axios.get(`${baseURL}/GetTileList`);
-        const tile = res.data.find(t => t.tile_id === Number(tileId));
+  const fetchTile = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get(`${baseURL}/GetTileBySku`, {
+        params: { skuCode: tileId }
+      });
 
-        if (!tile) throw new Error();
+      const tile = res.data; // ✅ already single object
 
-        setFormData({
-  TileId: tile.tile_id,
-  SkuName: tile.sku_name,
-  SkuCode: tile.sku_code,
-  CatId: mapIdByName(referenceData.categories, 'cat_id', 'cat_name', tile.cat_name),
-  AppId: mapIdByName(referenceData.applications, 'app_id', 'app_name', tile.app_name),
-  SpaceId: mapIdByName(referenceData.spaces, 'space_id', 'space_name', tile.space_name),
-  SizeId: mapIdByName(referenceData.sizes, 'size_id', 'size_name', tile.size_name),
-  FinishId: mapIdByName(referenceData.finishes, 'finish_id', 'finish_name', tile.finish_name),
-  ColorId: mapIdByName(referenceData.colors, 'color_id', 'color_name', tile.color_name),
-  Faces: tile.faces ?? 0
-});
+      setFormData({
+        TileId: tile.tile_id,
+        SkuName: tile.sku_name,
+        SkuCode: tile.sku_code,
+        CatId: mapIdByName(referenceData.categories, 'cat_id', 'cat_name', tile.cat_name),
+        AppId: mapIdByName(referenceData.applications, 'app_id', 'app_name', tile.app_name),
+        SpaceId: mapIdByName(referenceData.spaces, 'space_id', 'space_name', tile.space_name),
+        SizeId: mapIdByName(referenceData.sizes, 'size_id', 'size_name', tile.size_name),
+        FinishId: mapIdByName(referenceData.finishes, 'finish_id', 'finish_name', tile.finish_name),
+        ColorId: mapIdByName(referenceData.colors, 'color_id', 'color_name', tile.color_name),
+        Faces: tile.faces ?? 0
+      });
 
+      setRawNames({
+        CatName: tile.cat_name,
+        AppName: tile.app_name,
+        SpaceName: tile.space_name,
+        SizeName: tile.size_name,
+        FinishName: tile.finish_name,
+        ColorName: tile.color_name
+      });
+    } catch (err) {
+      toast.error('Tile not found');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        setRawNames({
-          CatName: tile.cat_name,
-          AppName: tile.app_name,
-          SpaceName: tile.space_name,
-          SizeName: tile.size_name,
-          FinishName: tile.finish_name,
-          ColorName: tile.color_name
-        });
-      } catch {
-        toast.error('Tile not found');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  fetchTile();
+}, [referenceData, tileId]);
 
-    fetchTile();
-  }, [referenceData, tileId]);
 
   /* -------------------- HANDLERS -------------------- */
   const handleChange = e => {

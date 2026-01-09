@@ -34,27 +34,6 @@ function ConfirmationModal({ message, onConfirm, onCancel }) {
   );
 }
 
-const useImageLoader = (src) => {
-  const [status, setStatus] = useState("loading");
-  useEffect(() => {
-    if (!src) { setStatus("error"); return; }
-    const img = new Image();
-    img.onload = () => setStatus("loaded");
-    img.onerror = () => setStatus("error");
-    img.src = src;
-    return () => { img.onload = null; img.onerror = null; };
-  }, [src]);
-  return status;
-};
-
-const getThumbImageCandidates = (tile) => {
-  if (!tile?.sku_code) return [];
-
-  return [
-    `${thumbImageBaseURL}${tile.sku_code}.jpg`,
-    fallbackUrl
-  ];
-};
 
 const TileImage = React.memo(({ tile }) => {
   const src = `${thumbImageBaseURL}${tile.sku_code}.jpg`;
@@ -511,7 +490,7 @@ const filteredTiles = useMemo(() => {
         <td className="px-4 py-3">
           <div className="flex space-x-3">
             <button
-              onClick={() => navigate(`/edit-tile/${tile.tile_id}`)}
+              onClick={() => navigate(`/edit-tile/${tile.sku_code}`)}
               className="text-yellow-500 hover:text-yellow-600 transition-colors"
               title="Edit"
             >
