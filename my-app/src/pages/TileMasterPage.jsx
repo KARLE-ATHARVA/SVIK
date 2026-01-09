@@ -6,8 +6,9 @@ import Breadcrumb from '../components/Breadcrumb';
 import axios from 'axios';
 import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaFileExport, FaFileImport, FaTimes, FaSpinner, FaSearch } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import JSZip from 'jszip';
+// import JSZip from 'jszip';
 import 'react-toastify/dist/ReactToastify.css';
+import { useMemo } from "react";
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 const MEDIA_URL = process.env.REACT_APP_MEDIA_URL;
@@ -51,40 +52,26 @@ const getThumbImageCandidates = (tile) => {
 
   return [
     `${thumbImageBaseURL}${tile.sku_code}.jpg`,
-    `${thumbImageBaseURL}${tile.sku_code}-f1.jpg`,
     fallbackUrl
   ];
 };
 
-
-const TileImage = ({ tile }) => {
-  const candidates = getThumbImageCandidates(tile);
-  const [index, setIndex] = useState(0);
-
-  const status = useImageLoader(candidates[index]);
-
-  useEffect(() => {
-    if (status === "error" && index < candidates.length - 1) {
-      setIndex(i => i + 1);
-    }
-  }, [status, index, candidates.length]);
-
-  if (status === "loading") {
-    return (
-      <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-        <div className="animate-pulse text-gray-400 text-xs">Loading…</div>
-      </div>
-    );
-  }
+const TileImage = React.memo(({ tile }) => {
+  const src = `${thumbImageBaseURL}${tile.sku_code}.jpg`;
 
   return (
     <img
-      src={candidates[index]}
+      src={src}
       alt={tile?.sku_name || "Tile"}
       className="w-12 h-12 object-cover rounded"
+      onError={(e) => {
+        e.currentTarget.src = fallbackUrl;
+      }}
+      loading="lazy"
     />
   );
-};
+});
+
 
 
 function ImportModal({
@@ -206,8 +193,6 @@ const [replaceImages, setReplaceImages] = useState(false);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [showImportModal, setShowImportModal] = useState(false);
   
-  // const folderInputRef = useRef(null);
-  // const folderInputRef = useRef(null);
 const fileInputRef = useRef(null); // ✅ NEW
 
   const excelFolderInputRef = useRef(null);
@@ -269,8 +254,10 @@ const fileInputRef = useRef(null); // ✅ NEW
   };
 
 const createZipFromFiles = async (files) => {
+  const { default: JSZip } = await import("jszip");
+
   const zip = new JSZip();
-  files.forEach((file) => zip.file(file.name, file));
+  files.forEach(f => zip.file(f.name, f));
 
   const content = await zip.generateAsync({ type: "blob" });
 
@@ -367,27 +354,38 @@ const handleFolderUpload = async () => {
   setIsLoading(false);
 };
 
+const filteredTiles = useMemo(() => {
+  let filtered = [...tiles];
 
-  const getSortedAndFilteredTiles = () => {
-    let filtered = [...tiles];
-    if (globalSearch) {
-      filtered = filtered.filter(t => Object.values(t).some(v => String(v).toLowerCase().includes(globalSearch.toLowerCase())));
-    }
-    filtered = filtered.filter(t => Object.entries(columnSearches).every(([k, v]) => !v || String(t[k]).toLowerCase().includes(v.toLowerCase())));
-    
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        const aVal = a[sortConfig.key];
-        const bVal = b[sortConfig.key];
-        return sortConfig.direction === 'ascending' 
-          ? String(aVal).localeCompare(String(bVal)) 
-          : String(bVal).localeCompare(String(aVal));
-      });
-    }
-    return filtered;
-  };
+  if (globalSearch) {
+    const search = globalSearch.toLowerCase();
+    filtered = filtered.filter(t =>
+      Object.values(t).some(v =>
+        String(v).toLowerCase().includes(search)
+      )
+    );
+  }
 
-  const filteredTiles = getSortedAndFilteredTiles();
+  filtered = filtered.filter(t =>
+    Object.entries(columnSearches).every(([k, v]) =>
+      !v || String(t[k]).toLowerCase().includes(v.toLowerCase())
+    )
+  );
+
+  if (sortConfig.key) {
+    filtered.sort((a, b) => {
+      const aVal = String(a[sortConfig.key] ?? "");
+      const bVal = String(b[sortConfig.key] ?? "");
+      return sortConfig.direction === "ascending"
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    });
+  }
+
+  return filtered;
+}, [tiles, globalSearch, columnSearches, sortConfig]);
+
+
   const indexOfLast = currentPage * entriesPerPage;
   const indexOfFirst = indexOfLast - entriesPerPage;
   const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
@@ -563,22 +561,28 @@ const handleFolderUpload = async () => {
         </div>
       </div>
 
-      {showConfirm && <ConfirmationModal message={confirmMessage} onConfirm={confirmAction} onCancel={() => setShowConfirm(false)} />}
-      <ImportModal
-  isOpen={showImportModal}
-  onClose={() => setShowImportModal(false)}
-    // folderInputRef={folderInputRef}
-  fileInputRef={fileInputRef}
-  excelFolderInputRef={excelFolderInputRef}
-  handleFolderUpload={handleFolderUpload}
-  isLoading={isLoading}
-  replaceExcel={replaceExcel}
-  setReplaceExcel={setReplaceExcel}
-  replaceImages={replaceImages}
-  setReplaceImages={setReplaceImages}
-/>
+      {showConfirm && (
+  <ConfirmationModal
+    message={confirmMessage}
+    onConfirm={confirmAction}
+    onCancel={() => setShowConfirm(false)}
+  />
+)}
 
-
+ {showImportModal && (
+  <ImportModal
+    isOpen={showImportModal}
+    onClose={() => setShowImportModal(false)}
+    fileInputRef={fileInputRef}
+    excelFolderInputRef={excelFolderInputRef}
+    handleFolderUpload={handleFolderUpload}
+    isLoading={isLoading}
+    replaceExcel={replaceExcel}
+    setReplaceExcel={setReplaceExcel}
+    replaceImages={replaceImages}
+    setReplaceImages={setReplaceImages}
+  />
+)}
     </div>
   );
 }

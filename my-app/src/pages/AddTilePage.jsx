@@ -11,15 +11,17 @@ const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 export default function AddTilePage() {
   const [formData, setFormData] = useState({
-    SkuName: '',
-    SkuCode: '',
-    CatId: '',
-    AppId: '',
-    SpaceId: '',
-    SizeId: '',
-    FinishId: '',
-    ColorId: '',
-  });
+  SkuName: '',
+  SkuCode: '',
+  CatId: '',
+  AppId: '',
+  SpaceId: '',
+  SizeId: '',
+  FinishId: '',
+  ColorId: '',
+  Faces: ''   // 👈 NEW (optional)
+});
+
   const [referenceData, setReferenceData] = useState({
     categories: [],
     applications: [],
@@ -29,8 +31,7 @@ export default function AddTilePage() {
     colors: []
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
+  // const [showAlert, setShowAlert] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState(() => {});
@@ -40,16 +41,18 @@ export default function AddTilePage() {
   const navigate = useNavigate();
   // 🖼 Image handling 
   const [vyrFinalImages, setVyrFinalImages] = useState([]); // resized files
-const [rawImages, setRawImages] = useState([]);
-const [uploadDone, setUploadDone] = useState(false);
-const [uploadedImages, setUploadedImages] = useState([]); // filenames
-const [selectedImages, setSelectedImages] = useState([]);
+const [rawImages, setRawImages] = useState({}); // { 0: File, 1: File }
+// const [uploadDone, setUploadDone] = useState(false);
+// const [uploadedImages, setUploadedImages] = useState([]); // filenames
+// const [selectedImages, setSelectedImages] = useState([]);
 const [vyrPreviewImages, setVyrPreviewImages] = useState([]);
-const [vyrProcessing, setVyrProcessing] = useState(false);
+// const [vyrProcessing, setVyrProcessing] = useState(false);
 const [replaceImages, setReplaceImages] = useState(false);
 const [showReplacePrompt, setShowReplacePrompt] = useState(false);
-const [existingBigImages, setExistingBigImages] = useState([]);
-const [pendingSave, setPendingSave] = useState(false);
+// const [existingBigImages, setExistingBigImages] = useState([]);
+// const [pendingSave, setPendingSave] = useState(false);
+const [isInitLoading, setIsInitLoading] = useState(true);
+
 
 
 
@@ -57,10 +60,10 @@ const [pendingSave, setPendingSave] = useState(false);
     fetchReferenceData();
   }, []);
 
-  const fetchReferenceData = async () => {
-    setIsLoading(true);
-    try {
-      const [categories, applications, spaces, sizes, finishes, colors] = await Promise.all([
+const fetchReferenceData = async () => {
+  try {
+    const [categories, applications, spaces, sizes, finishes, colors] =
+      await Promise.all([
         axios.get(`${baseURL}/GetCategoryList`),
         axios.get(`${baseURL}/GetApplicationList`),
         axios.get(`${baseURL}/GetSpaceList`),
@@ -68,22 +71,21 @@ const [pendingSave, setPendingSave] = useState(false);
         axios.get(`${baseURL}/GetFinishList`),
         axios.get(`${baseURL}/GetColorList`)
       ]);
-      setReferenceData({
-        categories: categories.data || [],
-        applications: applications.data || [],
-        spaces: spaces.data || [],
-        sizes: sizes.data || [],
-        finishes: finishes.data || [],
-        colors: colors.data || []
-      });
-    } catch (err) {
-      console.error('Reference Data Fetch Error:', err);
-      setAlertMessage('Failed to fetch reference data.');
-      setShowAlert(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
+    setReferenceData({
+      categories: categories.data || [],
+      applications: applications.data || [],
+      spaces: spaces.data || [],
+      sizes: sizes.data || [],
+      finishes: finishes.data || [],
+      colors: colors.data || []
+    });
+  } catch {
+    toast.error("Failed to load master data");
+  } finally {
+    setIsInitLoading(false);
+  }
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -154,11 +156,14 @@ const [pendingSave, setPendingSave] = useState(false);
   return `${match[1]}X${match[2]}`; // EXACT backend format
 };
 
-const checkBigImagesExist = async () => {
-  if (rawImages.length === 0) return { exists: false };
 
-  const names = rawImages
-    .map(f => f.name.replace(/\.[^/.]+$/, "")) // filename without extension
+const checkBigImagesExist = async () => {
+  const files = Object.values(rawImages);
+
+  if (files.length === 0) return { exists: false };
+
+  const names = files
+    .map(f => f.name.replace(/\.[^/.]+$/, ""))
     .join(",");
 
   const res = await axios.get(
@@ -182,7 +187,6 @@ const getSizeName = () =>
   const existRes = await checkBigImagesExist();
 
   if (existRes.exists) {
-    setExistingBigImages(existRes.found || []);
     setShowReplacePrompt(true);
     return; // ⛔ wait for user
   }
@@ -222,6 +226,7 @@ setIsLoading(true);
 
     tileForm.append("ColorId", formData.ColorId);
     tileForm.append("ColorName", getName(referenceData.colors, "color_id", "color_name", formData.ColorId));
+    tileForm.append("Faces", formData.Faces ? Number(formData.Faces) : 0);
 
     tileForm.append("RequestBy", userId || "");
 
@@ -230,26 +235,34 @@ setIsLoading(true);
       tileForm
     );
 
-    if (tileRes.data !== "success") {
-      toast.error("Tile creation failed");
-      return;
-    }
+    if (tileRes.data === "alreadyexists") {
+  toast.error("Tile already exists");
+  return;
+}
+
+if (tileRes.data !== "success") {
+  toast.error("Failed to save tile");
+  return;
+}
+
 
     // -------------------
     // 2️⃣ RESIZE IMAGES
     // -------------------
-    if (rawImages.length > 0) {
-      const imgForm = new FormData();
-      rawImages.forEach((f) => imgForm.append("files", f));
-      imgForm.append("empcode", userId);
-      imgForm.append("replace", forceReplace);
+   const imageFiles = Object.values(rawImages);
 
+if (imageFiles.length > 0) {
+  const imgForm = new FormData();
+  imageFiles.forEach(f => imgForm.append("files", f));
+  imgForm.append("empcode", userId);
+  imgForm.append("replace", forceReplace);
 
-      await axios.post(
-        `${baseURL}/resize-folder-jpg`,
-        imgForm
-      );
-    }
+  await axios.post(
+    `${baseURL}/resize-folder-jpg`,
+    imgForm
+  );
+}
+
 
     // -------------------
 // 3️⃣ FINAL VYR
@@ -275,8 +288,8 @@ if (!cleanSize) {
   toast.error("Invalid size format. Please select a valid tile size.");
   return;
 }
-console.log("VYR FILE COUNT:", vyrFinalImages.length);
-console.log("VYR SIZE SENT:", getCleanVyrSize());
+// console.log("VYR FILE COUNT:", vyrFinalImages.length);
+// console.log("VYR SIZE SENT:", getCleanVyrSize());
 
 
   const vyrRes = await axios.post(
@@ -301,103 +314,66 @@ console.log("VYR SIZE SENT:", getCleanVyrSize());
 
   } catch (err) {
     console.error("Add tile error:", err);
-    toast.error("Failed to add tile");
+    toast.error("Failed to add tile", err);
   } finally {
     setIsLoading(false);
     setReplaceImages(false);
-setPendingSave(false);
 
   }
 };
 
+const handleSingleFaceUpload = async (index, file) => {
+  if (!file) return;
 
-const handleVyrPreview = async (files) => {
-  try {
-    setVyrProcessing(true);
-    toast.info("Preparing image previews…");
-
-    const previews = [];
-    const resizedFiles = [];
-    const size = getSizeName();
-
-    if (!size) {
-      toast.error("Size missing. Cannot generate VYR.");
-      return;
-    }
-
-    for (const file of files) {
-      const form = new FormData();
-      form.append("image", file);
-      form.append("size", size);
-
-      const res = await axios.post(
-        `${baseURL}/resize-vyr`,
-        form,
-        { responseType: "blob" }
-      );
-
-      // 👇 create File from blob
-      const resizedFile = new File(
-        [res.data],
-        file.name.replace(/\.[^/.]+$/, ".png"),
-        { type: "image/png" }
-      );
-
-      resizedFiles.push(resizedFile);
-      previews.push(URL.createObjectURL(resizedFile));
-    }
-
-    setVyrFinalImages(resizedFiles);     // ✅ IMPORTANT
-    setVyrPreviewImages(previews);       // preview only
-    toast.success("Images ready");
-
-  } catch (err) {
-    console.error("VYR preview error:", err);
-    toast.error("Preview failed");
-  } finally {
-    setVyrProcessing(false);
+  const size = getSizeName();
+  if (!size) {
+    toast.error("Please select Size before uploading images");
+    return;
   }
-};
 
-
-
-
-  const uploadTileImages = async () => {
   try {
     const form = new FormData();
-
-    rawImages.forEach((file) => {
-      form.append("files", file);
-    });
-
-    form.append("empcode", userId);
-    form.append("replace", false);
-
-    toast.info("Uploading & resizing images…");
+    form.append("image", file);
+    form.append("size", size);
 
     const res = await axios.post(
-      `${baseURL}/resize-folder-jpg`,
-      form
+      `${baseURL}/resize-vyr`,
+      form,
+      { responseType: "blob" }
     );
 
-    toast.success(res.data.message || "Images processed");
+    const resizedFile = new File(
+      [res.data],
+      file.name.replace(/\.[^/.]+$/, ".png"),
+      { type: "image/png" }
+    );
 
-    setUploadDone(true);
-    setUploadedImages(res.data.processed || []);
+    // store raw image per face
+    setRawImages(prev => ({
+      ...prev,
+      [index]: file
+    }));
+
+    // store resized image for VYR upload
+    setVyrFinalImages(prev => {
+      const copy = [...prev];
+      copy[index] = resizedFile;
+      return copy;
+    });
+
+    // store preview
+    setVyrPreviewImages(prev => {
+      const copy = [...prev];
+      copy[index] = URL.createObjectURL(resizedFile);
+      return copy;
+    });
+
   } catch (err) {
-    console.error(err);
-    toast.error("Image upload failed");
+    console.error(`Face ${index + 1} upload error`, err);
+    toast.error(`Failed to process Face ${index + 1}`);
   }
 };
 
-
-  const closeAlert = () => {
-    setShowAlert(false);
-    setAlertMessage('');
-    if (alertMessage === 'Tile saved successfully!') {
-      navigate(-1);
-    }
-  };
 
   const closeConfirm = (confirm) => {
     if (confirm && confirmAction) confirmAction();
@@ -433,7 +409,7 @@ const handleVyrPreview = async (files) => {
                 Add New Tile
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Fill in the details below to create a new tile record. All fields are required.
+                Fill in the details below to create a new tile record.
               </p>
 
               <form onSubmit={handleSubmit} className="flex flex-col">
@@ -479,6 +455,7 @@ const handleVyrPreview = async (files) => {
                       <p className="mt-1 text-xs text-orange-600">{validationErrors.SkuCode}</p>
                     )}
                   </div>
+                  
 
                   {/* Dropdowns */}
                   {dropdownFields.map((field, idx) => (
@@ -509,49 +486,80 @@ const handleVyrPreview = async (files) => {
                     </div>
                   ))}
                 </div>
-                {/* Image Upload */}
-<div className="mt-6">
-  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-    Upload Tile Images (Multiple Faces)
+                {/* Faces */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+    Faces
   </label>
-
- <input
-  type="file"
-  multiple
-  accept="image/jpeg,image/png,image/webp"
-  onChange={(e) => {
-    const files = Array.from(e.target.files);
-    setRawImages(files);
-    handleVyrPreview(files);
-  }}
-/>
-
-
-  <p className="text-xs text-gray-500 mt-1">
-    Upload multiple images of the same tile (different faces).
-  </p>
-</div>
-{vyrPreviewImages.length > 0 && (
-  <div className="mt-4">
-    <p className="text-sm font-medium mb-2">Image Preview</p>
-
-    <div className="grid grid-cols-4 gap-3">
-      {vyrPreviewImages.map((img) => (
-        <div key={img} className="border rounded p-1">
-          <div className="border rounded p-2 flex items-center justify-center bg-gray-50">
-  <img
-    src={img}
-    alt=""
-    className="max-w-full max-h-48 object-contain rounded"
+  <input
+    type="number"
+    min="0"
+    max="10"
+    name="Faces"
+    value={formData.Faces}
+    onChange={(e) => {
+      const val = e.target.value;
+      setFormData(prev => ({ ...prev, Faces: val }));
+      setRawImages([]);           // reset images if faces change
+      setVyrPreviewImages([]);
+    }}
+    placeholder="Number of faces"
+    className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
+               text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+               focus:ring-2 focus:ring-green-500"
   />
 </div>
 
 
+{/* Image Upload */}
+<div className="mt-6">
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    Upload Tile Images
+  </label>
+
+  {Number(formData.Faces) > 0 ? (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {Array.from({ length: Number(formData.Faces) }).map((_, index) => (
+        <div
+          key={index}
+          className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-700"
+        >
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Face {index + 1}
+          </label>
+
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) =>
+              handleSingleFaceUpload(index, e.target.files?.[0])
+            }
+            className="block w-full text-sm text-gray-700 dark:text-gray-200
+                       file:mr-3 file:py-1 file:px-3
+                       file:rounded file:border-0
+                       file:bg-green-600 file:text-white
+                       hover:file:bg-green-700"
+          />
+
+          {/* Preview */}
+          {vyrPreviewImages[index] && (
+            <div className="mt-3 flex justify-center items-center bg-gray-50 dark:bg-gray-800 rounded p-2">
+              <img
+                src={vyrPreviewImages[index]}
+                alt={`Face ${index + 1}`}
+                className="max-h-40 object-contain rounded"
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>
-  </div>
-)}
+  ) : (
+    <p className="text-xs text-gray-500 dark:text-gray-400">
+      Enter number of faces to enable image upload.
+    </p>
+  )}
+</div>
 
 
 
@@ -581,20 +589,7 @@ const handleVyrPreview = async (files) => {
           </div>
         </div>
 
-        {/* Alert */}
-        {showAlert && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center w-[90%] max-w-md">
-              <p className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">{alertMessage}</p>
-              <button
-                onClick={closeAlert}
-                className="px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        )}
+        
 {showReplacePrompt && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-[90%] max-w-md">

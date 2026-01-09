@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import leftImage from '../assets/left_image.jpg';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -12,30 +15,64 @@ export default function RegisterPage() {
   const [company, setCompany] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e) => {
-    e.preventDefault();
-    if (username && email && phone && company && password && confirmPassword) {
-      if (password === confirmPassword) {
-        navigate('/dashboard');
-      } else {
-        alert('Passwords do not match');
+  const handleRegister = async (e) => {
+  e.preventDefault();
+
+  if (!username || !email || !phone || !company || !password || !confirmPassword) {
+    toast.warning('Please fill all fields');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    toast.error('Passwords do not match');
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    await axios.post(
+      `${process.env.REACT_APP_API_BASE_URL}RegisterRequest`,
+      {
+        Username: username,
+        Email: email,
+        Phone: phone,
+        Company: company,
+        Password: password,
       }
-    } else {
-      alert('Please fill in all fields');
-    }
-  };
+    );
 
-  const loginAccount = () => {
-    navigate('/');
-  };
+    toast.success('Registration submitted! Await admin approval.');
+    setTimeout(() => navigate('/'), 1500);
+
+  } catch (err) {
+    const msg = err.response?.data;
+
+    if (msg === 'alreadyrequested') {
+      toast.info('Registration already requested. Please wait for admin approval.');
+    }
+    else if (msg === 'alreadyexists') {
+      toast.error('Account already exists. Please login instead.');
+    }
+    else {
+      toast.error('Something went wrong. Please try again.');
+    }
+
+    console.error('Register error:', msg || err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const loginAccount = () => navigate('/');
 
   const headingContainer = {
     hidden: {},
-    visible: {
-      transition: { staggerChildren: 0.05 },
-    },
+    visible: { transition: { staggerChildren: 0.05 } },
   };
+
   const letter = {
     hidden: { opacity: 0, y: `0.25em` },
     visible: {
@@ -91,16 +128,15 @@ export default function RegisterPage() {
 
       {/* RIGHT SECTION */}
       <div className="relative md:w-[45%] flex justify-center items-center p-4 md:p-6 overflow-hidden">
-        {/* Soft blurred blobs */}
-        <div className="absolute -top-32 -right-32 w-80 h-80 bg-emerald-300 rounded-full filter blur-[140px] opacity-40 z-0"></div>
-        <div className="absolute top-1/3 -left-32 w-80 h-80 bg-teal-300 rounded-full filter blur-[140px] opacity-30 z-0"></div>
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent to-white opacity-20 z-0"></div>
+        {/* BLOBS */}
+        <div className="absolute -top-32 -right-32 w-80 h-80 bg-emerald-300 rounded-full blur-[140px] opacity-40"></div>
+        <div className="absolute top-1/3 -left-32 w-80 h-80 bg-teal-300 rounded-full blur-[140px] opacity-30"></div>
 
         <motion.div
           initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.8, type: 'spring', stiffness: 70, damping: 12 }}
-          className="w-full max-w-lg p-6 md:p-6 bg-white rounded-2xl shadow-2xl relative z-10"
+          className="w-full max-w-lg p-6 bg-white rounded-2xl shadow-2xl relative z-10"
         >
           <h1 className="text-2xl font-bold mb-1 text-emerald-800">Create Account</h1>
           <p className="text-gray-600 mb-3 text-xs">
@@ -108,58 +144,58 @@ export default function RegisterPage() {
           </p>
 
           <form onSubmit={handleRegister} className="flex flex-col gap-y-2">
+            {/* USERNAME */}
             <div>
               <label className="block text-xs font-semibold mb-1">Username</label>
               <input
                 type="text"
-                placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:ring-emerald-400"
               />
             </div>
 
+            {/* EMAIL */}
             <div>
               <label className="block text-xs font-semibold mb-1">Email</label>
               <input
                 type="email"
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:ring-emerald-400"
               />
             </div>
 
+            {/* PHONE */}
             <div>
               <label className="block text-xs font-semibold mb-1">Phone</label>
               <input
                 type="tel"
-                placeholder="Phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:ring-emerald-400"
               />
             </div>
 
+            {/* COMPANY */}
             <div>
               <label className="block text-xs font-semibold mb-1">Company Name</label>
               <input
                 type="text"
-                placeholder="Company"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:ring-emerald-400"
               />
             </div>
 
+            {/* PASSWORD */}
             <div className="relative">
               <label className="block text-xs font-semibold mb-1">Password</label>
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:ring-emerald-400"
               />
               <span
                 onClick={() => setShowPassword(!showPassword)}
@@ -169,28 +205,32 @@ export default function RegisterPage() {
               </span>
             </div>
 
+            {/* CONFIRM PASSWORD */}
             <div>
               <label className="block text-xs font-semibold mb-1">Confirm Password</label>
               <input
                 type="password"
-                placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                className="w-full border border-gray-300 rounded-md py-2 px-3 text-xs focus:ring-emerald-400"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-emerald-700 text-white py-2 text-xs rounded-md hover:bg-emerald-800"
+              disabled={loading}
+              className="w-full bg-emerald-700 text-white py-2 text-xs rounded-md hover:bg-emerald-800 disabled:opacity-50"
             >
-              Sign Up
+              {loading ? 'Submitting...' : 'Sign Up'}
             </button>
           </form>
 
           <p className="text-center text-xs mt-3">
             Already registered?{' '}
-            <span className="text-emerald-700 hover:underline cursor-pointer" onClick={loginAccount}>
+            <span
+              className="text-emerald-700 hover:underline cursor-pointer"
+              onClick={loginAccount}
+            >
               Sign In
             </span>
           </p>
