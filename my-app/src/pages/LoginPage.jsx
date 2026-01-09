@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -36,16 +37,18 @@ export default function LoginPage() {
 
     try {
       const response = await axios.post(
-        `http://localhost:5109/login`,
+        `${baseURL}/login`,
         {
           username: username,
           password: password,
+          rememberMe: rememberMe,
           platform: 1
         },
         {
           headers: {
             "Content-Type": "application/json"
-          }
+          },
+          withCredentials: true
         }
       );
 
@@ -224,7 +227,7 @@ export default function LoginPage() {
 
             <div className="flex justify-between items-center text-sm">
               <label className="flex items-center">
-                <input type="checkbox" className="mr-2" />
+                <input type="checkbox" checked={rememberMe} onChange={(e)=> setRememberMe(e.target.checked)} className="mr-2" />
                 Remember me
               </label>
               <a
