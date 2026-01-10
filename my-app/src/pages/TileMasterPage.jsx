@@ -253,15 +253,11 @@ const triggerVyrProcessing = (excelFile) => {
   form.append("replace", replaceImages);
   form.append("createdBy", userId);
 
-  toast.info("Starting VYR processing… 🔄", { autoClose: 3000 });
-
-  axios
-    .post(`${baseURL}/process-folder-vyr`, form)
-    .then((res) => {
-      toast.success(res.data.Message || "VYR processing completed ✅");
-    })
+  // 🔕 SILENT background call (no toasts)
+  axios.post(`${baseURL}/process-folder-vyr`, form)
     .catch(() => {
-      toast.error("VYR processing failed ❌");
+      // optionally log error, but NO toast
+      console.error("VYR processing failed");
     });
 };
 
@@ -294,22 +290,25 @@ const handleFolderUpload = async () => {
       .catch(() => toast.error("Excel import failed"));
   }
 
-  /* ==========================
-     2️⃣ ZIP or Images upload
-  ========================== */
-  if (selectedFiles.length) {
-    let zipFile;
+/* ==========================
+   2️⃣ ZIP or Images upload
+========================== */
+if (selectedFiles.length) {
+  let zipFile;
 
-    // CASE 1: User selected ZIP
+  // ✅ TOAST #1
+  const uploadToastId = toast.loading("Image upload started…");
+
+  try {
+    // ZIP directly
     if (
       selectedFiles.length === 1 &&
       selectedFiles[0].name.toLowerCase().endsWith(".zip")
     ) {
       zipFile = selectedFiles[0];
     }
-    // CASE 2: User selected images → ZIP them
+    // Images → ZIP silently
     else {
-      toast.info("Zipping images… 📦");
       zipFile = await createZipFromFiles(selectedFiles);
     }
 
@@ -318,16 +317,30 @@ const handleFolderUpload = async () => {
     formData.append("empcode", userId);
     formData.append("replace", replaceImages);
 
-    axios
-      .post(`${normalizedBaseURL}/resize-folder-jpg`, formData)
-      .then(() => {
-        toast.success("Images processed successfully");
+    await axios.post(`${normalizedBaseURL}/resize-folder-jpg`, formData);
 
-        if (excelFile) triggerVyrProcessing(excelFile);
-        fetchTiles();
-      })
-      .catch(() => toast.error("Image upload failed"));
+    // ✅ TOAST #2 (same toast updated)
+    toast.update(uploadToastId, {
+      render: "Image upload successful",
+      type: "success",
+      isLoading: false,
+      autoClose: 3000
+    });
+
+    // background-only VYR (silent)
+    if (excelFile) triggerVyrProcessing(excelFile);
+
+    fetchTiles();
+
+  } catch (err) {
+    toast.update(uploadToastId, {
+      render: "Image upload failed",
+      type: "error",
+      isLoading: false,
+      autoClose: 4000
+    });
   }
+}
 
   setShowImportModal(false);
   setIsLoading(false);
