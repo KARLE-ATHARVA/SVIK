@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import Breadcrumb from '../components/Breadcrumb';
+import PageLayout from '../components/layout/PageLayout';
+import useTable from '../hooks/useTable';
 import axios from 'axios';
 import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaFileExport, FaFileImport, FaTimes, FaSpinner, FaSearch } from 'react-icons/fa';
 import { toast } from 'react-toastify';
@@ -167,8 +169,8 @@ const [replaceImages, setReplaceImages] = useState(false);
   const [columnSearches, setColumnSearches] = useState({
     sku_code: '', sku_name: '', app_name: '', finish_name: '', color_name: '',
   });
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
-  const [currentPage, setCurrentPage] = useState(1);
+  // const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+  // const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [showImportModal, setShowImportModal] = useState(false);
   
@@ -364,36 +366,28 @@ const filteredTiles = useMemo(() => {
     )
   );
 
-  if (sortConfig.key) {
-    filtered.sort((a, b) => {
-      const aVal = String(a[sortConfig.key] ?? "");
-      const bVal = String(b[sortConfig.key] ?? "");
-      return sortConfig.direction === "ascending"
-        ? aVal.localeCompare(bVal)
-        : bVal.localeCompare(aVal);
-    });
-  }
-
   return filtered;
-}, [tiles, globalSearch, columnSearches, sortConfig]);
+}, [tiles, globalSearch, columnSearches]);
+
+const {
+  currentItems: currentTiles,
+  currentPage,
+  setCurrentPage,
+  totalPages,
+  sortConfig,
+  handleSort,
+  totalCount
+} = useTable(filteredTiles, entriesPerPage);
 
 
-  const indexOfLast = currentPage * entriesPerPage;
-  const indexOfFirst = indexOfLast - entriesPerPage;
-  const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredTiles.length / entriesPerPage);
+  // const indexOfLast = currentPage * entriesPerPage;
+  // const indexOfFirst = indexOfLast - entriesPerPage;
+  // const currentTiles = filteredTiles.slice(indexOfFirst, indexOfLast);
+  // const totalPages = Math.ceil(filteredTiles.length / entriesPerPage);
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
-      <Sidebar theme="light" />
-      <div className="flex flex-col flex-1">
-  <Topbar theme="light" />
-  <div className="flex flex-col flex-1 overflow-hidden p-5">
-          
-          <div className="flex justify-between items-center mb-4 mt-2">
-            <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Products</h2>
-            <Breadcrumb />
-          </div>
+    
+<PageLayout title="Products">
 
          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
             {/* Toolbar Area */}
@@ -452,7 +446,11 @@ const filteredTiles = useMemo(() => {
                       {label: 'Actions', key: 'actions'}
                     ].map((col) => (
                       <th key={col.key} className="px-4 py-3 font-semibold text-left">
-                        <div className="flex items-center cursor-pointer hover:text-green-700 dark:hover:text-green-400" onClick={() => col.key !== 'actions' && col.key !== 'image' && setSortConfig({key: col.key, direction: sortConfig.direction === 'ascending' ? 'descending' : 'ascending'})}>
+                        <div className="flex items-center cursor-pointer hover:text-green-700 dark:hover:text-green-400" onClick={() =>
+  col.key !== 'actions' &&
+  col.key !== 'image' &&
+  handleSort(col.key)
+}>
                           {col.label} {sortConfig.key === col.key && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                         </div>
                         {col.key !== 'actions' && col.key !== 'image' && (
@@ -539,7 +537,7 @@ const filteredTiles = useMemo(() => {
 
             {/* Pagination */}
             <div className="flex justify-between mt-6 text-sm items-center text-gray-600 dark:text-gray-400">
-              <span className="font-medium">Showing {filteredTiles.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filteredTiles.length)} of {filteredTiles.length} entries</span>
+              <span className="font-medium">Showing {totalCount === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1} to {Math.min(currentPage * entriesPerPage, totalCount)} of {totalCount} entries</span>
               <div className="flex gap-1">
                 <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-all"><FaAngleLeft /></button>
                 {[...Array(totalPages).keys()].slice(Math.max(0, currentPage - 3), Math.min(totalPages, currentPage + 2)).map(n => (
@@ -550,31 +548,31 @@ const filteredTiles = useMemo(() => {
             </div>
 
           </div>
-        </div>
-      </div>
+        {/* </div> */}
 
-      {showConfirm && (
-  <ConfirmationModal
-    message={confirmMessage}
-    onConfirm={confirmAction}
-    onCancel={() => setShowConfirm(false)}
-  />
-)}
 
- {showImportModal && (
-  <ImportModal
-    isOpen={showImportModal}
-    onClose={() => setShowImportModal(false)}
-    fileInputRef={fileInputRef}
-    excelFolderInputRef={excelFolderInputRef}
-    handleFolderUpload={handleFolderUpload}
-    isLoading={isLoading}
-    replaceExcel={replaceExcel}
-    setReplaceExcel={setReplaceExcel}
-    replaceImages={replaceImages}
-    setReplaceImages={setReplaceImages}
-  />
-)}
-    </div>
+  {showConfirm && (
+      <ConfirmationModal
+        message={confirmMessage}
+        onConfirm={confirmAction}
+        onCancel={() => setShowConfirm(false)}
+      />
+    )}
+
+    {showImportModal && (
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        fileInputRef={fileInputRef}
+        excelFolderInputRef={excelFolderInputRef}
+        handleFolderUpload={handleFolderUpload}
+        isLoading={isLoading}
+        replaceExcel={replaceExcel}
+        setReplaceExcel={setReplaceExcel}
+        replaceImages={replaceImages}
+        setReplaceImages={setReplaceImages}
+      />
+    )}
+  </PageLayout>
   );
 }
