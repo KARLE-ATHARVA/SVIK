@@ -59,6 +59,13 @@ const [isInitLoading, setIsInitLoading] = useState(true);
   useEffect(() => {
     fetchReferenceData();
   }, []);
+  useEffect(() => {
+  return () => {
+    vyrPreviewImages.forEach(url => {
+      if (url) URL.revokeObjectURL(url);
+    });
+  };
+}, [vyrPreviewImages]);
 
 const fetchReferenceData = async () => {
   try {
@@ -88,17 +95,28 @@ const fetchReferenceData = async () => {
 };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const { name, value } = e.target;
 
-    if (validationErrors[name]) {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value
+  }));
+
+  // ✅ NEW: If Size changes, reset images
+  if (name === "SizeId") {
+    setRawImages({});
+    setVyrFinalImages([]);
+    setVyrPreviewImages([]);
+  }
+
+  if (validationErrors[name]) {
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
+  }
+};
 
   const validateForm = () => {
     const errors = {};
@@ -133,7 +151,16 @@ const fetchReferenceData = async () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (Number(formData.Faces) > 0) {
+  const uploadedCount = Object.keys(rawImages).length;
+
+  if (uploadedCount !== Number(formData.Faces)) {
+    toast.error(`Please upload all ${formData.Faces} face images.`);
+    return;
+  }
+}
     setIsSubmitted(true);
+    
 
     if (validateForm()) {
       setConfirmMessage('Are you sure you want to save this tile?');
@@ -268,29 +295,22 @@ if (imageFiles.length > 0) {
 // 3️⃣ FINAL VYR
 // -------------------
 if (vyrFinalImages.length > 0) {
+  const cleanSize = getCleanVyrSize();
+
+  if (!cleanSize) {
+    toast.error("Invalid size format. Please select a valid tile size.");
+    return;
+  }
+
   const vyrForm = new FormData();
-
   vyrForm.append("name", formData.SkuCode);
- vyrForm.append("size", getCleanVyrSize());
-
+  vyrForm.append("size", cleanSize);
   vyrForm.append("createdBy", Number(userId));
- vyrForm.append("replace", forceReplace);
-
-
+  vyrForm.append("replace", forceReplace);
 
   vyrFinalImages.forEach((file) =>
     vyrForm.append("images", file)
   );
-  
-  const cleanSize = getCleanVyrSize();
-
-if (!cleanSize) {
-  toast.error("Invalid size format. Please select a valid tile size.");
-  return;
-}
-// console.log("VYR FILE COUNT:", vyrFinalImages.length);
-// console.log("VYR SIZE SENT:", getCleanVyrSize());
-
 
   const vyrRes = await axios.post(
     `${baseURL}/single-prod-vyr`,
@@ -298,13 +318,12 @@ if (!cleanSize) {
   );
 
   if (
-  vyrRes.data?.result?.Processed?.length === 0 &&
-  vyrRes.data?.result?.Errors?.length > 0
-) {
-  toast.error("VYR failed: " + vyrRes.data.result.Errors.join(", "));
-  return;
-}
-
+    vyrRes.data?.result?.Processed?.length === 0 &&
+    vyrRes.data?.result?.Errors?.length > 0
+  ) {
+    toast.error("VYR failed: " + vyrRes.data.result.Errors.join(", "));
+    return;
+  }
 }
 
 
@@ -492,22 +511,32 @@ const handleSingleFaceUpload = async (index, file) => {
     Faces
   </label>
   <input
-    type="number"
-    min="0"
-    max="10"
-    name="Faces"
-    value={formData.Faces}
-    onChange={(e) => {
-      const val = e.target.value;
-      setFormData(prev => ({ ...prev, Faces: val }));
-      setRawImages([]);           // reset images if faces change
-      setVyrPreviewImages([]);
-    }}
-    placeholder="Number of faces"
-    className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
-               text-gray-900 dark:text-white bg-white dark:bg-gray-700 
-               focus:ring-2 focus:ring-green-500"
-  />
+  type="number"
+  min="0"
+  max="30"
+  name="Faces"
+  value={formData.Faces}
+  onChange={(e) => {
+    let val = e.target.value;
+
+    // Remove negative values
+    if (Number(val) < 0) val = 0;
+
+    // Prevent more than 30
+    if (Number(val) > 30) val = 30;
+
+    setFormData(prev => ({ ...prev, Faces: val }));
+
+    // Reset images if faces change
+    setRawImages({});
+    setVyrFinalImages([]);
+    setVyrPreviewImages([]);
+  }}
+  placeholder="Number of faces"
+  className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
+             text-gray-900 dark:text-white bg-white dark:bg-gray-700 
+             focus:ring-2 focus:ring-green-500"
+/>
 </div>
 
 
@@ -555,9 +584,9 @@ const handleSingleFaceUpload = async (index, file) => {
       ))}
     </div>
   ) : (
-    <p className="text-xs text-gray-500 dark:text-gray-400">
-      Enter number of faces to enable image upload.
-    </p>
+   <p className="text-xs text-gray-500 dark:text-gray-400">
+  Please enter the number of faces (max 30) and ensure a tile size is selected before uploading images.
+</p>
   )}
 </div>
 
@@ -594,7 +623,7 @@ const handleSingleFaceUpload = async (index, file) => {
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-[90%] max-w-md">
       <p className="mb-3 text-lg font-semibold text-gray-800 dark:text-white">
-        Images already exist in Big folder.
+        Images already exist.
       </p>
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

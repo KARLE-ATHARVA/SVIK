@@ -275,10 +275,12 @@ await axios.post(`${baseURL}/replace-image-jpg`, formData, {
       <div className="flex-1 ml-0 md:ml-0">
         <Topbar theme="light" className="sticky top-0 z-20 bg-white dark:bg-gray-800 shadow-lg h-16" />
         <div className="pt-16 pb-6 px-6 sm:px-8 md:px-10 lg:px-12 overflow-y-auto h-[calc(100vh-64px)] scrollbar-thin scrollbar-thumb-green-900 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 animate-fade-in-up">
-            <h2 className="text-4xl font-bold text-Black-700 dark:text-green-100 tracking-tight">Product Details</h2>
-            <Breadcrumb className="animate-fade-in-up" />
-          </div>
+          <div className="flex justify-between items-center mb-4 mt-2">
+  <h2 className="text-2xl font-bold text-green-800 dark:text-green-500">
+    Product Details
+  </h2>
+  <Breadcrumb />
+</div>
 
           <div className="w-full max-w-8xl mx-auto">
             {error && (

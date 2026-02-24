@@ -94,7 +94,7 @@ function ImportModal({
 />
 
 <p className="text-xs text-gray-500 mt-1">
-  Select a ZIP file OR select images (they will be zipped automatically)
+  Select a ZIP file OR select images
 </p>
 
 </div>
@@ -386,24 +386,23 @@ const filteredTiles = useMemo(() => {
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar theme="light" />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar theme="light" />
-        <div className="flex flex-col flex-1 p-6 overflow-auto">
+      <div className="flex flex-col flex-1">
+  <Topbar theme="light" />
+  <div className="flex flex-col flex-1 overflow-hidden p-5">
           
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 mt-2">
             <h2 className="text-2xl font-bold text-green-800 dark:text-green-400">Products</h2>
             <Breadcrumb />
           </div>
 
-          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[100vh] overflow-hidden">
-            
+         <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
             {/* Toolbar Area */}
-            <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="mb-4 flex flex-col sm:flex-row justify-between items-center gap-3">
               
               {/* Left Side: Show Entries + Search aligned together */}
               <div className="flex items-center gap-4 w-full sm:w-auto">
                 {/* Show Entries Dropdown */}
-                <div className="flex items-center bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 h-10">
+                <div className="flex items-center bg-white dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 px-3 py-1">
                   <span className="text-sm mr-2 text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">Show</span>
                   <select 
                     value={entriesPerPage} 
@@ -416,29 +415,30 @@ const filteredTiles = useMemo(() => {
 
                 {/* Global Search Bar aligned beside the dropdown */}
                 <div className="relative flex-1 sm:w-64">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaSearch className="text-gray-400 text-sm" />
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="Search product..." 
-                    value={globalSearch} 
-                    onChange={(e) => setGlobalSearch(e.target.value)} 
-                    className="block w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-600 outline-none dark:text-white h-10" 
-                  />
-                </div>
+  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+    <FaSearch className="text-gray-400 text-sm" />
+  </div>
+
+  <input 
+    type="text"
+    placeholder="Search product..."
+    value={globalSearch}
+    onChange={(e) => setGlobalSearch(e.target.value)}
+    className="w-full pl-9 pr-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200 text-sm"
+  />
+</div>
               </div>
 
               {/* Right Side: Action Buttons */}
               <div className="flex gap-2 w-full sm:w-auto justify-end">
-                <Link to="/add-tile" className="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800 flex items-center text-sm font-medium transition-colors shadow-sm"><FaPlus className="mr-2" /> Add Product</Link>
-                <button onClick={() => setShowImportModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm font-medium transition-colors shadow-sm"><FaFileImport className="mr-2" /> Import</button>
-                <button onClick={handleExportExcel} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center text-sm font-medium transition-colors shadow-sm"><FaFileExport className="mr-2" /> Export Excel</button>
+                <Link to="/add-tile" className="bg-green-700 text-white px-4 py-1.5 rounded hover:bg-green-800 flex items-center text-sm font-medium"><FaPlus className="mr-2" /> Add Product</Link>
+                <button onClick={() => setShowImportModal(true)} className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 flex items-center text-sm font-medium"><FaFileImport className="mr-2" /> Import</button>
+                <button onClick={handleExportExcel} className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 flex items-center text-sm font-medium"><FaFileExport className="mr-2" /> Export Excel</button>
               </div>
             </div>
 
             {/* Table Area */}
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+           <div className="overflow-x-auto overflow-y-auto max-h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                 <thead className="bg-green-100 dark:bg-green-900/30 text-gray-800 dark:text-gray-200 sticky top-0 z-10">
                   <tr>
