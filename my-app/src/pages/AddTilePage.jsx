@@ -19,7 +19,7 @@ export default function AddTilePage() {
   SizeId: '',
   FinishId: '',
   ColorId: '',
-  Faces: ''   // 👈 NEW (optional)
+  Faces: '0'
 });
 
   const [referenceData, setReferenceData] = useState({
@@ -40,12 +40,11 @@ export default function AddTilePage() {
   const userId = localStorage.getItem('userid');
   const navigate = useNavigate();
   // 🖼 Image handling 
-  const [vyrFinalImages, setVyrFinalImages] = useState([]); // resized files
 const [rawImages, setRawImages] = useState({}); // { 0: File, 1: File }
 // const [uploadDone, setUploadDone] = useState(false);
 // const [uploadedImages, setUploadedImages] = useState([]); // filenames
 // const [selectedImages, setSelectedImages] = useState([]);
-const [vyrPreviewImages, setVyrPreviewImages] = useState([]);
+const [previewImages, setPreviewImages] = useState([]);
 // const [vyrProcessing, setVyrProcessing] = useState(false);
 const [replaceImages, setReplaceImages] = useState(false);
 const [showReplacePrompt, setShowReplacePrompt] = useState(false);
@@ -61,11 +60,11 @@ const [isInitLoading, setIsInitLoading] = useState(true);
   }, []);
   useEffect(() => {
   return () => {
-    vyrPreviewImages.forEach(url => {
+    previewImages.forEach(url => {
       if (url) URL.revokeObjectURL(url);
     });
   };
-}, [vyrPreviewImages]);
+}, [previewImages]);
 
 const fetchReferenceData = async () => {
   try {
@@ -101,13 +100,6 @@ const fetchReferenceData = async () => {
     ...prev,
     [name]: value
   }));
-
-  // ✅ NEW: If Size changes, reset images
-  if (name === "SizeId") {
-    setRawImages({});
-    setVyrFinalImages([]);
-    setVyrPreviewImages([]);
-  }
 
   if (validationErrors[name]) {
     setValidationErrors(prev => {
@@ -168,22 +160,6 @@ const fetchReferenceData = async () => {
       setShowConfirm(true);
     }
   };
-  const getCleanVyrSize = () => {
-  const sizeName = getSizeName(); // e.g. "600 x 1200 mm"
-  if (!sizeName) return "";
-
-  // Extract ONLY numbers like 600 and 1200
-  const match = sizeName.match(/(\d+)\s*[xX×]\s*(\d+)/);
-
-  if (!match) {
-    console.error("Invalid size format for VYR:", sizeName);
-    return "";
-  }
-
-  return `${match[1]}X${match[2]}`; // EXACT backend format
-};
-
-
 const checkBigImagesExist = async () => {
   const files = Object.values(rawImages);
 
@@ -201,11 +177,6 @@ const checkBigImagesExist = async () => {
   return res.data;
 };
 
-
-const getSizeName = () =>
-  referenceData.sizes.find(
-    x => Number(x.size_id) === Number(formData.SizeId)
-  )?.size_name || "";
 
   const addTile = async (forceReplace = false) => {
 
@@ -277,55 +248,18 @@ if (tileRes.data !== "success") {
     // 2️⃣ RESIZE IMAGES
     // -------------------
    const imageFiles = Object.values(rawImages);
-
 if (imageFiles.length > 0) {
-  const imgForm = new FormData();
-  imageFiles.forEach(f => imgForm.append("files", f));
-  imgForm.append("empcode", userId);
-  imgForm.append("replace", forceReplace);
+  for (const file of imageFiles) {
+    const imgForm = new FormData();
+    imgForm.append("image", file);
+    imgForm.append("file", file);
+    imgForm.append("empcode", userId || "");
+    imgForm.append("replace", forceReplace);
+    imgForm.append("name", formData.SkuCode || "");
 
-  await axios.post(
-    `${baseURL}/resize-folder-jpg`,
-    imgForm
-  );
-}
-
-
-    // -------------------
-// 3️⃣ FINAL VYR
-// -------------------
-if (vyrFinalImages.length > 0) {
-  const cleanSize = getCleanVyrSize();
-
-  if (!cleanSize) {
-    toast.error("Invalid size format. Please select a valid tile size.");
-    return;
-  }
-
-  const vyrForm = new FormData();
-  vyrForm.append("name", formData.SkuCode);
-  vyrForm.append("size", cleanSize);
-  vyrForm.append("createdBy", Number(userId));
-  vyrForm.append("replace", forceReplace);
-
-  vyrFinalImages.forEach((file) =>
-    vyrForm.append("images", file)
-  );
-
-  const vyrRes = await axios.post(
-    `${baseURL}/single-prod-vyr`,
-    vyrForm
-  );
-
-  if (
-    vyrRes.data?.result?.Processed?.length === 0 &&
-    vyrRes.data?.result?.Errors?.length > 0
-  ) {
-    toast.error("VYR failed: " + vyrRes.data.result.Errors.join(", "));
-    return;
+    await axios.post(`${baseURL}/resize-jpg`, imgForm);
   }
 }
-
 
 
     toast.success("Tile and images added successfully!");
@@ -333,7 +267,12 @@ if (vyrFinalImages.length > 0) {
 
   } catch (err) {
     console.error("Add tile error:", err);
-    toast.error("Failed to add tile", err);
+    const apiMessage =
+      (typeof err?.response?.data === "string" && err.response.data) ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Failed to add tile";
+    toast.error(apiMessage);
   } finally {
     setIsLoading(false);
     setReplaceImages(false);
@@ -341,55 +280,36 @@ if (vyrFinalImages.length > 0) {
   }
 };
 
-const handleSingleFaceUpload = async (index, file) => {
+const handleSingleFaceUpload = (index, file) => {
   if (!file) return;
+  const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+  const isAllowedType =
+    allowedMimeTypes.includes(file.type) ||
+    /\.(jpe?g|png|webp)$/i.test(file.name || "");
 
-  const size = getSizeName();
-  if (!size) {
-    toast.error("Please select Size before uploading images");
+  if (!isAllowedType) {
+    toast.error("Only JPG, PNG, or WEBP images are allowed.");
     return;
   }
 
   try {
-    const form = new FormData();
-    form.append("image", file);
-    form.append("size", size);
-
-    const res = await axios.post(
-      `${baseURL}/resize-vyr`,
-      form,
-      { responseType: "blob" }
-    );
-
-    const resizedFile = new File(
-      [res.data],
-      file.name.replace(/\.[^/.]+$/, ".png"),
-      { type: "image/png" }
-    );
-
     // store raw image per face
     setRawImages(prev => ({
       ...prev,
       [index]: file
     }));
 
-    // store resized image for VYR upload
-    setVyrFinalImages(prev => {
-      const copy = [...prev];
-      copy[index] = resizedFile;
-      return copy;
-    });
-
     // store preview
-    setVyrPreviewImages(prev => {
+    setPreviewImages(prev => {
       const copy = [...prev];
-      copy[index] = URL.createObjectURL(resizedFile);
+      if (copy[index]) URL.revokeObjectURL(copy[index]);
+      copy[index] = URL.createObjectURL(file);
       return copy;
     });
 
   } catch (err) {
     console.error(`Face ${index + 1} upload error`, err);
-    toast.error(`Failed to process Face ${index + 1}`);
+    toast.error(`Failed to add Face ${index + 1} image`);
   }
 };
 
@@ -529,8 +449,7 @@ const handleSingleFaceUpload = async (index, file) => {
 
     // Reset images if faces change
     setRawImages({});
-    setVyrFinalImages([]);
-    setVyrPreviewImages([]);
+    setPreviewImages([]);
   }}
   placeholder="Number of faces"
   className="w-full px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md 
@@ -547,7 +466,7 @@ const handleSingleFaceUpload = async (index, file) => {
   </label>
 
   {Number(formData.Faces) > 0 ? (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {Array.from({ length: Number(formData.Faces) }).map((_, index) => (
         <div
           key={index}
@@ -571,10 +490,10 @@ const handleSingleFaceUpload = async (index, file) => {
           />
 
           {/* Preview */}
-          {vyrPreviewImages[index] && (
+          {previewImages[index] && (
             <div className="mt-3 flex justify-center items-center bg-gray-50 dark:bg-gray-800 rounded p-2">
               <img
-                src={vyrPreviewImages[index]}
+                src={previewImages[index]}
                 alt={`Face ${index + 1}`}
                 className="max-h-40 object-contain rounded"
               />
@@ -584,9 +503,9 @@ const handleSingleFaceUpload = async (index, file) => {
       ))}
     </div>
   ) : (
-   <p className="text-xs text-gray-500 dark:text-gray-400">
-  Please enter the number of faces (max 30) and ensure a tile size is selected before uploading images.
-</p>
+    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+      Enter Faces value to show upload fields.
+    </p>
   )}
 </div>
 

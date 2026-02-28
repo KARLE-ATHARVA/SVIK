@@ -1,23 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
-import Topbar from '../components/Topbar';
-import Breadcrumb from '../components/Breadcrumb';
 import PageLayout from '../components/layout/PageLayout';
 import useTable from '../hooks/useTable';
 import axios from 'axios';
 import { FaPlus, FaEdit, FaCheck, FaAngleLeft, FaAngleRight, FaTrash, FaFileExport, FaFileImport, FaTimes, FaSpinner, FaSearch } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-// import JSZip from 'jszip';
 import 'react-toastify/dist/ReactToastify.css';
-import { useMemo } from "react";
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 const MEDIA_URL = process.env.REACT_APP_MEDIA_URL;
 const thumbImageBaseURL = `${MEDIA_URL}/thumb/`;
 const imgURL = process.env.REACT_APP_MEDIA_URL;;
 const fallbackUrl = `${MEDIA_URL}/no-image.jpg`;
-// const MAX_UPLOAD_SIZE = 100 * 1024 * 1024; // 100MB (same as backend)
+const MAX_UPLOAD_SIZE = 100 * 1024 * 1024; // 100MB backend request limit
+const MAX_BATCH_SIZE = 80 * 1024 * 1024; // keep safe margin for multipart overhead
+const MAX_FILES_PER_BATCH = 200; // avoid giant multipart payloads with thousands of parts
+const TILE_CACHE_KEY = "tile_master_cache_v1";
+const TILE_CACHE_TS_KEY = "tile_master_cache_ts_v1";
+const TILE_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 
 
 // --- Components ---
@@ -59,10 +59,11 @@ function ImportModal({
   isOpen,
   onClose,
   folderInputRef,
-  fileInputRef,          // ✅ ADD THIS
+  fileInputRef,
   excelFolderInputRef,
   handleFolderUpload,
-  isLoading,
+  importLoadingType,
+  imageImportProgress,
   replaceExcel,
   setReplaceExcel,
   replaceImages,
@@ -70,85 +71,87 @@ function ImportModal({
 }) {
 
   if (!isOpen) return null;
+  const isImageLoading = importLoadingType === 'images';
+  const isExcelLoading = importLoadingType === 'excel';
+  const isImportLoading = !!importLoadingType;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-gray-200/70 dark:border-gray-700">
         <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Import Options</h3>
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Import Products</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"><FaTimes size={20} /></button>
         </div>
-        <div className="p-6 space-y-4">
-          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-
-{/* File upload */}
-<div>
-  <label className="block text-sm font-medium mb-1">
-    Select Images or ZIP
-  </label>
- <input
-  type="file"
-  ref={fileInputRef}
-  multiple
-  accept=".zip,image/jpeg,image/png,image/webp"
-  className="block w-full text-sm"
-  disabled={isLoading}
-/>
-
-<p className="text-xs text-gray-500 mt-1">
-  Select a ZIP file OR select images
-</p>
-
-</div>
-</div>
-          <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-  Select Excel File (
-  <a
-    href="https://docs.google.com/spreadsheets/d/1pybBh-jxqRtLEPT0ItBJxhAdIEqg4uO18yHqQIfJlH0/edit?gid=0#gid=0"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-  >
-    View sample format
-  </a>
-  )
-</label>
-
-            <input type="file" accept=".xlsx,.xls" ref={excelFolderInputRef} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-600 dark:file:text-white" disabled={isLoading} />
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="p-5 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-700 dark:to-gray-700/70 rounded-xl border border-blue-100 dark:border-gray-600 space-y-3">
+            <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Image Import</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-300">Upload images or zip file.</p>
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              accept=".zip,image/jpeg,image/png,image/webp"
+              className="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+              disabled={isImportLoading}
+            />
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={replaceImages}
+                onChange={(e) => setReplaceImages(e.target.checked)}
+                disabled={isImportLoading}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              Replace existing images
+            </label>
+            <button onClick={() => handleFolderUpload('images')} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center" disabled={isImportLoading}>
+              {isImageLoading ? <FaSpinner className="animate-spin mr-2" /> : 'Import Images'}
+            </button>
+            {isImageLoading && (
+              <div className="pt-2">
+                <div className="flex justify-between text-xs text-gray-600 dark:text-gray-300 mb-1">
+                  <span>{imageImportProgress?.label || "Uploading images..."}</span>
+                  <span>{Math.round(imageImportProgress?.percent || 0)}%</span>
+                </div>
+                <div className="h-2 w-full bg-blue-100 dark:bg-gray-600 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-200"
+                    style={{ width: `${Math.max(0, Math.min(100, imageImportProgress?.percent || 0))}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
-         <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-3">
 
-  {/* Excel replace */}
-  <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-    <input
-      type="checkbox"
-      checked={replaceExcel}
-      onChange={(e) => setReplaceExcel(e.target.checked)}
-      disabled={isLoading}
-      className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-    />
-    Replace existing Excel records
-  </label>
-
-  {/* Image replace */}
-  <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-    <input
-      type="checkbox"
-      checked={replaceImages}
-      onChange={(e) => setReplaceImages(e.target.checked)}
-      disabled={isLoading}
-      className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-    />
-    Replace existing images
-  </label>
-
-</div>
-
-          <button onClick={handleFolderUpload} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center" disabled={isLoading}>
-            {isLoading ? <FaSpinner className="animate-spin mr-2" /> : 'Upload'}
-          </button>
+          <div className="p-5 bg-gradient-to-br from-emerald-50 to-lime-50 dark:from-gray-700 dark:to-gray-700/70 rounded-xl border border-emerald-100 dark:border-gray-600 space-y-3">
+            <h4 className="text-base font-semibold text-gray-800 dark:text-gray-100">Excel Import</h4>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Select Excel File (
+              <a
+                href="https://docs.google.com/spreadsheets/d/1pybBh-jxqRtLEPT0ItBJxhAdIEqg4uO18yHqQIfJlH0/edit?gid=0#gid=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                View sample format
+              </a>
+              )
+            </label>
+            <input type="file" accept=".xlsx,.xls" ref={excelFolderInputRef} className="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-600 file:text-white hover:file:bg-emerald-700" disabled={isImportLoading} />
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={replaceExcel}
+                onChange={(e) => setReplaceExcel(e.target.checked)}
+                disabled={isImportLoading}
+                className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+              />
+              Replace existing Excel records
+            </label>
+            <button onClick={() => handleFolderUpload('excel')} className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center justify-center" disabled={isImportLoading}>
+              {isExcelLoading ? <FaSpinner className="animate-spin mr-2" /> : 'Import Excel'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -160,6 +163,8 @@ const userId = localStorage.getItem('userid');
 export default function TileMasterPage() {
   const [tiles, setTiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [importLoadingType, setImportLoadingType] = useState(null);
+  const [imageImportProgress, setImageImportProgress] = useState({ percent: 0, label: "" });
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState(() => {});
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -174,7 +179,7 @@ const [replaceImages, setReplaceImages] = useState(false);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [showImportModal, setShowImportModal] = useState(false);
   
-const fileInputRef = useRef(null); // ✅ NEW
+const fileInputRef = useRef(null);
 
   const excelFolderInputRef = useRef(null);
   const navigate = useNavigate();
@@ -185,20 +190,41 @@ const fileInputRef = useRef(null); // ✅ NEW
       navigate('/login');
       return;
     }
-    fetchTiles();
+    const hadFreshCache = loadTilesFromCache();
+    fetchTiles({ silent: hadFreshCache });
   }, []);
 
-  const fetchTiles = async () => {
-    setIsLoading(true);
+  const loadTilesFromCache = () => {
+    try {
+      const cached = sessionStorage.getItem(TILE_CACHE_KEY);
+      const cachedTs = Number(sessionStorage.getItem(TILE_CACHE_TS_KEY) || 0);
+      if (!cached || !cachedTs) return false;
+      if (Date.now() - cachedTs > TILE_CACHE_MAX_AGE_MS) return false;
+
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length) {
+        setTiles(parsed);
+        return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  };
+
+  const fetchTiles = async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true);
     try {
       const normalizedBaseURL = baseURL.replace(/\/+$/, '');
       const res = await axios.get(`${normalizedBaseURL}/GetTileList`);
       let tilesData = Array.isArray(res.data) ? res.data : (res.data.tiles || res.data.data?.tiles || []);
       setTiles(tilesData);
+      sessionStorage.setItem(TILE_CACHE_KEY, JSON.stringify(tilesData));
+      sessionStorage.setItem(TILE_CACHE_TS_KEY, String(Date.now()));
     } catch (err) {
-      toast.error('Failed to fetch tiles');
+      if (!silent) toast.error('Failed to fetch tiles');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -234,140 +260,210 @@ const fileInputRef = useRef(null); // ✅ NEW
     } catch (err) { toast.error('Export failed'); }
   };
 
-const createZipFromFiles = async (files) => {
-  const { default: JSZip } = await import("jszip");
+const splitFilesIntoBatches = (files, maxBytes, maxFilesPerBatch) => {
+  const batches = [];
+  let currentBatch = [];
+  let currentSize = 0;
 
-  const zip = new JSZip();
-  files.forEach(f => zip.file(f.name, f));
+  for (const file of files) {
+    if (file.size > MAX_UPLOAD_SIZE) {
+      throw new Error(`File ${file.name} exceeds 100MB limit.`);
+    }
 
-  const content = await zip.generateAsync({ type: "blob" });
+    const wouldExceedSize = currentSize + file.size > maxBytes;
+    const wouldExceedCount = currentBatch.length >= maxFilesPerBatch;
+    if (currentBatch.length > 0 && (wouldExceedSize || wouldExceedCount)) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentSize = 0;
+    }
 
-  return new File([content], `images_${Date.now()}.zip`, {
-    type: "application/zip",
-  });
-};
+    currentBatch.push(file);
+    currentSize += file.size;
+  }
 
-const triggerVyrProcessing = (excelFile) => {
-  if (!excelFile) return;
-
-  const form = new FormData();
-  form.append("excelFile", excelFile);
-  form.append("replace", replaceImages);
-  form.append("createdBy", userId);
-
-  // 🔕 SILENT background call (no toasts)
-  axios.post(`${baseURL}/process-folder-vyr`, form)
-    .catch(() => {
-      // optionally log error, but NO toast
-      console.error("VYR processing failed");
-    });
+  if (currentBatch.length) batches.push(currentBatch);
+  return batches;
 };
 
 
-
-const handleFolderUpload = async () => {
+const handleFolderUpload = async (type) => {
   const selectedFiles = Array.from(fileInputRef.current?.files || []);
   const excelFile = excelFolderInputRef.current?.files[0];
+  const normalizedBaseURL = baseURL.replace(/\/+$/, "");
 
-  if (!selectedFiles.length && !excelFile) {
-    toast.error("Please select ZIP or images");
+  if (type === "images") {
+    if (!selectedFiles.length) {
+      toast.error("Please select ZIP or images");
+      return;
+    }
+
+    setImportLoadingType("images");
+    setImageImportProgress({ percent: 0, label: "Preparing upload..." });
+    const uploadToastId = toast.loading("Image upload started...");
+
+    try {
+      const zipSelections = selectedFiles.filter(f => f.name.toLowerCase().endsWith(".zip"));
+      if (zipSelections.length > 0 && selectedFiles.length > 1) {
+        throw new Error("Select either one ZIP file or image files.");
+      }
+
+      // Single ZIP upload directly
+      if (selectedFiles.length === 1 && selectedFiles[0].name.toLowerCase().endsWith(".zip")) {
+        if (selectedFiles[0].size > MAX_UPLOAD_SIZE) {
+          throw new Error("ZIP exceeds 100MB limit.");
+        }
+        const formData = new FormData();
+        formData.append("files", selectedFiles[0]);
+        formData.append("empcode", userId);
+        formData.append("replace", replaceImages);
+        setImageImportProgress({ percent: 0, label: "Uploading ZIP..." });
+        await axios.post(`${normalizedBaseURL}/resize-folder-jpg`, formData, {
+          onUploadProgress: (progressEvent) => {
+            if (!progressEvent.total) return;
+            const pct = (progressEvent.loaded / progressEvent.total) * 100;
+            setImageImportProgress({ percent: pct, label: "Uploading ZIP..." });
+          }
+        });
+      } else if (selectedFiles.length === 1) {
+        // Single image upload directly (no zip)
+        if (selectedFiles[0].size > MAX_UPLOAD_SIZE) {
+          throw new Error("Image exceeds 100MB limit.");
+        }
+        const formData = new FormData();
+        formData.append("files", selectedFiles[0]);
+        formData.append("empcode", userId);
+        formData.append("replace", replaceImages);
+        setImageImportProgress({ percent: 0, label: "Uploading image..." });
+        await axios.post(`${normalizedBaseURL}/resize-folder-jpg`, formData, {
+          onUploadProgress: (progressEvent) => {
+            if (!progressEvent.total) return;
+            const pct = (progressEvent.loaded / progressEvent.total) * 100;
+            setImageImportProgress({ percent: pct, label: "Uploading image..." });
+          }
+        });
+      } else {
+        // Multiple images: split into safe multipart batches and upload each batch
+        const batches = splitFilesIntoBatches(selectedFiles, MAX_BATCH_SIZE, MAX_FILES_PER_BATCH);
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          const formData = new FormData();
+          batch.forEach((f) => formData.append("files", f));
+          formData.append("empcode", userId);
+          formData.append("replace", replaceImages);
+
+          const batchStartPct = (i / batches.length) * 100;
+          const batchEndPct = ((i + 1) / batches.length) * 100;
+          setImageImportProgress({
+            percent: batchStartPct,
+            label: `Uploading batch ${i + 1} of ${batches.length}`
+          });
+
+          await axios.post(`${normalizedBaseURL}/resize-folder-jpg`, formData, {
+            onUploadProgress: (progressEvent) => {
+              if (!progressEvent.total) return;
+              const inBatchPct = (progressEvent.loaded / progressEvent.total) * 100;
+              const overallPct = batchStartPct + ((batchEndPct - batchStartPct) * inBatchPct) / 100;
+              setImageImportProgress({
+                percent: overallPct,
+                label: `Uploading batch ${i + 1} of ${batches.length}`
+              });
+            }
+          });
+        }
+      }
+
+      setImageImportProgress({ percent: 100, label: "Finalizing..." });
+
+      toast.update(uploadToastId, {
+        render: "Image import successful",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000
+      });
+
+      await fetchTiles();
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setShowImportModal(false);
+    } catch (err) {
+      toast.update(uploadToastId, {
+        render:
+          (typeof err?.response?.data === "string" && err.response.data) ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Image import failed",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000
+      });
+    } finally {
+      setImportLoadingType(null);
+      setImageImportProgress({ percent: 0, label: "" });
+    }
     return;
   }
 
-  setIsLoading(true);
-  const normalizedBaseURL = baseURL.replace(/\/+$/, "");
-
-  /* ==========================
-     1️⃣ Excel upload (optional)
-  ========================== */
-  if (excelFile) {
-    const excelForm = new FormData();
-    excelForm.append("file", excelFile);
-    excelForm.append("createdBy", userId);
-    excelForm.append("replace", replaceExcel);
-
-    axios
-      .post(`${normalizedBaseURL}/ImportFromExcel`, excelForm)
-      .then(() => fetchTiles())
-      .catch(() => toast.error("Excel import failed"));
-  }
-
-/* ==========================
-   2️⃣ ZIP or Images upload
-========================== */
-if (selectedFiles.length) {
-  let zipFile;
-
-  // ✅ TOAST #1
-  const uploadToastId = toast.loading("Image upload started…");
-
-  try {
-    // ZIP directly
-    if (
-      selectedFiles.length === 1 &&
-      selectedFiles[0].name.toLowerCase().endsWith(".zip")
-    ) {
-      zipFile = selectedFiles[0];
-    }
-    // Images → ZIP silently
-    else {
-      zipFile = await createZipFromFiles(selectedFiles);
+  if (type === "excel") {
+    if (!excelFile) {
+      toast.error("Please select an Excel file");
+      return;
     }
 
-    const formData = new FormData();
-    formData.append("files", zipFile);
-    formData.append("empcode", userId);
-    formData.append("replace", replaceImages);
+    setImportLoadingType("excel");
+    try {
+      const excelForm = new FormData();
+      excelForm.append("file", excelFile);
+      excelForm.append("createdBy", userId);
+      excelForm.append("replace", replaceExcel);
 
-    await axios.post(`${normalizedBaseURL}/resize-folder-jpg`, formData);
-
-    // ✅ TOAST #2 (same toast updated)
-    toast.update(uploadToastId, {
-      render: "Image upload successful",
-      type: "success",
-      isLoading: false,
-      autoClose: 3000
-    });
-
-    // background-only VYR (silent)
-    if (excelFile) triggerVyrProcessing(excelFile);
-
-    fetchTiles();
-
-  } catch (err) {
-    toast.update(uploadToastId, {
-      render: "Image upload failed",
-      type: "error",
-      isLoading: false,
-      autoClose: 4000
-    });
+      await axios.post(`${normalizedBaseURL}/ImportFromExcel`, excelForm);
+      toast.success("Excel import successful");
+      await fetchTiles();
+      if (excelFolderInputRef.current) excelFolderInputRef.current.value = "";
+      setShowImportModal(false);
+    } catch (err) {
+      toast.error("Excel import failed");
+    } finally {
+      setImportLoadingType(null);
+    }
   }
-}
-
-  setShowImportModal(false);
-  setIsLoading(false);
 };
+const deferredGlobalSearch = useDeferredValue(globalSearch);
+const deferredColumnSearches = useDeferredValue(columnSearches);
+
+const indexedTiles = useMemo(() => {
+  return tiles.map((tile) => ({
+    ...tile,
+    __searchBlob: [
+      tile.sku_code,
+      tile.sku_name,
+      tile.app_name,
+      tile.finish_name,
+      tile.color_name
+    ]
+      .map((v) => String(v ?? "").toLowerCase())
+      .join(" ")
+  }));
+}, [tiles]);
 
 const filteredTiles = useMemo(() => {
-  let filtered = [...tiles];
+  let filtered = indexedTiles;
+  const search = deferredGlobalSearch.trim().toLowerCase();
 
-  if (globalSearch) {
-    const search = globalSearch.toLowerCase();
-    filtered = filtered.filter(t =>
-      Object.values(t).some(v =>
-        String(v).toLowerCase().includes(search)
-      )
-    );
+  if (search) {
+    filtered = filtered.filter((t) => t.__searchBlob.includes(search));
   }
 
-  filtered = filtered.filter(t =>
-    Object.entries(columnSearches).every(([k, v]) =>
-      !v || String(t[k]).toLowerCase().includes(v.toLowerCase())
-    )
+  filtered = filtered.filter((t) =>
+    Object.entries(deferredColumnSearches).every(([k, v]) => {
+      const query = String(v ?? "").trim().toLowerCase();
+      if (!query) return true;
+      return String(t[k] ?? "").toLowerCase().includes(query);
+    })
   );
 
   return filtered;
-}, [tiles, globalSearch, columnSearches]);
+}, [indexedTiles, deferredGlobalSearch, deferredColumnSearches]);
 
 const {
   currentItems: currentTiles,
@@ -471,7 +567,7 @@ const {
     <tr>
       <td colSpan="7" className="px-4 py-10 text-center text-gray-500">
         <FaSpinner className="inline mr-2 animate-spin" />
-        Loading products…
+        Loading products...
       </td>
     </tr>
   ) : currentTiles.length > 0 ? (
@@ -566,7 +662,8 @@ const {
         fileInputRef={fileInputRef}
         excelFolderInputRef={excelFolderInputRef}
         handleFolderUpload={handleFolderUpload}
-        isLoading={isLoading}
+        importLoadingType={importLoadingType}
+        imageImportProgress={imageImportProgress}
         replaceExcel={replaceExcel}
         setReplaceExcel={setReplaceExcel}
         replaceImages={replaceImages}

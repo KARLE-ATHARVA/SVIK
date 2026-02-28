@@ -48,20 +48,23 @@ export default function RegisterPage() {
     setTimeout(() => navigate('/'), 1500);
 
   } catch (err) {
-    const msg = err.response?.data;
+    const code = err.response?.data?.code;
 
-    if (msg === 'alreadyrequested') {
-      toast.info('Registration already requested. Please wait for admin approval.');
+    if (code === "alreadyexists") {
+      toast.error("Account already exists.");
     }
-    else if (msg === 'alreadyexists') {
-      toast.error('Account already exists. Please login instead.');
+    else if (code === "alreadyrequested") {
+      toast.info("Registration already requested.");
+    }
+    else if (code === "validationfailed") {
+      toast.warning("Please fill all fields.");
     }
     else {
-      toast.error('Something went wrong. Please try again.');
+      toast.error("Something went wrong.");
     }
-
-    console.error('Register error:', msg || err.message);
-  } finally {
+  } 
+  finally {
+    // 🔥 THIS WAS MISSING
     setLoading(false);
   }
 };

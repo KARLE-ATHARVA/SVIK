@@ -7,10 +7,20 @@ import BrandLogo from '../assets/brand_logo.PNG';
 import axios from 'axios';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
+const SIDEBAR_USER_CACHE_KEY = 'sidebar_user_cache_v1';
+const SIDEBAR_USER_CACHE_TS_KEY = 'sidebar_user_cache_ts_v1';
+const SIDEBAR_USER_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export default function Sidebar({ darkMode }) {
   const { sidebarCollapsed, toggleSidebar } = useSidebar();
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem(SIDEBAR_USER_CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,11 +29,17 @@ export default function Sidebar({ darkMode }) {
         const userId = localStorage.getItem('userid');
         if (!userId) return;
 
+        const cachedTs = Number(sessionStorage.getItem(SIDEBAR_USER_CACHE_TS_KEY) || 0);
+        const isFresh = cachedTs && Date.now() - cachedTs < SIDEBAR_USER_CACHE_TTL_MS;
+        if (isFresh && userData?.user_id) return;
+
         const res = await axios.get(`${baseURL}/GetUserList`);
         if (res.data && Array.isArray(res.data)) {
           const user = res.data.find(u => String(u.user_id) === String(userId));
           if (user) {
             setUserData(user);
+            sessionStorage.setItem(SIDEBAR_USER_CACHE_KEY, JSON.stringify(user));
+            sessionStorage.setItem(SIDEBAR_USER_CACHE_TS_KEY, String(Date.now()));
           }
         }
       } catch (err) {

@@ -9,8 +9,7 @@ export default function Reportspage() {
 
   const reportTables = [
     { name: "User Activity Log", path: "/userActivity" },
-    { name: "Login History", path: "/loginHistory" },
-    { name: "Admin Activity Log", path: "/adminActivity" }
+    { name: "Login History", path: "/loginHistory" }
   ];
 
   // Sort alphabetically (case-insensitive)

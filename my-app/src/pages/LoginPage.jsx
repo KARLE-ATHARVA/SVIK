@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -8,6 +8,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import leftImage from '../assets/left_image.jpg';
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
+const REMEMBER_FLAG_KEY = 'login_remember_me';
+const REMEMBER_USERNAME_KEY = 'login_remember_username';
 
 // ✅ IMPORTANT: allow cookies
 axios.defaults.withCredentials = true;
@@ -18,6 +20,14 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const remembered = localStorage.getItem(REMEMBER_FLAG_KEY) === 'true';
+    if (!remembered) return;
+
+    setRememberMe(true);
+    setUsername(localStorage.getItem(REMEMBER_USERNAME_KEY) || '');
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -57,6 +67,14 @@ export default function LoginPage() {
 
       localStorage.setItem('userid', userid);
       localStorage.setItem('username', name);
+
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_FLAG_KEY, 'true');
+        localStorage.setItem(REMEMBER_USERNAME_KEY, username);
+      } else {
+        localStorage.removeItem(REMEMBER_FLAG_KEY);
+        localStorage.removeItem(REMEMBER_USERNAME_KEY);
+      }
 
       toast.update(toastId, {
         render: 'Login successful!',
@@ -227,7 +245,19 @@ export default function LoginPage() {
 
             <div className="flex justify-between items-center text-sm">
               <label className="flex items-center">
-                <input type="checkbox" checked={rememberMe} onChange={(e)=> setRememberMe(e.target.checked)} className="mr-2" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setRememberMe(checked);
+                    if (!checked) {
+                      localStorage.removeItem(REMEMBER_FLAG_KEY);
+                      localStorage.removeItem(REMEMBER_USERNAME_KEY);
+                    }
+                  }}
+                  className="mr-2"
+                />
                 Remember me
               </label>
               <a

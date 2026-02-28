@@ -14,8 +14,7 @@ export default function MasterTablesPage() {
     { name: "Category", path: "/categoryMaster" },
     { name: "Size", path: "/sizeMaster" },
     { name: "Application", path: "/applicationMaster" },
-    { name: "Finish", path: "/finishMaster" },
-    { name: "User", path: "/userMaster" }
+    { name: "Finish", path: "/finishMaster" }
   ];
 
   // Sort alphabetically (case-insensitive)
