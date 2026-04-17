@@ -5,13 +5,11 @@ import Breadcrumb from '../components/Breadcrumb';
 import { FaSortUp, FaSortDown } from 'react-icons/fa';
 import axios from 'axios';
 import { DateTime } from 'luxon';
-import { useTheme } from '../context/ThemeContext';
 
 
 const baseURL = process.env.REACT_APP_API_BASE_URL;
 
 export default function LoginHistory() {
-  const { darkMode } = useTheme();
   const userId = localStorage.getItem('userid');
   const userName = localStorage.getItem('username');
 
@@ -106,25 +104,25 @@ export default function LoginHistory() {
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Topbar />
 
-        <div className={`flex flex-col flex-1 overflow-hidden p-5 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="flex justify-between items-center mb-4 mt-2">
+        <div className={`flex flex-col flex-1 min-w-0 overflow-hidden p-5 transition duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-4 mt-2">
             <h2 className="text-2xl font-bold text-green-800 dark:text-green-500">Login History</h2>
             <Breadcrumb />
           </div>
 
-          <div className="w-full max-w-screen-xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
-            <div className="mb-4 flex justify-between items-center">
+          <div className="w-full max-w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col max-h-[75vh] overflow-hidden">
+            <div className="mb-4 flex flex-wrap justify-between items-center gap-3">
               <input
                 type="text"
                 placeholder="Search ..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="border border-gray-300 dark:border-gray-600 rounded px-5 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
+                className="w-full max-w-md border border-gray-300 dark:border-gray-600 rounded px-5 py-0.5 focus:outline-none focus:ring-2 focus:ring-green-600 dark:bg-gray-700 dark:text-gray-200"
               />
-              <div className="flex items-center space-x-2 text-sm">
+              <div className="flex items-center space-x-2 text-sm shrink-0">
                 <span>Show</span>
                 <select
                   className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-600 bg-white dark:bg-gray-700"
@@ -142,7 +140,7 @@ export default function LoginHistory() {
               </div>
             </div>
 
-            <div className="overflow-x-auto overflow-y-auto max-h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
+            <div className="min-w-0 overflow-x-auto overflow-y-auto max-h-[60vh] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md">
               <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
                 <thead className="bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                   <tr>
@@ -180,11 +178,11 @@ export default function LoginHistory() {
               </table>
             </div>
 
-            <div className="flex justify-between mt-4 text-sm items-center text-gray-800 dark:text-gray-200">
-              <span>
+            <div className="mt-4 flex flex-wrap items-start justify-between gap-3 text-sm text-gray-800 dark:text-gray-200">
+              <span className="shrink-0">
                 Showing {filtered.length === 0 ? 0 : indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} entries
               </span>
-              <div className="flex gap-1">
+              <div className="flex max-w-full flex-wrap gap-1 justify-end">
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
